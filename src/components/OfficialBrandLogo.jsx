@@ -20,7 +20,7 @@ export default function OfficialBrandLogo({
           className="flex items-center"
         >
           <img
-            src="/images/official-logo-transparent.png"
+            src="/images/official-logo-freshurban.png"
             alt="AbhiiKhula - Take Token • Skip Queue • Save Time"
             style={{ height: `${height}px`, width: 'auto' }}
             className="object-contain drop-shadow-xs"
@@ -29,7 +29,7 @@ export default function OfficialBrandLogo({
         </motion.div>
       ) : (
         <img
-          src="/images/official-logo-transparent.png"
+          src="/images/official-logo-freshurban.png"
           alt="AbhiiKhula - Take Token • Skip Queue • Save Time"
           style={{ height: `${height}px`, width: 'auto' }}
           className="object-contain drop-shadow-xs"

@@ -38,10 +38,10 @@ export default function FreshUrbanLogo({ size = 48, className = "" }) {
           d="M120 96 H128 V113 L142 96 H153 L136 116 L154 140 H142 L128 120 V140 H120 V96 Z"
           fill="#176B65"
         />
-        {/* Organic Leaf Accent in Soft Peach (#F2A15A) */}
+        {/* Organic Leaf Accent in Deep Teal (#176B65) */}
         <path
           d="M93 125 C 105 110, 122 112, 134 118 C 120 126, 106 128, 93 125 Z"
-          fill="#F2A15A"
+          fill="#176B65"
         />
 
         {/* Awning Canopy: Teal (#176B65) and Warm Ivory (#F3F1E9) Stripes */}
@@ -66,16 +66,16 @@ export default function FreshUrbanLogo({ size = 48, className = "" }) {
           strokeWidth="3"
         />
 
-        {/* Side Energy Rays in Peach (#F2A15A) */}
-        <line x1="28" y1="92" x2="38" y2="97" stroke="#F2A15A" strokeWidth="4.5" strokeLinecap="round" />
-        <line x1="24" y1="108" x2="35" y2="108" stroke="#F2A15A" strokeWidth="4.5" strokeLinecap="round" />
-        <line x1="28" y1="124" x2="38" y2="119" stroke="#F2A15A" strokeWidth="4.5" strokeLinecap="round" />
+        {/* Side Energy Rays in Deep Teal (#176B65) */}
+        <line x1="28" y1="92" x2="38" y2="97" stroke="#176B65" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1="24" y1="108" x2="35" y2="108" stroke="#176B65" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1="28" y1="124" x2="38" y2="119" stroke="#176B65" strokeWidth="4.5" strokeLinecap="round" />
 
-        {/* Bottom Swoosh Underline in Peach (#F2A15A) */}
+        {/* Bottom Swoosh Underline in Deep Teal (#176B65) */}
         <path
           d="M40 186 Q 120 170 200 186"
           fill="none"
-          stroke="#F2A15A"
+          stroke="#176B65"
           strokeWidth="5"
           strokeLinecap="round"
         />

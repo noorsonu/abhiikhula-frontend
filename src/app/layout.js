@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
         
         {/* Soft Background Warm Tones */}
         <div className="fixed top-0 right-1/4 w-[600px] h-[600px] bg-[#DCE9E3]/50 rounded-full blur-[140px] pointer-events-none -z-10"></div>
-        <div className="fixed bottom-10 left-1/4 w-[500px] h-[500px] bg-[#F2A15A]/15 rounded-full blur-[130px] pointer-events-none -z-10"></div>
+        <div className="fixed bottom-10 left-1/4 w-[500px] h-[500px] bg-[#176B65]/10 rounded-full blur-[130px] pointer-events-none -z-10"></div>
 
         <Suspense fallback={<div className="h-20 bg-[#F3F1E9] border-b border-[#DCE9E3]" />}>
           <Navbar />

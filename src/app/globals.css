@@ -50,8 +50,8 @@
 }
 
 .urban-card-interactive:hover {
-  border-color: #F2A15A;
-  box-shadow: 0 12px 30px -4px rgba(242, 161, 90, 0.2);
+  border-color: #176B65;
+  box-shadow: 0 12px 30px -4px rgba(23, 107, 101, 0.2);
   transform: translateY(-3px);
 }
 
