@@ -10,6 +10,7 @@ export const apiClient = axios.create({
   timeout: 15000,
 });
 
+// Attach JWT Bearer Token if customer is logged in
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('ak_token');
@@ -20,20 +21,34 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Auth APIs (Passwordless OTP)
+export const authApi = {
+  sendOtp: (phone) => apiClient.post('/api/auth/send-otp', { phone }),
+  verifyOtp: (phone, otp) => apiClient.post('/api/auth/verify-otp', { phone, otp }),
+  getMe: () => apiClient.get('/api/auth/me'),
+};
+
+// Shop Discovery APIs
 export const shopApi = {
   getShops: (params) => apiClient.get('/api/shops', { params }),
-  getShopBySlug: (slug) => apiClient.get(`/api/shops/${slug}`),
-  getQueueStatus: (shopId) => apiClient.get(`/api/queue/${shopId}/status`),
+  getShopBySlug: (slug) => apiClient.get(`/api/shops/slug/${slug}`),
+  getShopById: (id) => apiClient.get(`/api/shops/${id}`),
+  getQueueStatus: (shopId) => apiClient.get(`/api/shops/${shopId}/queue/status`),
 };
 
+// Queue & Token Lifecycle APIs
 export const queueApi = {
-  joinQueue: (shopId, payload) => apiClient.post(`/api/queue/${shopId}/join`, payload),
-  getMyActiveTokens: () => apiClient.get('/api/queue/my-tokens'),
-  cancelToken: (tokenId) => apiClient.post(`/api/queue/tokens/${tokenId}/cancel`),
+  joinQueue: (shopId, payload) => apiClient.post(`/api/shops/${shopId}/queue/tokens/join`, payload),
+  getMyActiveTokens: () => apiClient.get('/api/queue/tokens/my'),
+  getTokenById: (tokenId) => apiClient.get(`/api/tokens/${tokenId}`),
+  cancelToken: (tokenId, reason = 'Cancelled by customer') => 
+    apiClient.post(`/api/queue/tokens/${tokenId}/cancel`, { reason }),
+  checkIn: (tokenId, lat, lng) => 
+    apiClient.post(`/api/tokens/${tokenId}/checkin`, { latitude: lat, longitude: lng }),
 };
 
+// Categories & Zones
 export const zoneApi = {
   getCategories: () => apiClient.get('/api/categories'),
   getZones: () => apiClient.get('/api/zones'),
 };
-
