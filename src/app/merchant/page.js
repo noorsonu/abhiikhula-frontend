@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { 
   Store, Power, Play, CheckCircle2, UserX, Plus, RefreshCw, 
-  Users, Clock, AlertTriangle, ShieldCheck 
+  Users, Clock, AlertTriangle, ShieldCheck, Zap 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -16,7 +16,6 @@ export default function MerchantDeskPage() {
     { id: '3', displayToken: 'D-007', customerName: 'Amit Singh', groupSize: 1, waitMin: 22 },
   ]);
 
-  // Offline walk-in token state
   const [walkinName, setWalkinName] = useState('');
   const [walkinGroupSize, setWalkinGroupSize] = useState(1);
 
@@ -50,40 +49,40 @@ export default function MerchantDeskPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-8 pb-12">
       
       {/* Merchant Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl border border-sky-100 p-6 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center font-bold shadow-md shadow-sky-500/20">
-            <Store className="w-6 h-6" />
+      <div className="modern-card rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#0f2744] text-white flex items-center justify-center font-bold shadow-md">
+            <Store className="w-7 h-7 text-sky-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-black text-slate-900">Dr. Verma Dental Care</h1>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-md border border-sky-200">
-                Merchant Live Desk
+              <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 px-3 py-0.5 rounded-md border border-slate-200">
+                Merchant Live Counter
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">B-23, Sector 14 Main Market, Indira Nagar</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">B-23, Sector 14 Main Market, Indira Nagar, Lucknow</p>
           </div>
         </div>
 
-        {/* Live Status Switcher */}
+        {/* Status Switcher Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {[
-            { key: 'OPEN', label: 'Khula Hai', color: 'bg-emerald-600 text-white' },
-            { key: 'BUSY', label: 'Bheed Hai', color: 'bg-amber-600 text-white' },
-            { key: 'PAUSED', label: 'Pause Line', color: 'bg-orange-600 text-white' },
-            { key: 'CLOSED', label: 'Band Hai', color: 'bg-rose-600 text-white' },
+            { key: 'OPEN', label: 'Open Now', color: 'bg-emerald-600 text-white' },
+            { key: 'BUSY', label: 'Heavy Crowd', color: 'bg-amber-500 text-white' },
+            { key: 'PAUSED', label: 'Pause Queue', color: 'bg-orange-500 text-white' },
+            { key: 'CLOSED', label: 'Closed', color: 'bg-rose-500 text-white' },
           ].map((st) => (
             <button
               key={st.key}
               onClick={() => setShopStatus(st.key)}
-              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 shopStatus === st.key
-                  ? `${st.color} shadow-sm ring-2 ring-slate-900/10`
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? `${st.color} shadow-md ring-2 ring-slate-900/10 font-extrabold`
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
               {st.label}
@@ -99,39 +98,43 @@ export default function MerchantDeskPage() {
         <div className="lg:col-span-7 space-y-6">
           
           {/* Serving Desk Screen */}
-          <div className="bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-sky-800/40 text-center space-y-6">
-            <span className="text-xs uppercase font-black tracking-widest text-sky-400">
+          <div className="relative overflow-hidden hero-gradient text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-sky-600/30 text-center space-y-6">
+            <span className="text-xs uppercase font-black tracking-widest text-sky-200">
               Now Serving at Clinic / Counter
             </span>
-            <div className="text-6xl sm:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-cyan-300">
+            <div className="text-7xl sm:text-8xl font-black tracking-tight text-white drop-shadow-md">
               {currentServing}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleNext}
-                className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-300 hover:brightness-110 text-slate-950 font-black text-sm shadow-xl shadow-sky-500/20 transition-all active:scale-95"
+                className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black text-sm shadow-md transition-all cursor-pointer"
               >
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <span>Call Next Token</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleNoShow}
-                className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-rose-300 font-bold text-sm transition-all active:scale-95 border border-white/10"
+                className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20 cursor-pointer"
               >
-                <UserX className="w-5 h-5" />
+                <UserX className="w-5 h-5 text-rose-300" />
                 <span>Mark No-Show</span>
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Issue Offline / Walk-in Token Card */}
-          <div className="bg-white rounded-3xl border border-sky-100 p-6 sm:p-7 shadow-sm space-y-4">
+          <div className="modern-card rounded-3xl p-6 sm:p-7 space-y-4">
             <div>
-              <h2 className="text-lg font-black text-slate-900">Walk-in Customer Token</h2>
-              <p className="text-xs text-slate-500">
-                Jo customer seedha dukan par bina app ke aaye, unhe physical queue token issue karein.
+              <h2 className="text-xl font-black text-slate-900">Walk-in Customer Offline Token</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Issue a physical queue ticket for customers walking directly into the store without the app.
               </p>
             </div>
 
@@ -139,16 +142,16 @@ export default function MerchantDeskPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
-                  placeholder="Customer Naam (Optional)"
+                  placeholder="Customer Name (Optional)"
                   value={walkinName}
                   onChange={(e) => setWalkinName(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7]"
                 />
 
                 <select
                   value={walkinGroupSize}
                   onChange={(e) => setWalkinGroupSize(Number(e.target.value))}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:outline-none"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7]"
                 >
                   <option value={1}>1 Person</option>
                   <option value={2}>2 Persons (Group)</option>
@@ -157,61 +160,63 @@ export default function MerchantDeskPage() {
                 </select>
               </div>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95"
+                className="w-full py-3.5 rounded-2xl bg-[#0f2744] hover:bg-[#16385f] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                <span>Issue Walk-in Token</span>
-              </button>
+                <Plus className="w-4 h-4 text-sky-400" />
+                <span>Print / Issue Walk-in Token</span>
+              </motion.button>
             </form>
           </div>
 
         </div>
 
-        {/* Right Column (5 Cols): Live Waiting Line */}
+        {/* Right Column (5 Cols): Live Waiting Queue */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-sky-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-300 pb-3">
             <div>
-              <h2 className="text-lg font-black text-slate-900">Waiting Line</h2>
-              <p className="text-xs text-slate-500 font-medium">Total: {waitingTokens.length} log line me hain</p>
+              <h2 className="text-lg font-black text-slate-900">Live Waiting Line</h2>
+              <p className="text-xs text-slate-500 font-medium">Total: {waitingTokens.length} customers in line</p>
             </div>
-            <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+            <span className="text-xs font-black text-slate-700 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-xs">
               Live Feed
             </span>
           </div>
 
           {waitingTokens.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-sky-100 p-8 text-center space-y-2">
-              <p className="text-sm font-bold text-slate-800">Queue Khali Hai!</p>
-              <p className="text-xs text-slate-400">Sabhi customers attend ho chuke hain.</p>
+            <div className="modern-card rounded-3xl p-10 text-center space-y-2">
+              <p className="text-sm font-bold text-slate-800">Queue is Clear!</p>
+              <p className="text-xs text-slate-400">All customers have been served.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {waitingTokens.map((t, index) => (
                 <div
                   key={t.id}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex items-center justify-between"
+                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center text-xs font-black">
+                  <div className="flex items-center gap-3.5">
+                    <span className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-black">
                       {index + 1}
                     </span>
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         <span className="text-base font-black text-slate-900">{t.displayToken}</span>
                         {t.groupSize > 1 && (
-                          <span className="text-[10px] font-bold bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded border border-sky-100">
-                            {t.groupSize}P
+                          <span className="text-[10px] font-black bg-sky-50 text-[#0284c7] px-2 py-0.5 rounded border border-sky-100">
+                            {t.groupSize}P Group
                           </span>
                         )}
                       </div>
-                      <p className="text-xs font-semibold text-slate-500">{t.customerName}</p>
+                      <p className="text-xs font-semibold text-slate-500 mt-0.5">{t.customerName}</p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-xs font-bold text-slate-700 block">~{t.waitMin} min</span>
+                    <span className="text-xs font-black text-[#0284c7] block">~{t.waitMin} min</span>
                     <span className="text-[10px] text-slate-400 font-medium">Est. Wait</span>
                   </div>
                 </div>
@@ -225,4 +230,3 @@ export default function MerchantDeskPage() {
     </div>
   );
 }
-

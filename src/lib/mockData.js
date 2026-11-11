@@ -4,7 +4,7 @@ export const MOCK_SHOPS = [
     name: "Dr. Verma Dental & Oral Care Clinic",
     slug: "dr-verma-dental-care",
     categoryName: "Doctor & Clinic",
-    address: "B-23, Sector 14, Main Market, Indira Nagar",
+    address: "B-23, Sector 14, Main Market, Indira Nagar, Lucknow",
     status: "OPEN",
     verified: true,
     crowdLabel: "Light",
@@ -13,30 +13,30 @@ export const MOCK_SHOPS = [
     currentServing: "D-004",
     phone: "9876543210",
     openingHours: "10:00 AM – 02:00 PM & 05:00 PM – 09:00 PM",
-    description: "Multi-speciality dental treatments with sterile digital token queuing."
+    description: "Specialized multi-chair dental treatments with digital contact-free queue management."
   },
   {
     id: "s2",
-    name: "Shree Krishna Medicos & Pharmacy",
+    name: "Shree Krishna Medicos & Healthcare",
     slug: "shree-krishna-medicos",
     categoryName: "Pharmacy",
-    address: "Shop 4, Near Aurobindo Park, Indira Nagar",
+    address: "Shop 4, Near Aurobindo Park, Indira Nagar, Lucknow",
     status: "BUSY",
     verified: true,
-    crowdLabel: "Heavy (Bheed)",
+    crowdLabel: "High Rush",
     waitingCount: 7,
     estimatedWaitMin: 18,
     currentServing: "M-029",
     phone: "9876543211",
     openingHours: "08:00 AM – 11:30 PM",
-    description: "All genuine 100% genuine medicines & baby care with fast contactless counter pickup."
+    description: "100% genuine prescription medicines and baby health products with fast pickup counters."
   },
   {
     id: "s3",
     name: "Looks Luxury Unisex Salon & Spa",
     slug: "looks-luxury-salon",
     categoryName: "Salon & Spa",
-    address: "Plot 102, C-Block Commercial Belt, Indira Nagar",
+    address: "Plot 102, Commercial Belt, Indira Nagar, Lucknow",
     status: "OPEN",
     verified: true,
     crowdLabel: "Moderate",
@@ -45,30 +45,30 @@ export const MOCK_SHOPS = [
     currentServing: "L-011",
     phone: "9876543212",
     openingHours: "09:30 AM – 09:30 PM",
-    description: "Premium hair grooming, styling, and facials with zero physical waiting room rush."
+    description: "Premium hair grooming, styling, and skin treatments without waiting in crowded lounges."
   },
   {
     id: "s4",
     name: "Royal Sweets & Traditional Chaat Corner",
     slug: "royal-sweets-chaat",
-    categoryName: "Food & Chaat",
-    address: "Near Sector 14 Chauraha, Indira Nagar",
+    categoryName: "Food & Snacks",
+    address: "Near Sector 14 Square, Indira Nagar, Lucknow",
     status: "OPEN",
     verified: true,
-    crowdLabel: "Heavy (Bheed)",
+    crowdLabel: "High Rush",
     waitingCount: 11,
     estimatedWaitMin: 15,
     currentServing: "F-054",
     phone: "9876543213",
     openingHours: "04:00 PM – 10:30 PM",
-    description: "Lucknow ki mashhoor Tokri Chaat, Pani Batashe aur Desi Ghee Jalebi."
+    description: "Famous Lucknow basket chaat, pure ghee sweets, and hot savories."
   },
   {
     id: "s5",
-    name: "City Diagnostics Lab & Blood Collection",
+    name: "City Diagnostics Lab & Pathology",
     slug: "city-diagnostics-lab",
     categoryName: "Diagnostic Lab",
-    address: "Opp. Rani Laxmibai School, Sector 14",
+    address: "Opp. Rani Laxmibai School, Sector 14, Lucknow",
     status: "OPEN",
     verified: true,
     crowdLabel: "Light",
@@ -77,32 +77,31 @@ export const MOCK_SHOPS = [
     currentServing: "C-002",
     phone: "9876543214",
     openingHours: "07:00 AM – 07:00 PM",
-    description: "Fast NABL certified blood testing & health checkups with minimal in-clinic waiting."
+    description: "Certified routine blood work and health checkup packages with rapid reporting."
   },
   {
     id: "s6",
-    name: "Modern Auto Spares & Bike Service",
-    slug: "modern-auto-spares",
-    categoryName: "Auto Repair",
-    address: "Khurram Nagar Ring Road, Near Indira Nagar",
+    name: "Apex Auto Spares & Two-Wheeler Care",
+    slug: "apex-auto-spares",
+    categoryName: "Auto Service",
+    address: "Ring Road, Near Indira Nagar, Lucknow",
     status: "PAUSED",
     verified: false,
-    crowdLabel: "Paused Queue",
+    crowdLabel: "Queue Paused",
     waitingCount: 5,
     estimatedWaitMin: 35,
     currentServing: "A-008",
     phone: "9876543215",
     openingHours: "09:00 AM – 08:00 PM",
-    description: "Bike quick servicing & oil change. Tokens temporarily paused for lunch."
+    description: "Express bike servicing, genuine spares and oil change. Queue temporarily paused for lunch."
   }
 ];
 
 export const MOCK_CATEGORIES = [
-  { id: "c1", name: "Doctor & Clinic", icon: "Stethoscope" },
-  { id: "c2", name: "Pharmacy", icon: "Pill" },
-  { id: "c3", name: "Salon & Spa", icon: "Scissors" },
-  { id: "c4", name: "Food & Chaat", icon: "Utensils" },
-  { id: "c5", name: "Diagnostic Lab", icon: "Activity" },
-  { id: "c6", name: "Auto Repair", icon: "Wrench" },
+  { id: "c1", name: "Doctor & Clinic" },
+  { id: "c2", name: "Pharmacy" },
+  { id: "c3", name: "Salon & Spa" },
+  { id: "c4", name: "Food & Snacks" },
+  { id: "c5", name: "Diagnostic Lab" },
+  { id: "c6", name: "Auto Service" },
 ];
-

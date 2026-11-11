@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
-  CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus 
+  CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -30,7 +30,7 @@ export default function ShopDetailClient() {
   const handleBookToken = async (e) => {
     e.preventDefault();
     if (!customerPhone || customerPhone.length !== 10) {
-      setErrorMsg("Kripya 10-digit valid mobile number bharein");
+      setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
 
@@ -66,12 +66,12 @@ export default function ShopDetailClient() {
           return;
         }
       } catch (err) {
-        // Fallback for smooth demo
+        // Fallback for demo
       }
 
       setBookedToken(generatedToken);
     } catch (err) {
-      setErrorMsg(err.message || 'Token generate karne me dikkat aayi');
+      setErrorMsg(err.message || 'Error occurred while generating token');
     } finally {
       setBooking(false);
     }
@@ -82,64 +82,66 @@ export default function ShopDetailClient() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
         className="max-w-xl mx-auto py-8 px-4 text-center space-y-6"
       >
-        <div className="w-20 h-20 bg-sky-100 text-sky-600 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+        <div className="w-20 h-20 bg-sky-50 border border-sky-200 text-[#0284c7] rounded-3xl flex items-center justify-center mx-auto shadow-sm">
           <CheckCircle2 className="w-12 h-12" />
         </div>
 
         <div>
-          <span className="text-xs font-black text-sky-600 uppercase tracking-widest bg-sky-50 px-3.5 py-1.5 rounded-full border border-sky-200">
+          <span className="text-xs font-black text-[#0284c7] uppercase tracking-widest bg-sky-50 px-4 py-1.5 rounded-full border border-sky-200">
             Digital Token Confirmed
           </span>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-3">Aapka Token Ready Hai!</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3">Your Token Is Ready!</h2>
           <p className="text-sm text-slate-500 mt-1 font-semibold">{shop.name}</p>
         </div>
 
-        {/* Digital Ticket Holographic Sky Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-sky-800/50 space-y-6 text-left">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        {/* Digital Ticket Balanced Ocean Blue Card */}
+        <div className="relative overflow-hidden hero-gradient text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-500/40 space-y-6 text-left">
+          
+          <div className="flex items-center justify-between border-b border-white/20 pb-4">
             <div>
-              <span className="text-[10px] uppercase font-black tracking-widest text-sky-400">
+              <span className="text-[10px] uppercase font-black tracking-widest text-sky-200">
                 {bookedToken.groupSize > 1 ? `Linked Group (${bookedToken.groupSize} Persons)` : 'Single Ticket'}
               </span>
               <p className="text-lg font-bold text-white">{customerName || 'Customer'}</p>
             </div>
-            <Ticket className="w-8 h-8 text-sky-400" />
+            <Ticket className="w-8 h-8 text-sky-200" />
           </div>
 
           <div className="text-center py-4">
-            <span className="text-xs uppercase font-bold tracking-widest text-slate-400 block mb-1">
+            <span className="text-xs uppercase font-black tracking-widest text-sky-200 block mb-1">
               Your Live Token Number
             </span>
-            <div className="text-5xl sm:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-cyan-300">
+            <div className="text-6xl sm:text-7xl font-black tracking-tight text-white drop-shadow-md">
               {bookedToken.displayToken}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+          <div className="grid grid-cols-3 gap-2 bg-black/20 rounded-2xl p-4 text-center border border-white/10">
             <div>
-              <span className="text-slate-400 text-[10px] uppercase font-bold block">Aage Log</span>
-              <span className="text-lg font-black text-white">{bookedToken.peopleAhead ?? 2}</span>
+              <span className="text-sky-200 text-[10px] uppercase font-bold block">Ahead of You</span>
+              <span className="text-xl font-black text-white">{bookedToken.peopleAhead ?? 2}</span>
             </div>
             <div>
-              <span className="text-slate-400 text-[10px] uppercase font-bold block">Est. Wait</span>
-              <span className="text-lg font-black text-sky-400">{bookedToken.estimatedWaitMin ?? 15} min</span>
+              <span className="text-sky-200 text-[10px] uppercase font-bold block">Est. Wait</span>
+              <span className="text-xl font-black text-white">{bookedToken.estimatedWaitMin ?? 15} min</span>
             </div>
             <div>
-              <span className="text-slate-400 text-[10px] uppercase font-bold block">Status</span>
+              <span className="text-sky-200 text-[10px] uppercase font-bold block">Status</span>
               <span className="text-xs font-black text-emerald-300">ACTIVE</span>
             </div>
           </div>
 
           {bookedToken.memberNames && bookedToken.memberNames.length > 1 && (
             <div className="pt-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">
-                Saath wale members:
+              <span className="text-[10px] uppercase font-bold text-sky-200 block mb-1.5">
+                Group Member Names:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {bookedToken.memberNames.map((name, i) => (
-                  <span key={i} className="text-xs bg-white/10 px-2.5 py-1 rounded-lg text-slate-200 font-medium">
+                  <span key={i} className="text-xs bg-white/15 border border-white/20 px-3 py-1 rounded-lg text-white font-medium">
                     {name}
                   </span>
                 ))}
@@ -151,15 +153,15 @@ export default function ShopDetailClient() {
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Link
             href="/tokens"
-            className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 text-white font-black text-sm shadow-lg shadow-sky-600/25 transition-all text-center"
+            className="flex-1 py-4 px-6 rounded-2xl bg-[#0f2744] hover:bg-[#16385f] text-white font-black text-sm shadow-md transition-all text-center cursor-pointer"
           >
-            My Active Tokens Me Dekhein
+            View in My Tokens
           </Link>
           <Link
             href="/"
-            className="flex-1 py-3.5 px-6 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm border border-slate-200/80 transition-all text-center"
+            className="flex-1 py-4 px-6 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm border border-slate-200 transition-all text-center"
           >
-            Dusri Dukaanein Dekhein
+            Explore Other Stores
           </Link>
         </div>
       </motion.div>
@@ -171,25 +173,27 @@ export default function ShopDetailClient() {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Top Breadcrumb */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-sm active:scale-95 transition-all"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-black text-slate-700 hover:text-slate-900 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs active:scale-95 transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Wapas</span>
+          <span>Back</span>
         </button>
 
         <span className="text-xs text-slate-500 font-semibold">
-          Category: <span className="text-sky-700 font-bold">{shop.categoryName}</span>
+          Category: <span className="text-slate-800 font-bold">{shop.categoryName}</span>
         </span>
       </div>
 
+      {/* 2-Column Responsive Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
         
         {/* Left Column: Details & Real-Time Queue Desk */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-5">
+          <div className="modern-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -197,7 +201,7 @@ export default function ShopDetailClient() {
                     {shop.name}
                   </h1>
                   {shop.verified && (
-                    <ShieldCheck className="w-6 h-6 text-sky-500 shrink-0" title="Verified Merchant" />
+                    <ShieldCheck className="w-6 h-6 text-[#0284c7] shrink-0" title="Verified Merchant" />
                   )}
                 </div>
                 <p className="text-sm text-slate-500 font-medium mt-1.5 flex items-center gap-1.5">
@@ -207,7 +211,7 @@ export default function ShopDetailClient() {
               </div>
 
               <span
-                className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${
+                className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${
                   isOpen
                     ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                     : isBusy
@@ -215,74 +219,76 @@ export default function ShopDetailClient() {
                     : 'bg-rose-50 text-rose-800 border border-rose-200'
                 }`}
               >
-                {isOpen ? '● Khula Hai' : isBusy ? '● Bheed Hai' : '● Band Hai'}
+                {isOpen ? '● Open Now' : isBusy ? '● Heavy Crowd' : '● Closed'}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 text-center">
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100">
+            {/* Real-time Queue Desk Numbers */}
+            <div className="grid grid-cols-3 gap-3 pt-2 text-center">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Waiting Queue
                 </span>
-                <span className="text-lg sm:text-2xl font-black text-slate-900 mt-0.5 block">
-                  {shop.waitingCount} Log
+                <span className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5 block">
+                  {shop.waitingCount} People
                 </span>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Wait Time
                 </span>
-                <span className="text-lg sm:text-2xl font-black text-sky-600 mt-0.5 block">
+                <span className="text-xl sm:text-2xl font-black text-[#0284c7] mt-0.5 block">
                   ~{shop.estimatedWaitMin} min
                 </span>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Serving Now
                 </span>
-                <span className="text-lg sm:text-2xl font-black text-emerald-600 mt-0.5 block">
+                <span className="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5 block">
                   {shop.currentServing}
                 </span>
               </div>
             </div>
 
-            <div className="pt-2 text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3">
+            {/* Description & Operating Hours */}
+            <div className="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3 pt-2">
               <p>{shop.description}</p>
-              <div className="flex items-center gap-2 text-slate-500 font-semibold bg-sky-50/50 p-3 rounded-2xl border border-sky-100/60">
-                <Clock className="w-4 h-4 text-sky-500" />
+              <div className="flex items-center gap-2 text-slate-700 font-semibold bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+                <Clock className="w-4 h-4 text-[#0284c7]" />
                 <span>Operating Hours: {shop.openingHours}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-3xl border border-sky-100 p-6 space-y-3">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-3 shadow-xs">
             <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-600" />
-              <span>AbhiiKhula Digital Token Ke Fayde</span>
+              <Sparkles className="w-4 h-4 text-[#0284c7]" />
+              <span>Key Advantages of AbhiiKhula Digital Token</span>
             </h3>
             <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside font-medium">
-              <li>Ghar baithe hi token number lein aur apni baari aane par hi niklein.</li>
-              <li>Live position aur arrival notification aapke screen par realtime aayegi.</li>
-              <li>Aapke saath agar pariwar ya dost hain, to ek saath 1 se 4 logo ka token lein.</li>
+              <li>Book your spot from home and arrive only when your turn is close.</li>
+              <li>Live queue updates and arrival ETA notifications right on your screen.</li>
+              <li>Linked group booking allows 1 to 4 persons in a single family ticket.</li>
             </ul>
           </div>
         </div>
 
         {/* Right Column: Sticky Token Booking Card */}
-        <div className="lg:col-span-5 lg:sticky lg:top-24">
-          <div className="bg-white rounded-3xl border border-sky-100 p-6 sm:p-7 shadow-xl shadow-sky-500/5 space-y-5">
+        <div className="lg:col-span-5 lg:sticky lg:top-28">
+          <div className="modern-card rounded-3xl p-6 sm:p-8 space-y-5 shadow-lg border-slate-200">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-200">
-                Zero-Rush Digital Entry
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#0284c7] bg-sky-50 px-3 py-1 rounded-md border border-sky-200">
+                Fast Contactless Entry
               </span>
-              <h2 className="text-xl font-black text-slate-900 mt-2">Get Queue Token</h2>
+              <h2 className="text-2xl font-black text-slate-900 mt-2">Get Queue Token</h2>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                Line me khade hone ki zaroorat nahi — seedha token paayein.
+                No need to wait in physical lines — claim your instant slot.
               </p>
             </div>
 
             {errorMsg && (
-              <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-2xl">
+              <div className="flex items-center gap-2 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-2xl">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -291,7 +297,7 @@ export default function ShopDetailClient() {
             <form onSubmit={handleBookToken} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-2">
-                  Kitne Logo Ke Liye Token Chahiye? (1 - 4)
+                  Number of People? (1 - 4)
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {[1, 2, 3, 4].map((size) => (
@@ -299,10 +305,10 @@ export default function ShopDetailClient() {
                       type="button"
                       key={size}
                       onClick={() => setGroupSize(size)}
-                      className={`py-2.5 rounded-2xl text-xs font-black transition-all border ${
+                      className={`py-2.5 rounded-2xl text-xs font-black transition-all border cursor-pointer ${
                         groupSize === size
-                          ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white border-transparent shadow-md shadow-sky-500/25'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#0f2744] text-white border-transparent shadow-sm'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       {size} {size === 1 ? 'Person' : 'People'}
@@ -313,14 +319,14 @@ export default function ShopDetailClient() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Aapka Naam
+                  Full Name
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Rahul Verma"
+                  placeholder="e.g. John Doe"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7] focus:ring-2 focus:ring-sky-500/20"
                 />
               </div>
 
@@ -329,7 +335,7 @@ export default function ShopDetailClient() {
                   Mobile Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-sm font-bold text-slate-400">
+                  <span className="absolute left-4 top-3 text-sm font-bold text-slate-400">
                     +91
                   </span>
                   <input
@@ -338,7 +344,7 @@ export default function ShopDetailClient() {
                     placeholder="9876543210"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-2.5 text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-14 pr-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7] focus:ring-2 focus:ring-sky-500/20"
                     required
                   />
                 </div>
@@ -347,39 +353,41 @@ export default function ShopDetailClient() {
               {groupSize > 1 && (
                 <div className="space-y-2 pt-2 border-t border-slate-100">
                   <label className="text-xs font-bold text-slate-700 block">
-                    Saath Wale Members Ke Naam (Optional)
+                    Group Companion Names (Optional)
                   </label>
                   {Array.from({ length: groupSize - 1 }).map((_, i) => (
                     <input
                       key={i}
                       type="text"
-                      placeholder={`Member ${i + 2} ka naam`}
+                      placeholder={`Member ${i + 2} name`}
                       value={companionNames[i]}
                       onChange={(e) => {
                         const updated = [...companionNames];
                         updated[i] = e.target.value;
                         setCompanionNames(updated);
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7]"
                     />
                   ))}
                 </div>
               )}
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={booking}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 active:scale-[0.98] text-white font-black text-sm shadow-xl shadow-sky-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-4 px-4 rounded-2xl bg-[#0f2744] hover:bg-[#16385f] text-white font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4 cursor-pointer"
               >
                 {booking ? (
                   <span>Generating Token...</span>
                 ) : (
                   <>
-                    <Ticket className="w-5 h-5" />
+                    <Ticket className="w-5 h-5 text-sky-400" />
                     <span>Get Free Token Now</span>
                   </>
                 )}
-              </button>
+              </motion.button>
             </form>
           </div>
         </div>
@@ -388,4 +396,3 @@ export default function ShopDetailClient() {
     </div>
   );
 }
-
