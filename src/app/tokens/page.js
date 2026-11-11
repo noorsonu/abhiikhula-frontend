@@ -41,10 +41,10 @@ export default function MyTokensPage() {
     <div className="space-y-8 pb-12">
       
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-300 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#0c1e38] tracking-tight flex items-center gap-3">
-            <Ticket className="w-7 h-7 text-[#16a34a]" />
+          <h1 className="text-2xl sm:text-3xl font-black text-[#0d2238] tracking-tight flex items-center gap-3">
+            <Ticket className="w-7 h-7 text-[#ff7300]" />
             <span>My Active Queue Tokens</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
@@ -58,14 +58,14 @@ export default function MyTokensPage() {
           onClick={handleRefresh}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 shadow-xs text-xs font-bold text-slate-700 hover:text-slate-900 transition-all self-start sm:self-auto cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#16a34a] ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-[#ff7300] ${refreshing ? 'animate-spin' : ''}`} />
           <span>Refresh Status</span>
         </motion.button>
       </div>
 
       {tokens.length === 0 ? (
-        <div className="brand-card rounded-3xl p-10 sm:p-14 text-center space-y-4 max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-[#16a34a] flex items-center justify-center mx-auto border border-emerald-100">
+        <div className="ak-card rounded-3xl p-10 sm:p-14 text-center space-y-4 max-w-xl mx-auto">
+          <div className="w-16 h-16 rounded-3xl bg-orange-50 text-[#ff7300] flex items-center justify-center mx-auto border border-orange-100">
             <Ticket className="w-8 h-8" />
           </div>
           <div>
@@ -76,9 +76,9 @@ export default function MyTokensPage() {
           </div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#0c1e38] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer border border-[#16a34a]/30"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#ff7300] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer"
           >
-            <Store className="w-4 h-4 text-[#22c55e]" />
+            <Store className="w-4 h-4 text-white" />
             <span>Discover Stores</span>
           </Link>
         </div>
@@ -89,7 +89,7 @@ export default function MyTokensPage() {
             <motion.div
               key={token.id}
               whileHover={{ y: -6 }}
-              className="brand-card rounded-3xl p-6 shadow-sm transition-all space-y-5 flex flex-col justify-between"
+              className="ak-card rounded-3xl p-6 shadow-sm transition-all space-y-5 flex flex-col justify-between"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -108,7 +108,7 @@ export default function MyTokensPage() {
                     <p className="text-xs text-slate-500 font-semibold mt-0.5">{token.customerName}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-4xl font-black text-[#16a34a] tracking-tight">
+                    <span className="text-4xl font-black text-[#ff7300] tracking-tight">
                       {token.displayToken}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -130,7 +130,7 @@ export default function MyTokensPage() {
                     <span className="text-slate-400 text-[10px] uppercase font-bold block tracking-wider">
                       Est. Wait
                     </span>
-                    <span className="text-2xl font-black text-[#16a34a] mt-0.5 block">
+                    <span className="text-2xl font-black text-[#ff7300] mt-0.5 block">
                       {token.estimatedWaitMin} <span className="text-xs font-semibold">min</span>
                     </span>
                   </div>

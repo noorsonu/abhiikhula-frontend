@@ -52,15 +52,15 @@ export default function MerchantDeskPage() {
     <div className="space-y-8 pb-12">
       
       {/* Merchant Header Bar */}
-      <div className="brand-card rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="ak-card rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#0c1e38] text-white flex items-center justify-center font-bold shadow-md border border-[#16a34a]/30">
-            <Store className="w-7 h-7 text-[#22c55e]" />
+          <div className="w-14 h-14 rounded-2xl bg-[#0d2238] text-white flex items-center justify-center font-bold shadow-md border border-[#ff7300]/30">
+            <Store className="w-7 h-7 text-[#ff7300]" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-black text-[#0c1e38]">Dr. Verma Dental Care</h1>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-[#16a34a] px-3 py-0.5 rounded-md border border-emerald-200">
+              <h1 className="text-xl sm:text-2xl font-black text-[#0d2238]">Dr. Verma Dental Care</h1>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-orange-50 text-[#ff7300] px-3 py-0.5 rounded-md border border-orange-200">
                 Merchant Live Counter
               </span>
             </div>
@@ -71,17 +71,17 @@ export default function MerchantDeskPage() {
         {/* Status Switcher Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {[
-            { key: 'OPEN', label: 'Open Now', color: 'bg-[#16a34a] text-white' },
-            { key: 'BUSY', label: 'Heavy Crowd', color: 'bg-amber-500 text-white' },
-            { key: 'PAUSED', label: 'Pause Queue', color: 'bg-orange-500 text-white' },
-            { key: 'CLOSED', label: 'Closed', color: 'bg-rose-500 text-white' },
+            { key: 'OPEN', label: 'Open Now', color: 'bg-emerald-600 text-white' },
+            { key: 'BUSY', label: 'Heavy Crowd', color: 'bg-[#ff7300] text-white' },
+            { key: 'PAUSED', label: 'Pause Queue', color: 'bg-amber-600 text-white' },
+            { key: 'CLOSED', label: 'Closed', color: 'bg-rose-600 text-white' },
           ].map((st) => (
             <button
               key={st.key}
               onClick={() => setShopStatus(st.key)}
               className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 shopStatus === st.key
-                  ? `${st.color} shadow-md ring-2 ring-emerald-300 font-extrabold`
+                  ? `${st.color} shadow-md ring-2 ring-slate-400 font-extrabold`
                   : 'bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
@@ -98,8 +98,8 @@ export default function MerchantDeskPage() {
         <div className="lg:col-span-7 space-y-6">
           
           {/* Serving Desk Screen */}
-          <div className="relative overflow-hidden brand-hero text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-700/60 text-center space-y-6">
-            <span className="text-xs uppercase font-black tracking-widest text-emerald-300">
+          <div className="relative overflow-hidden ak-hero-gradient text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-700/60 text-center space-y-6">
+            <span className="text-xs uppercase font-black tracking-widest text-[#ff7300]">
               Now Serving at Clinic / Counter
             </span>
             <div className="text-7xl sm:text-8xl font-black tracking-tight text-white drop-shadow-md">
@@ -111,7 +111,7 @@ export default function MerchantDeskPage() {
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={handleNext}
-                className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-[#16a34a] hover:bg-[#15803d] text-white font-black text-sm shadow-lg transition-all cursor-pointer"
+                className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-[#ff7300] hover:bg-[#e06500] text-white font-black text-sm shadow-lg shadow-orange-500/30 transition-all cursor-pointer"
               >
                 <CheckCircle2 className="w-5 h-5 text-white" />
                 <span>Call Next Token</span>
@@ -130,9 +130,9 @@ export default function MerchantDeskPage() {
           </div>
 
           {/* Issue Offline / Walk-in Token Card */}
-          <div className="brand-card rounded-3xl p-6 sm:p-7 space-y-4">
+          <div className="ak-card rounded-3xl p-6 sm:p-7 space-y-4">
             <div>
-              <h2 className="text-xl font-black text-[#0c1e38]">Walk-in Customer Offline Token</h2>
+              <h2 className="text-xl font-black text-[#0d2238]">Walk-in Customer Offline Token</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Issue a physical queue ticket for customers walking directly into the store without the app.
               </p>
@@ -145,13 +145,13 @@ export default function MerchantDeskPage() {
                   placeholder="Customer Name (Optional)"
                   value={walkinName}
                   onChange={(e) => setWalkinName(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#16a34a]"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#ff7300]"
                 />
 
                 <select
                   value={walkinGroupSize}
                   onChange={(e) => setWalkinGroupSize(Number(e.target.value))}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#16a34a]"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#ff7300]"
                 >
                   <option value={1}>1 Person</option>
                   <option value={2}>2 Persons (Group)</option>
@@ -164,9 +164,9 @@ export default function MerchantDeskPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-[#0c1e38] hover:bg-[#142f56] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#16a34a]/30"
+                className="w-full py-3.5 rounded-2xl bg-[#0d2238] hover:bg-[#16385f] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#ff7300]/30"
               >
-                <Plus className="w-4 h-4 text-[#22c55e]" />
+                <Plus className="w-4 h-4 text-[#ff7300]" />
                 <span>Print / Issue Walk-in Token</span>
               </motion.button>
             </form>
@@ -174,20 +174,20 @@ export default function MerchantDeskPage() {
 
         </div>
 
-        {/* Right Column (5 Cols): Live Waiting Queue */}
+        {/* Right Column: Live Waiting Queue */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-300 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
-              <h2 className="text-lg font-black text-[#0c1e38]">Live Waiting Line</h2>
+              <h2 className="text-lg font-black text-[#0d2238]">Live Waiting Line</h2>
               <p className="text-xs text-slate-500 font-medium">Total: {waitingTokens.length} customers in line</p>
             </div>
-            <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 shadow-xs">
+            <span className="text-xs font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-lg border border-orange-200 shadow-xs">
               Live Feed
             </span>
           </div>
 
           {waitingTokens.length === 0 ? (
-            <div className="brand-card rounded-3xl p-10 text-center space-y-2">
+            <div className="ak-card rounded-3xl p-10 text-center space-y-2">
               <p className="text-sm font-bold text-slate-800">Queue is Clear!</p>
               <p className="text-xs text-slate-400">All customers have been served.</p>
             </div>
@@ -199,14 +199,14 @@ export default function MerchantDeskPage() {
                   className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3.5">
-                    <span className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-[#0c1e38] flex items-center justify-center text-xs font-black">
+                    <span className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-[#0d2238] flex items-center justify-center text-xs font-black">
                       {index + 1}
                     </span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-[#0c1e38]">{t.displayToken}</span>
+                        <span className="text-base font-black text-[#0d2238]">{t.displayToken}</span>
                         {t.groupSize > 1 && (
-                          <span className="text-[10px] font-black bg-emerald-50 text-[#16a34a] px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="text-[10px] font-black bg-orange-50 text-[#ff7300] px-2 py-0.5 rounded border border-orange-200">
                             {t.groupSize}P Group
                           </span>
                         )}
@@ -216,7 +216,7 @@ export default function MerchantDeskPage() {
                   </div>
 
                   <div className="text-right">
-                    <span className="text-xs font-black text-[#16a34a] block">~{t.waitMin} min</span>
+                    <span className="text-xs font-black text-[#ff7300] block">~{t.waitMin} min</span>
                     <span className="text-[10px] text-slate-400 font-medium">Est. Wait</span>
                   </div>
                 </div>

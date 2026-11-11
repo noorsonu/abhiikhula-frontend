@@ -94,3 +94,4 @@ export default function AbhiiKhulaLogo({ size = 48, className = "" }) {
     </div>
   );
 }
+
