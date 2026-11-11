@@ -38,9 +38,8 @@ export default function RootLayout({ children }) {
 
             <div className="flex flex-wrap items-center gap-6 text-slate-300 font-semibold text-xs">
               <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-              <a href="/#shops" className="hover:text-white transition-colors">Explore Shops</a>
-              <a href="/tokens" className="hover:text-white transition-colors">My Tokens</a>
-              <a href="/merchant" className="hover:text-white transition-colors text-slate-400">Store Partner Login 🔒</a>
+              <a href="/#shops" className="hover:text-white transition-colors">Explore Places</a>
+              <a href="/tokens" className="hover:text-white transition-colors">My Live Tokens</a>
             </div>
 
             <p className="text-slate-400 font-medium">

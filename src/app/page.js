@@ -444,10 +444,10 @@ export default function HomePage() {
 
                 <div className="p-5 pt-0">
                   <Link
-                    href={`/shop/${shop.slug}`}
+                    href={`/book/${shop.slug}`}
                     className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                   >
-                    <Ticket className="w-4 h-4 text-[#F2A15A]" />
+                    <Ticket className="w-4 h-4 text-[#DCE9E3]" />
                     <span>Get Token</span>
                   </Link>
                 </div>
@@ -474,7 +474,7 @@ export default function HomePage() {
               Your Live Token (In Progress)
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto font-medium">
-              Real-time synchronization between the merchant desk and your screen.
+              Real-time synchronization between the counter desk and your smartphone.
             </p>
           </div>
 
@@ -556,93 +556,7 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 5: FOR SHOP OWNERS (WITH MERCHANT PHOTO)          */}
-      {/* ========================================================= */}
-      <section id="for-owners" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
-          <div className="lg:col-span-6 space-y-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#176B65] bg-[#DCE9E3] px-3.5 py-1 rounded-full">
-              Merchant Solutions
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-[#283B3D] leading-tight">
-              Manage Your Queue. <br />
-              <span className="text-[#176B65]">Grow Your Business.</span>
-            </h2>
-            <p className="text-base text-[#283B3D]/80 font-normal leading-relaxed">
-              Empower your store staff with clean counter tools. Prevent lobby overcrowding, serve happier customers, and make waiting an invisible experience.
-            </p>
-
-            <div className="space-y-4 pt-2">
-              {[
-                { title: "Digital Queue Management", desc: "One-click next customer calling with zero hassle." },
-                { title: "Live Customer Tracking", desc: "Know exactly who is coming, no-shows, and group sizes." },
-                { title: "Offline Walk-in Token Generation", desc: "Issue physical tickets on the spot for customers without smartphones." },
-                { title: "Shop Analytics & Crowd Controls", desc: "Toggle Open, Busy, Paused, or Closed instantly." },
-              ].map((feat, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#176B65] text-white flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-[#283B3D]">{feat.title}</h4>
-                    <p className="text-xs text-[#283B3D]/70">{feat.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4">
-              <Link
-                href="/merchant"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-sm shadow-md transition-all cursor-pointer"
-              >
-                <Store className="w-4 h-4 text-[#F2A15A]" />
-                <span>Open Merchant Desk Live</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Owner Dashboard Showcase with Photo */}
-          <div className="lg:col-span-6 bg-white rounded-3xl overflow-hidden shadow-xl border border-[#DCE9E3] space-y-6">
-            <div className="h-48 w-full relative overflow-hidden bg-slate-100">
-              <img 
-                src="/images/merchant-store.jpg" 
-                alt="Merchant Counter" 
-                className="w-full h-full object-cover" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <span className="text-xs uppercase tracking-wider font-bold text-[#F2A15A]">Live Counter Control</span>
-                <h4 className="font-black text-lg">Active Station • Dr. Verma Clinic</h4>
-              </div>
-            </div>
-
-            <div className="p-6 pt-0 space-y-6">
-              {/* Serving Desk Display */}
-              <div className="bg-[#283B3D] text-white rounded-2xl p-6 text-center space-y-2">
-                <span className="text-xs uppercase font-bold text-slate-300">Counter Serving Now</span>
-                <div className="font-token text-5xl font-black text-[#F2A15A]">D - 004</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button className="py-3 rounded-xl bg-[#176B65] text-white font-bold text-xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Call Next Token</span>
-                </button>
-                <button className="py-3 rounded-xl bg-[#DCE9E3] text-[#283B3D] font-bold text-xs flex items-center justify-center gap-2">
-                  <Power className="w-4 h-4 text-rose-600" />
-                  <span>Pause Queue</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ========================================================= */}
-      {/* SECTION 6: PLATFORM BENEFITS                              */}
+      {/* SECTION 5: PLATFORM BENEFITS                              */}
       {/* ========================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="text-center max-w-2xl mx-auto space-y-3">
