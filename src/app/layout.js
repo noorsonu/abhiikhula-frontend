@@ -10,11 +10,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[#eef2f6] text-slate-800 flex flex-col antialiased selection:bg-sky-600 selection:text-white">
+      <body className="min-h-screen bg-[#f1f5f9] text-[#0c1e38] flex flex-col antialiased selection:bg-[#16a34a] selection:text-white">
         
-        {/* Soft Muted Ambience (Balanced midtones) */}
-        <div className="fixed top-0 left-1/3 w-[600px] h-[600px] bg-sky-200/40 rounded-full blur-[130px] pointer-events-none -z-10"></div>
-        <div className="fixed bottom-10 right-1/4 w-[500px] h-[500px] bg-slate-300/40 rounded-full blur-[130px] pointer-events-none -z-10"></div>
+        {/* Ambient Subtle Green & Navy Glow in the background */}
+        <div className="fixed top-0 left-1/4 w-[600px] h-[600px] bg-emerald-100/60 rounded-full blur-[140px] pointer-events-none -z-10 animate-soft-float"></div>
+        <div className="fixed bottom-10 right-1/4 w-[550px] h-[550px] bg-slate-200/70 rounded-full blur-[140px] pointer-events-none -z-10"></div>
 
         <Suspense fallback={<div className="h-20 bg-white/90 border-b border-slate-200" />}>
           <Navbar />
@@ -26,14 +26,14 @@ export default function RootLayout({ children }) {
           </Suspense>
         </main>
 
-        <footer className="hidden md:block bg-slate-900 border-t border-slate-800 py-10 text-xs text-slate-400">
+        <footer className="hidden md:block bg-[#09172c] border-t border-slate-800 py-10 text-xs text-slate-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="font-black text-white text-sm">AbhiiKhula</span>
+            <div className="flex items-center gap-2.5">
+              <span className="font-black text-white text-base">Abhii<span className="text-[#22c55e]">Khula</span></span>
               <span>— Hyperlocal Live Availability & Queue Architecture (AKH-BRD-001)</span>
             </div>
             <p className="text-slate-400 font-medium">
-              Balanced Midtone Palette • Next.js & Framer Motion Engine • Lucknow Pilot Live
+              Emerald Forest & Deep Navy Brand Identity • Lucknow Pilot Live
             </p>
           </div>
         </footer>

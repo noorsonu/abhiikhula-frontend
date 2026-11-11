@@ -85,33 +85,33 @@ export default function ShopDetailClient() {
         transition={{ duration: 0.45, ease: "easeOut" }}
         className="max-w-xl mx-auto py-8 px-4 text-center space-y-6"
       >
-        <div className="w-20 h-20 bg-sky-50 border border-sky-200 text-[#0284c7] rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+        <div className="w-20 h-20 bg-emerald-50 border border-emerald-200 text-[#16a34a] rounded-3xl flex items-center justify-center mx-auto shadow-sm">
           <CheckCircle2 className="w-12 h-12" />
         </div>
 
         <div>
-          <span className="text-xs font-black text-[#0284c7] uppercase tracking-widest bg-sky-50 px-4 py-1.5 rounded-full border border-sky-200">
+          <span className="text-xs font-black text-[#16a34a] uppercase tracking-widest bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
             Digital Token Confirmed
           </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3">Your Token Is Ready!</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#0c1e38] mt-3">Your Token Is Ready!</h2>
           <p className="text-sm text-slate-500 mt-1 font-semibold">{shop.name}</p>
         </div>
 
-        {/* Digital Ticket Balanced Ocean Blue Card */}
-        <div className="relative overflow-hidden hero-gradient text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-500/40 space-y-6 text-left">
+        {/* Digital Ticket in Brand Navy with Emerald Highlight */}
+        <div className="relative overflow-hidden brand-hero text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-700/60 space-y-6 text-left">
           
-          <div className="flex items-center justify-between border-b border-white/20 pb-4">
+          <div className="flex items-center justify-between border-b border-white/15 pb-4">
             <div>
-              <span className="text-[10px] uppercase font-black tracking-widest text-sky-200">
+              <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400">
                 {bookedToken.groupSize > 1 ? `Linked Group (${bookedToken.groupSize} Persons)` : 'Single Ticket'}
               </span>
               <p className="text-lg font-bold text-white">{customerName || 'Customer'}</p>
             </div>
-            <Ticket className="w-8 h-8 text-sky-200" />
+            <Ticket className="w-8 h-8 text-emerald-400" />
           </div>
 
           <div className="text-center py-4">
-            <span className="text-xs uppercase font-black tracking-widest text-sky-200 block mb-1">
+            <span className="text-xs uppercase font-black tracking-widest text-slate-300 block mb-1">
               Your Live Token Number
             </span>
             <div className="text-6xl sm:text-7xl font-black tracking-tight text-white drop-shadow-md">
@@ -119,24 +119,24 @@ export default function ShopDetailClient() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 bg-black/20 rounded-2xl p-4 text-center border border-white/10">
+          <div className="grid grid-cols-3 gap-2 bg-black/25 rounded-2xl p-4 text-center border border-white/10">
             <div>
-              <span className="text-sky-200 text-[10px] uppercase font-bold block">Ahead of You</span>
+              <span className="text-slate-300 text-[10px] uppercase font-bold block">Ahead of You</span>
               <span className="text-xl font-black text-white">{bookedToken.peopleAhead ?? 2}</span>
             </div>
             <div>
-              <span className="text-sky-200 text-[10px] uppercase font-bold block">Est. Wait</span>
-              <span className="text-xl font-black text-white">{bookedToken.estimatedWaitMin ?? 15} min</span>
+              <span className="text-slate-300 text-[10px] uppercase font-bold block">Est. Wait</span>
+              <span className="text-xl font-black text-emerald-400">{bookedToken.estimatedWaitMin ?? 15} min</span>
             </div>
             <div>
-              <span className="text-sky-200 text-[10px] uppercase font-bold block">Status</span>
+              <span className="text-slate-300 text-[10px] uppercase font-bold block">Status</span>
               <span className="text-xs font-black text-emerald-300">ACTIVE</span>
             </div>
           </div>
 
           {bookedToken.memberNames && bookedToken.memberNames.length > 1 && (
             <div className="pt-2">
-              <span className="text-[10px] uppercase font-bold text-sky-200 block mb-1.5">
+              <span className="text-[10px] uppercase font-bold text-slate-300 block mb-1.5">
                 Group Member Names:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -153,7 +153,7 @@ export default function ShopDetailClient() {
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Link
             href="/tokens"
-            className="flex-1 py-4 px-6 rounded-2xl bg-[#0f2744] hover:bg-[#16385f] text-white font-black text-sm shadow-md transition-all text-center cursor-pointer"
+            className="flex-1 py-4 px-6 rounded-2xl bg-[#0c1e38] hover:bg-[#142f56] text-white font-black text-sm shadow-md transition-all text-center cursor-pointer border border-[#16a34a]/30"
           >
             View in My Tokens
           </Link>
@@ -184,7 +184,7 @@ export default function ShopDetailClient() {
         </button>
 
         <span className="text-xs text-slate-500 font-semibold">
-          Category: <span className="text-slate-800 font-bold">{shop.categoryName}</span>
+          Category: <span className="text-[#0c1e38] font-bold">{shop.categoryName}</span>
         </span>
       </div>
 
@@ -193,7 +193,7 @@ export default function ShopDetailClient() {
         
         {/* Left Column: Details & Real-Time Queue Desk */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="modern-card rounded-3xl p-6 sm:p-8 space-y-6">
+          <div className="brand-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function ShopDetailClient() {
                     {shop.name}
                   </h1>
                   {shop.verified && (
-                    <ShieldCheck className="w-6 h-6 text-[#0284c7] shrink-0" title="Verified Merchant" />
+                    <ShieldCheck className="w-6 h-6 text-[#16a34a] shrink-0" title="Verified Merchant" />
                   )}
                 </div>
                 <p className="text-sm text-slate-500 font-medium mt-1.5 flex items-center gap-1.5">
@@ -237,7 +237,7 @@ export default function ShopDetailClient() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Wait Time
                 </span>
-                <span className="text-xl sm:text-2xl font-black text-[#0284c7] mt-0.5 block">
+                <span className="text-xl sm:text-2xl font-black text-[#16a34a] mt-0.5 block">
                   ~{shop.estimatedWaitMin} min
                 </span>
               </div>
@@ -245,7 +245,7 @@ export default function ShopDetailClient() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Serving Now
                 </span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5 block">
+                <span className="text-xl sm:text-2xl font-black text-[#0c1e38] mt-0.5 block">
                   {shop.currentServing}
                 </span>
               </div>
@@ -255,15 +255,15 @@ export default function ShopDetailClient() {
             <div className="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3 pt-2">
               <p>{shop.description}</p>
               <div className="flex items-center gap-2 text-slate-700 font-semibold bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
-                <Clock className="w-4 h-4 text-[#0284c7]" />
+                <Clock className="w-4 h-4 text-[#16a34a]" />
                 <span>Operating Hours: {shop.openingHours}</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-3 shadow-xs">
-            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#0284c7]" />
+            <h3 className="text-sm font-black text-[#0c1e38] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#16a34a]" />
               <span>Key Advantages of AbhiiKhula Digital Token</span>
             </h3>
             <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside font-medium">
@@ -276,9 +276,9 @@ export default function ShopDetailClient() {
 
         {/* Right Column: Sticky Token Booking Card */}
         <div className="lg:col-span-5 lg:sticky lg:top-28">
-          <div className="modern-card rounded-3xl p-6 sm:p-8 space-y-5 shadow-lg border-slate-200">
+          <div className="brand-card rounded-3xl p-6 sm:p-8 space-y-5 shadow-lg border-slate-200">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#0284c7] bg-sky-50 px-3 py-1 rounded-md border border-sky-200">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#16a34a] bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
                 Fast Contactless Entry
               </span>
               <h2 className="text-2xl font-black text-slate-900 mt-2">Get Queue Token</h2>
@@ -307,7 +307,7 @@ export default function ShopDetailClient() {
                       onClick={() => setGroupSize(size)}
                       className={`py-2.5 rounded-2xl text-xs font-black transition-all border cursor-pointer ${
                         groupSize === size
-                          ? 'bg-[#0f2744] text-white border-transparent shadow-sm'
+                          ? 'bg-[#16a34a] text-white border-transparent shadow-md shadow-emerald-600/20'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -326,7 +326,7 @@ export default function ShopDetailClient() {
                   placeholder="e.g. John Doe"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7] focus:ring-2 focus:ring-sky-500/20"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#16a34a] focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
@@ -344,7 +344,7 @@ export default function ShopDetailClient() {
                     placeholder="9876543210"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-14 pr-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7] focus:ring-2 focus:ring-sky-500/20"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-14 pr-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#16a34a] focus:ring-2 focus:ring-emerald-500/20"
                     required
                   />
                 </div>
@@ -366,7 +366,7 @@ export default function ShopDetailClient() {
                         updated[i] = e.target.value;
                         setCompanionNames(updated);
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#0284c7]"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#16a34a]"
                     />
                   ))}
                 </div>
@@ -377,13 +377,13 @@ export default function ShopDetailClient() {
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={booking}
-                className="w-full py-4 px-4 rounded-2xl bg-[#0f2744] hover:bg-[#16385f] text-white font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4 cursor-pointer"
+                className="w-full py-4 px-4 rounded-2xl bg-[#0c1e38] hover:bg-[#142f56] text-white font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4 cursor-pointer border border-[#16a34a]/40"
               >
                 {booking ? (
                   <span>Generating Token...</span>
                 ) : (
                   <>
-                    <Ticket className="w-5 h-5 text-sky-400" />
+                    <Ticket className="w-5 h-5 text-[#22c55e]" />
                     <span>Get Free Token Now</span>
                   </>
                 )}

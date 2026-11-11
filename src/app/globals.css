@@ -2,47 +2,85 @@
 
 @layer base {
   body {
-    background: #eef2f6; /* Modern Slate-Silver Midtone: Not bright white, not dark */
-    color: #1e293b; /* Deep Slate Charcoal */
+    background: #f1f5f9; /* Warm Slate Canvas - Not pure white, not dark */
+    color: #0f1e38; /* Signature Deep Navy from Logo */
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
   }
 }
 
-/* Premium Balanced Slate-Glass Cards */
-.modern-card {
+/* Signature Brand Colors from Logo */
+:root {
+  --brand-navy: #0c1e38;
+  --brand-green: #16a34a;
+  --brand-leaf: #22c55e;
+  --brand-warm: #fef08a;
+}
+
+/* Premium Card with subtle Green-Navy Hover Motion */
+.brand-card {
   background: #ffffff;
-  border: 1px solid #dbe2ea;
-  box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px -2px rgba(12, 30, 56, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modern-card:hover {
-  border-color: #0284c7;
-  box-shadow: 0 14px 30px -6px rgba(2, 132, 199, 0.14);
-  transform: translateY(-4px);
+.brand-card:hover {
+  border-color: #22c55e;
+  box-shadow: 0 16px 32px -6px rgba(22, 163, 74, 0.16);
+  transform: translateY(-5px);
 }
 
-/* Hero Deep Sea Teal-Slate Gradient */
-.hero-gradient {
-  background: linear-gradient(135deg, #0f2744 0%, #034b75 60%, #0284c7 100%);
+/* Hero Canopy-Navy Deep Gradient */
+.brand-hero {
+  background: linear-gradient(135deg, #09172c 0%, #0c1e38 55%, #143560 100%);
 }
 
-/* Custom Clean Scrollbar */
+/* Floating animation for Logo and Highlights */
+@keyframes softFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+}
+
+.animate-soft-float {
+  animation: softFloat 5s infinite ease-in-out;
+}
+
+/* Shimmer pulse for live radar */
+@keyframes greenPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+.animate-brand-pulse {
+  animation: greenPulse 2.5s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #eef2f6;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #0284c7;
+  background: #16a34a;
 }
 
 .no-scrollbar::-webkit-scrollbar {

@@ -43,8 +43,8 @@ export default function MyTokensPage() {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-300 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <Ticket className="w-7 h-7 text-[#0284c7]" />
+          <h1 className="text-2xl sm:text-3xl font-black text-[#0c1e38] tracking-tight flex items-center gap-3">
+            <Ticket className="w-7 h-7 text-[#16a34a]" />
             <span>My Active Queue Tokens</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
@@ -58,14 +58,14 @@ export default function MyTokensPage() {
           onClick={handleRefresh}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 shadow-xs text-xs font-bold text-slate-700 hover:text-slate-900 transition-all self-start sm:self-auto cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#0284c7] ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-[#16a34a] ${refreshing ? 'animate-spin' : ''}`} />
           <span>Refresh Status</span>
         </motion.button>
       </div>
 
       {tokens.length === 0 ? (
-        <div className="modern-card rounded-3xl p-10 sm:p-14 text-center space-y-4 max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-3xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto border border-slate-200">
+        <div className="brand-card rounded-3xl p-10 sm:p-14 text-center space-y-4 max-w-xl mx-auto">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-[#16a34a] flex items-center justify-center mx-auto border border-emerald-100">
             <Ticket className="w-8 h-8" />
           </div>
           <div>
@@ -76,9 +76,9 @@ export default function MyTokensPage() {
           </div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#0f2744] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#0c1e38] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer border border-[#16a34a]/30"
           >
-            <Store className="w-4 h-4" />
+            <Store className="w-4 h-4 text-[#22c55e]" />
             <span>Discover Stores</span>
           </Link>
         </div>
@@ -88,8 +88,8 @@ export default function MyTokensPage() {
           {tokens.map((token) => (
             <motion.div
               key={token.id}
-              whileHover={{ y: -5 }}
-              className="modern-card rounded-3xl p-6 shadow-sm transition-all space-y-5 flex flex-col justify-between"
+              whileHover={{ y: -6 }}
+              className="brand-card rounded-3xl p-6 shadow-sm transition-all space-y-5 flex flex-col justify-between"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -108,7 +108,7 @@ export default function MyTokensPage() {
                     <p className="text-xs text-slate-500 font-semibold mt-0.5">{token.customerName}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-4xl font-black text-[#0284c7] tracking-tight">
+                    <span className="text-4xl font-black text-[#16a34a] tracking-tight">
                       {token.displayToken}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -130,7 +130,7 @@ export default function MyTokensPage() {
                     <span className="text-slate-400 text-[10px] uppercase font-bold block tracking-wider">
                       Est. Wait
                     </span>
-                    <span className="text-2xl font-black text-[#0284c7] mt-0.5 block">
+                    <span className="text-2xl font-black text-[#16a34a] mt-0.5 block">
                       {token.estimatedWaitMin} <span className="text-xs font-semibold">min</span>
                     </span>
                   </div>
