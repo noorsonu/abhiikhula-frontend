@@ -21,14 +21,28 @@ export default function HomePage() {
 
   // Live progress simulation for Section 4
   const [progressWidth, setProgressWidth] = useState(65);
+  const [activeUserToken, setActiveUserToken] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedStr = localStorage.getItem('ak_customer_tokens');
+      if (savedStr) {
+        try {
+          const list = JSON.parse(savedStr);
+          if (Array.isArray(list) && list.length > 0) {
+            setActiveUserToken(list[0]);
+          }
+        } catch (e) {}
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchLiveShops() {
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
-        if (res.data && res.data.length > 0) {
-          // Merge images with API data
-          const merged = res.data.map((sh, idx) => ({
+        if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          const merged = res.data.data.map((sh, idx) => ({
             ...sh,
             imageUrl: MOCK_SHOPS[idx % MOCK_SHOPS.length]?.imageUrl || '/images/clinic.jpg'
           }));
@@ -42,11 +56,37 @@ export default function HomePage() {
   }, []);
 
   const filteredShops = shops.filter(shop => {
-    const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (shop.categoryName && shop.categoryName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                          (shop.address && shop.address.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCat = selectedCategory ? (shop.categoryId === selectedCategory || shop.categoryName === selectedCategory) : true;
-    return matchesSearch && matchesCat;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      shop.name.toLowerCase().includes(q) ||
+      (shop.categoryName && shop.categoryName.toLowerCase().includes(q)) ||
+      (shop.address && shop.address.toLowerCase().includes(q));
+
+    if (!matchesSearch) return false;
+    if (!selectedCategory || selectedCategory === 'all') return true;
+
+    const catKey = selectedCategory.toLowerCase();
+    const shopCat = (shop.categoryName || '').toLowerCase();
+
+    if (catKey === 'salon' || catKey.includes('salon') || catKey.includes('barber')) {
+      return shopCat.includes('salon') || shopCat.includes('barber');
+    }
+    if (catKey === 'pharmacy' || catKey.includes('pharmacy') || catKey.includes('medical')) {
+      return shopCat.includes('pharmacy') || shopCat.includes('medical');
+    }
+    if (catKey === 'clinic' || catKey.includes('clinic') || catKey.includes('doctor')) {
+      return shopCat.includes('clinic') || shopCat.includes('doctor') || shopCat.includes('dental');
+    }
+    if (catKey === 'food' || catKey.includes('food') || catKey.includes('chaat') || catKey.includes('restaurant')) {
+      return shopCat.includes('food') || shopCat.includes('chaat') || shopCat.includes('restaurant');
+    }
+    if (catKey === 'diagnostic' || catKey.includes('diagnostic') || catKey.includes('lab')) {
+      return shopCat.includes('diagnostic') || shopCat.includes('lab') || shopCat.includes('pathology');
+    }
+    if (catKey === 'auto' || catKey.includes('auto') || catKey.includes('bike')) {
+      return shopCat.includes('auto') || shopCat.includes('bike') || shopCat.includes('service');
+    }
+    return shopCat.includes(catKey);
   });
 
   return (
@@ -351,22 +391,20 @@ export default function HomePage() {
 
         {/* Categories Bar */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              selectedCategory === null
-                ? 'bg-[#176B65] text-white shadow-sm'
-                : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
-            }`}
-          >
-            All Shops
-          </button>
           {categories.map((c) => {
-            const isSelected = selectedCategory === c.id || selectedCategory === c.name;
+            const isSelected = (!selectedCategory && c.id === 'all') || selectedCategory === c.id || selectedCategory === c.name;
             return (
               <button
                 key={c.id || c.name}
-                onClick={() => setSelectedCategory(isSelected ? null : (c.id || c.name))}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (c.id === 'all') {
+                    setSelectedCategory(null);
+                  } else {
+                    setSelectedCategory(isSelected ? null : c.id);
+                  }
+                }}
                 className={`px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-[#176B65] text-white shadow-sm'
@@ -454,6 +492,23 @@ export default function HomePage() {
               </motion.div>
             );
           })}
+
+          {filteredShops.length === 0 && (
+            <div className="col-span-full py-16 text-center urban-card rounded-3xl p-8 space-y-3">
+              <Compass className="w-8 h-8 text-[#176B65] mx-auto" />
+              <h3 className="font-bold text-[#283B3D] text-base">No places found in this category</h3>
+              <p className="text-xs text-[#283B3D]/70 font-medium">
+                Try selecting "All Places" to see all available stores.
+              </p>
+              <button 
+                type="button"
+                onClick={() => { setSelectedCategory(null); setSearchQuery(''); }}
+                className="px-5 py-2.5 rounded-2xl bg-[#176B65] text-white font-bold text-xs hover:bg-[#125550] transition-colors cursor-pointer"
+              >
+                View All Places
+              </button>
+            </div>
+          )}
         </div>
 
       </section>
@@ -467,14 +522,16 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto space-y-10 relative z-10 text-center">
           
           <div className="space-y-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#F2A15A] bg-white/10 px-4 py-1.5 rounded-full border border-white/15">
-              Live Interactive Tracking Simulation
+            <span className="text-xs font-bold uppercase tracking-widest text-[#DCE9E3] bg-white/10 px-4 py-1.5 rounded-full border border-white/15">
+              {activeUserToken ? 'Your Real Active Token' : 'Live Interactive Queue Demo'}
             </span>
             <h2 className="text-3xl sm:text-5xl font-black text-white">
-              Your Live Token (In Progress)
+              {activeUserToken ? 'Your Live Token In Progress' : 'Your Live Token (In Progress)'}
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto font-medium">
-              Real-time synchronization between the counter desk and your smartphone.
+              {activeUserToken 
+                ? 'Your booked token is syncing live with the shop counter desk.'
+                : 'Real-time synchronization between the counter desk and your smartphone.'}
             </p>
           </div>
 
@@ -485,26 +542,32 @@ export default function HomePage() {
               <div>
                 <span className="text-xs uppercase font-extrabold text-[#176B65] tracking-wider">Your token number</span>
                 <div className="font-token text-4xl sm:text-5xl font-bold text-[#283B3D] tracking-tight mt-1">
-                  AK - 024
+                  {activeUserToken?.displayToken || 'AK - 024'}
                 </div>
               </div>
               <div className="sm:text-right">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Service Store</span>
-                <span className="text-lg font-black text-[#176B65]">City Style Salon</span>
+                <span className="text-lg font-black text-[#176B65]">
+                  {activeUserToken?.shopName || 'City Style Salon'}
+                </span>
               </div>
             </div>
 
             {/* Metrics: Minutes & People Ahead */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#F3F1E9] rounded-2xl p-4 text-center border border-[#DCE9E3]">
-                <span className="font-token text-4xl sm:text-5xl font-bold text-[#176B65] block">08</span>
+                <span className="font-token text-4xl sm:text-5xl font-bold text-[#176B65] block">
+                  {activeUserToken ? String(activeUserToken.estimatedWaitMin || 10).padStart(2, '0') : '08'}
+                </span>
                 <span className="text-xs font-bold text-[#283B3D]/70 uppercase tracking-wider mt-1 block">
                   Estimated minutes
                 </span>
               </div>
 
               <div className="bg-[#F3F1E9] rounded-2xl p-4 text-center border border-[#DCE9E3]">
-                <span className="font-token text-4xl sm:text-5xl font-bold text-[#F2A15A] block">03</span>
+                <span className="font-token text-4xl sm:text-5xl font-bold text-[#176B65] block">
+                  {activeUserToken ? String(activeUserToken.peopleAhead ?? 2).padStart(2, '0') : '03'}
+                </span>
                 <span className="text-xs font-bold text-[#283B3D]/70 uppercase tracking-wider mt-1 block">
                   People ahead
                 </span>
@@ -526,29 +589,44 @@ export default function HomePage() {
                 ></motion.div>
               </div>
               <p className="text-[11px] text-slate-400 font-medium">
-                Live progress – illustrative example showing real-time slot progression.
+                {activeUserToken 
+                  ? 'Real-time sync active. You will receive an alert when your turn is called.' 
+                  : 'Live progress – illustrative example showing real-time slot progression.'}
               </p>
             </div>
 
-            {/* Interactive Progress Demo Controls */}
-            <div className="pt-2 flex items-center justify-between text-xs text-[#283B3D]/70 border-t border-slate-100">
-              <span className="font-medium">Test queue movement:</span>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setProgressWidth(Math.min(100, progressWidth + 15))}
-                  className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+            {/* Interactive Progress Demo Controls or Direct Link */}
+            {activeUserToken ? (
+              <div className="pt-2">
+                <Link
+                  href="/tokens"
+                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all text-center"
                 >
-                  <Play className="w-3 h-3" />
-                  <span>Next Customer</span>
-                </button>
-                <button 
-                  onClick={() => setProgressWidth(40)}
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
-                >
-                  Reset
-                </button>
+                  <Ticket className="w-4 h-4 text-[#DCE9E3]" />
+                  <span>Open Full Live Ticket Pass in My Tokens</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-            </div>
+            ) : (
+              <div className="pt-2 flex items-center justify-between text-xs text-[#283B3D]/70 border-t border-slate-100">
+                <span className="font-medium">Test queue movement:</span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setProgressWidth(Math.min(100, progressWidth + 15))}
+                    className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <Play className="w-3 h-3" />
+                    <span>Next Customer</span>
+                  </button>
+                  <button 
+                    onClick={() => setProgressWidth(40)}
+                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 
