@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { 
   MapPin, Search, Clock, Users, ShieldCheck, Sparkles, Store, 
   ArrowUpRight, ArrowRight, Ticket, CheckCircle2, UserCheck, 
-  ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power
+  ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS, MOCK_CATEGORIES } from '@/lib/mockData';
 import { shopApi } from '@/lib/api';
 import FreshUrbanLogo from '@/components/FreshUrbanLogo';
+import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 
 export default function HomePage() {
   const [shops, setShops] = useState(MOCK_SHOPS);
@@ -26,7 +27,12 @@ export default function HomePage() {
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
         if (res.data && res.data.length > 0) {
-          setShops(res.data);
+          // Merge images with API data
+          const merged = res.data.map((sh, idx) => ({
+            ...sh,
+            imageUrl: MOCK_SHOPS[idx % MOCK_SHOPS.length]?.imageUrl || '/images/clinic.jpg'
+          }));
+          setShops(merged);
         }
       } catch (e) {
         // Fallback to MOCK_SHOPS
@@ -54,16 +60,21 @@ export default function HomePage() {
           
           {/* Left Side: Punchy Heading & CTAs */}
           <motion.div 
-            initial={{ opacity: 0, x: -25 }}
+            initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-7 space-y-6"
           >
             {/* Soft Peach Tag */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#DCE9E3] border border-[#176B65]/20 text-xs font-bold text-[#176B65]">
-              <span className="w-2 h-2 rounded-full bg-[#F2A15A] animate-ping"></span>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#DCE9E3] border border-[#176B65]/20 text-xs font-bold text-[#176B65] shadow-xs"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-[#F2A15A] animate-ping"></span>
               <span>Hyperlocal Live Availability • Pilot in Lucknow</span>
-            </div>
+            </motion.div>
 
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-[#283B3D] leading-[1.1]">
               Your Time Matters. <br />
@@ -75,34 +86,38 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
-              <a
+              <motion.a
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 href="#shops"
-                className="px-8 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-base shadow-lg shadow-[#176B65]/25 transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                className="px-8 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-base shadow-lg shadow-[#176B65]/25 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Get a Token</span>
                 <ArrowRight className="w-5 h-5 text-[#F2A15A]" />
-              </a>
+              </motion.a>
 
-              <a
+              <motion.a
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.97 }}
                 href="#how-it-works"
-                className="px-7 py-4 rounded-2xl bg-white hover:bg-[#DCE9E3]/40 text-[#283B3D] font-bold text-base border border-[#283B3D]/15 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                className="px-7 py-4 rounded-2xl bg-white hover:bg-[#DCE9E3]/40 text-[#283B3D] font-bold text-base border border-[#283B3D]/15 transition-all text-center flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
                 <span>Explore How It Works</span>
-              </a>
+              </motion.a>
             </div>
 
             {/* Quick Metrics Pill */}
-            <div className="pt-4 flex items-center gap-8 text-xs font-semibold text-[#283B3D]/70 border-t border-[#283B3D]/10">
+            <div className="pt-4 flex flex-wrap items-center gap-8 text-xs font-semibold text-[#283B3D]/70 border-t border-[#283B3D]/10">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#176B65]"></span>
-                <span>Zero Physical Line</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#176B65]"></span>
+                <span>Zero Physical Waiting</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#F2A15A]"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#F2A15A]"></span>
                 <span>Live Wait-Time Radar</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#283B3D]"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#283B3D]"></span>
                 <span>Group Booking (1 - 4)</span>
               </div>
             </div>
@@ -110,39 +125,36 @@ export default function HomePage() {
 
           {/* Right Side: Animated Product Mockup & Floating Token Card */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
             className="lg:col-span-5 relative flex items-center justify-center"
           >
             {/* Soft Glow behind Phone */}
-            <div className="absolute w-72 h-72 bg-[#F2A15A]/25 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute w-80 h-80 bg-[#F2A15A]/25 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
 
             {/* Phone Mockup Frame */}
-            <div className="relative w-80 sm:w-84 bg-white rounded-[40px] p-4 shadow-2xl border-4 border-[#283B3D] space-y-4">
+            <div className="relative w-80 sm:w-84 bg-white rounded-[44px] p-4 shadow-2xl border-4 border-[#283B3D] space-y-4">
               
-              {/* Phone Speaker Notch */}
+              {/* Speaker Notch */}
               <div className="w-24 h-4 bg-[#283B3D] rounded-full mx-auto"></div>
 
-              {/* Inside Phone Screen */}
-              <div className="bg-[#F3F1E9] rounded-[28px] p-5 space-y-4 border border-[#DCE9E3]">
+              {/* Inside Screen */}
+              <div className="bg-[#F3F1E9] rounded-[30px] p-5 space-y-4 border border-[#DCE9E3]">
                 
-                {/* Store Header in Phone */}
+                {/* Store Header inside Phone */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FreshUrbanLogo size={32} />
-                    <span className="font-extrabold text-sm text-[#283B3D]">AbhiiKhula</span>
-                  </div>
+                  <OfficialBrandLogo height={28} animate={false} />
                   <span className="text-[10px] font-black uppercase bg-[#DCE9E3] text-[#176B65] px-2.5 py-1 rounded-full">
-                    Live
+                    Live Station
                   </span>
                 </div>
 
-                {/* Live Token Card Inside Phone */}
+                {/* Live Token Card inside Phone */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#283B3D]/10 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-[#176B65]">City Style Salon</span>
-                    <span className="text-[10px] font-extrabold uppercase bg-[#F2A15A]/20 text-[#283B3D] px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-extrabold uppercase bg-[#F2A15A]/25 text-[#283B3D] px-2 py-0.5 rounded">
                       In Progress
                     </span>
                   </div>
@@ -159,14 +171,18 @@ export default function HomePage() {
                       <span className="font-bold text-[#176B65]">3 Ahead</span>
                     </div>
                     <div className="w-full bg-[#DCE9E3] h-2 rounded-full overflow-hidden">
-                      <div className="bg-[#176B65] h-full rounded-full transition-all duration-500" style={{ width: '65%' }}></div>
+                      <motion.div 
+                        animate={{ width: ['40%', '65%', '40%'] }}
+                        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                        className="bg-[#176B65] h-full rounded-full"
+                      />
                     </div>
                   </div>
 
                   {/* Estimated Wait Counter */}
                   <div className="bg-[#F3F1E9] rounded-xl p-2.5 flex items-center justify-between text-xs">
                     <span className="text-[#283B3D]/70 font-medium">Estimated wait:</span>
-                    <span className="font-bold text-[#F2A15A] bg-[#283B3D] px-2 py-0.5 rounded-lg text-white">
+                    <span className="font-bold text-[#F2A15A] bg-[#283B3D] px-2.5 py-0.5 rounded-lg text-white font-token">
                       08 min
                     </span>
                   </div>
@@ -184,18 +200,35 @@ export default function HomePage() {
 
             </div>
 
-            {/* Small Floating Shop Card (Subtle float animation) */}
+            {/* Small Floating Live Shop Card with Real Photo */}
             <motion.div 
-              animate={{ y: [0, -8, 0], rotate: [-1, 2, -1] }}
-              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
-              className="absolute -bottom-6 -left-6 sm:-left-10 bg-white rounded-2xl p-3.5 shadow-xl border border-[#DCE9E3] flex items-center gap-3"
+              animate={{ y: [0, -10, 0], rotate: [-1, 2, -1] }}
+              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+              className="absolute -bottom-6 -left-6 sm:-left-10 bg-white rounded-2xl p-3 shadow-xl border border-[#DCE9E3] flex items-center gap-3"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-bold">
-                <Store className="w-5 h-5" />
+              <img 
+                src="/images/clinic.jpg" 
+                alt="Dr. Verma Dental" 
+                className="w-12 h-12 rounded-xl object-cover" 
+              />
+              <div className="text-left pr-2">
+                <span className="text-xs font-bold text-[#283B3D] block">Dr. Verma Dental</span>
+                <span className="text-[10px] font-bold text-[#176B65]">● Open (2 ahead)</span>
+              </div>
+            </motion.div>
+
+            {/* Secondary Floating Pill */}
+            <motion.div 
+              animate={{ y: [0, 8, 0], rotate: [1, -2, 1] }}
+              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 1 }}
+              className="absolute -top-4 -right-4 sm:-right-8 bg-white rounded-2xl px-4 py-2.5 shadow-xl border border-[#DCE9E3] flex items-center gap-2"
+            >
+              <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-[#F2A15A]">
+                <Clock className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <span className="text-xs font-bold text-[#283B3D] block">Dr. Verma Dental</span>
-                <span className="text-[10px] font-bold text-[#176B65]">● Open Now (2 waiting)</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Saved Time</span>
+                <span className="text-xs font-black text-[#283B3D]">35 Min Today</span>
               </div>
             </motion.div>
 
@@ -207,7 +240,7 @@ export default function HomePage() {
       {/* ========================================================= */}
       {/* SECTION 2: HOW ABHIIKHULA WORKS                           */}
       {/* ========================================================= */}
-      <section id="how-it-works" className="bg-[#DCE9E3]/40 py-16 sm:py-24 border-y border-[#DCE9E3]">
+      <section id="how-it-works" className="bg-[#DCE9E3]/45 py-16 sm:py-24 border-y border-[#DCE9E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-2xl mx-auto space-y-3">
@@ -229,45 +262,61 @@ export default function HomePage() {
                 title: "Find Your Shop",
                 desc: "Explore nearby doctor clinics, pharmacies, salons and bakeries. See real-time open status and current queue crowd.",
                 icon: Search,
-                badge: "Explore"
+                badge: "Explore Locally",
+                img: "/images/salon.jpg"
               },
               {
                 step: "02",
                 title: "Get Your Token",
                 desc: "Book a digital virtual token from anywhere. Add up to 4 family members or friends on a single linked booking.",
                 icon: Ticket,
-                badge: "Instant Pass"
+                badge: "Instant Pass",
+                img: "/images/person-phone.jpg"
               },
               {
                 step: "03",
                 title: "Track Your Turn",
                 desc: "Watch the live progress on your phone. Relax at home and head over only when 1 or 2 customers are ahead of you.",
                 icon: Clock,
-                badge: "Zero Waiting"
+                badge: "Zero Waiting",
+                img: "/images/merchant-store.jpg"
               }
             ].map((st, i) => {
               const Icon = st.icon;
               return (
                 <motion.div
                   key={i}
-                  whileHover={{ y: -6 }}
-                  className="urban-card rounded-3xl p-8 space-y-5 relative overflow-hidden"
+                  whileHover={{ y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-bold">
-                      <Icon className="w-7 h-7" />
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                    <img 
+                      src={st.img} 
+                      alt={st.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-[#176B65]">
+                      Step {st.step}
                     </div>
-                    <span className="font-token text-3xl font-black text-[#283B3D]/20">{st.step}</span>
                   </div>
 
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-black text-[#283B3D]">{st.title}</h3>
-                    <p className="text-sm text-[#283B3D]/70 leading-relaxed font-normal">{st.desc}</p>
-                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-black text-[#283B3D]">{st.title}</h3>
+                    </div>
 
-                  <span className="inline-block text-[11px] font-bold text-[#176B65] uppercase tracking-wider bg-[#F3F1E9] px-3 py-1 rounded-lg">
-                    {st.badge}
-                  </span>
+                    <p className="text-xs sm:text-sm text-[#283B3D]/70 leading-relaxed font-normal">
+                      {st.desc}
+                    </p>
+
+                    <span className="inline-block text-[11px] font-bold text-[#176B65] uppercase tracking-wider bg-[#F3F1E9] px-3 py-1 rounded-lg">
+                      {st.badge}
+                    </span>
+                  </div>
                 </motion.div>
               );
             })}
@@ -277,7 +326,7 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 3: EXPLORE NEARBY SHOPS                           */}
+      {/* SECTION 3: EXPLORE NEARBY SHOPS (WITH PHOTOS)             */}
       {/* ========================================================= */}
       <section id="shops" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
@@ -295,7 +344,7 @@ export default function HomePage() {
               placeholder="Search by name, salon, clinic..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+              className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-xs"
             />
           </div>
         </div>
@@ -330,7 +379,7 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* Shop Cards Grid */}
+        {/* Shop Cards Grid with Real Shop Photos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredShops.map((shop) => {
             const isOpen = shop.status === 'OPEN';
@@ -340,55 +389,68 @@ export default function HomePage() {
             return (
               <motion.div
                 key={shop.id}
-                whileHover={{ y: -5 }}
-                className="urban-card rounded-3xl p-6 flex flex-col justify-between space-y-5"
+                whileHover={{ y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between"
               >
-                <div className="space-y-4">
-                  {/* Status row */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-0.5 rounded-md">
-                      {shop.categoryName}
-                    </span>
-
-                    <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                <div>
+                  {/* Shop Photo Header */}
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                    <img 
+                      src={shop.imageUrl || '/images/clinic.jpg'} 
+                      alt={shop.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                    
+                    {/* Status Pill on Photo */}
+                    <span className={`absolute top-3 right-3 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm backdrop-blur-md ${
                       isOpen 
-                        ? 'bg-emerald-100 text-emerald-800' 
+                        ? 'bg-emerald-600/90 text-white' 
                         : isBusy 
-                        ? 'bg-amber-100 text-amber-800' 
-                        : 'bg-rose-100 text-rose-800'
+                        ? 'bg-amber-600/90 text-white' 
+                        : 'bg-rose-600/90 text-white'
                     }`}>
                       {isOpen ? '● Open' : isBusy ? '● Heavy Crowd' : isPaused ? '● Paused' : '● Closed'}
                     </span>
+
+                    <span className="absolute bottom-3 left-3 bg-[#283B3D]/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                      {shop.categoryName}
+                    </span>
                   </div>
 
-                  <div>
-                    <h3 className="font-black text-xl text-[#283B3D] line-clamp-1">{shop.name}</h3>
-                    <p className="text-xs text-[#283B3D]/60 mt-1 line-clamp-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{shop.address}</span>
-                    </p>
-                  </div>
-
-                  {/* People Waiting & Wait Time */}
-                  <div className="bg-[#F3F1E9] rounded-2xl p-3.5 grid grid-cols-2 gap-2 text-center border border-[#DCE9E3]">
-                    <div className="border-r border-[#DCE9E3]">
-                      <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">People Waiting</span>
-                      <span className="font-token font-bold text-lg text-[#283B3D] mt-0.5 block">{shop.waitingCount} in line</span>
-                    </div>
+                  {/* Content Body */}
+                  <div className="p-5 space-y-4">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">Wait Time</span>
-                      <span className="font-token font-bold text-lg text-[#176B65] mt-0.5 block">~{shop.estimatedWaitMin} min</span>
+                      <h3 className="font-black text-lg text-[#283B3D] line-clamp-1">{shop.name}</h3>
+                      <p className="text-xs text-[#283B3D]/60 mt-1 line-clamp-1 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{shop.address}</span>
+                      </p>
+                    </div>
+
+                    {/* People Waiting & Wait Time */}
+                    <div className="bg-[#F3F1E9] rounded-2xl p-3 grid grid-cols-2 gap-2 text-center border border-[#DCE9E3]">
+                      <div className="border-r border-[#DCE9E3]">
+                        <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">People Waiting</span>
+                        <span className="font-token font-bold text-base text-[#283B3D] mt-0.5 block">{shop.waitingCount} in line</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">Wait Time</span>
+                        <span className="font-token font-bold text-base text-[#176B65] mt-0.5 block">~{shop.estimatedWaitMin} min</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <Link
-                  href={`/shop/${shop.slug}`}
-                  className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Ticket className="w-4 h-4 text-[#F2A15A]" />
-                  <span>Get Token</span>
-                </Link>
+                <div className="p-5 pt-0">
+                  <Link
+                    href={`/shop/${shop.slug}`}
+                    className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Ticket className="w-4 h-4 text-[#F2A15A]" />
+                    <span>Get Token</span>
+                  </Link>
+                </div>
               </motion.div>
             );
           })}
@@ -416,7 +478,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Featured Live Token Card */}
+          {/* Featured Live Token Card with Smooth Progress Bar Animation */}
           <div className="bg-white text-[#283B3D] rounded-3xl p-6 sm:p-10 shadow-2xl max-w-2xl mx-auto space-y-8 text-left border-4 border-[#176B65]">
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DCE9E3] pb-4">
@@ -449,17 +511,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Smooth Live Progress Bar Animation */}
+            {/* Live Progress Bar with Spring Motion */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-[#283B3D]">Queue progress</span>
-                <span className="text-[#176B65]">{progressWidth}% (Moving quickly)</span>
+                <span className="text-[#176B65]">{progressWidth}% (Moving smoothly)</span>
               </div>
               <div className="w-full bg-[#DCE9E3] h-3.5 rounded-full overflow-hidden p-0.5">
                 <motion.div 
                   initial={{ width: '40%' }}
                   animate={{ width: `${progressWidth}%` }}
-                  transition={{ duration: 1.2, ease: "easeInOut" }}
+                  transition={{ duration: 0.8, ease: "easeInOut" }}
                   className="bg-[#176B65] h-full rounded-full"
                 ></motion.div>
               </div>
@@ -474,13 +536,14 @@ export default function HomePage() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => setProgressWidth(Math.min(100, progressWidth + 15))}
-                  className="px-3 py-1 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  Simulate Next Person
+                  <Play className="w-3 h-3" />
+                  <span>Next Customer</span>
                 </button>
                 <button 
                   onClick={() => setProgressWidth(40)}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
                 >
                   Reset
                 </button>
@@ -493,7 +556,7 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 5: FOR SHOP OWNERS                                */}
+      {/* SECTION 5: FOR SHOP OWNERS (WITH MERCHANT PHOTO)          */}
       {/* ========================================================= */}
       <section id="for-owners" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -540,41 +603,38 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Owner Dashboard Showcase Card */}
-          <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#DCE9E3] space-y-6">
-            <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#283B3D] text-white flex items-center justify-center font-bold">
-                  <Store className="w-6 h-6 text-[#F2A15A]" />
-                </div>
-                <div>
-                  <h4 className="font-black text-base text-[#283B3D]">Merchant Counter Control</h4>
-                  <span className="text-[11px] text-[#176B65] font-bold">Active Station • Dr. Verma Clinic</span>
-                </div>
-              </div>
-
-              <div className="flex gap-1.5">
-                <span className="text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
-                  Open
-                </span>
+          {/* Owner Dashboard Showcase with Photo */}
+          <div className="lg:col-span-6 bg-white rounded-3xl overflow-hidden shadow-xl border border-[#DCE9E3] space-y-6">
+            <div className="h-48 w-full relative overflow-hidden bg-slate-100">
+              <img 
+                src="/images/merchant-store.jpg" 
+                alt="Merchant Counter" 
+                className="w-full h-full object-cover" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+              <div className="absolute bottom-4 left-4 text-white">
+                <span className="text-xs uppercase tracking-wider font-bold text-[#F2A15A]">Live Counter Control</span>
+                <h4 className="font-black text-lg">Active Station • Dr. Verma Clinic</h4>
               </div>
             </div>
 
-            {/* Serving Desk Display */}
-            <div className="bg-[#283B3D] text-white rounded-2xl p-6 text-center space-y-2">
-              <span className="text-xs uppercase font-bold text-slate-300">Counter Serving Now</span>
-              <div className="font-token text-5xl font-black text-[#F2A15A]">D - 004</div>
-            </div>
+            <div className="p-6 pt-0 space-y-6">
+              {/* Serving Desk Display */}
+              <div className="bg-[#283B3D] text-white rounded-2xl p-6 text-center space-y-2">
+                <span className="text-xs uppercase font-bold text-slate-300">Counter Serving Now</span>
+                <div className="font-token text-5xl font-black text-[#F2A15A]">D - 004</div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button className="py-3 rounded-xl bg-[#176B65] text-white font-bold text-xs flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Call Next Token</span>
-              </button>
-              <button className="py-3 rounded-xl bg-[#DCE9E3] text-[#283B3D] font-bold text-xs flex items-center justify-center gap-2">
-                <Power className="w-4 h-4 text-rose-600" />
-                <span>Pause Queue</span>
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button className="py-3 rounded-xl bg-[#176B65] text-white font-bold text-xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Call Next Token</span>
+                </button>
+                <button className="py-3 rounded-xl bg-[#DCE9E3] text-[#283B3D] font-bold text-xs flex items-center justify-center gap-2">
+                  <Power className="w-4 h-4 text-rose-600" />
+                  <span>Pause Queue</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -606,7 +666,7 @@ export default function HomePage() {
             return (
               <motion.div
                 key={i}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -6 }}
                 className="urban-card rounded-3xl p-6 space-y-4"
               >
                 <div className="w-12 h-12 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
@@ -627,9 +687,12 @@ export default function HomePage() {
       {/* ========================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         <div className="bg-[#DCE9E3] rounded-3xl p-8 sm:p-14 text-center space-y-6 border border-[#176B65]/20 shadow-md">
-          <div className="w-16 h-16 rounded-3xl bg-white text-[#176B65] flex items-center justify-center mx-auto shadow-sm">
-            <FreshUrbanLogo size={42} />
-          </div>
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -4 }}
+            className="inline-flex p-3 rounded-3xl bg-white text-[#176B65] items-center justify-center mx-auto shadow-sm cursor-pointer"
+          >
+            <OfficialBrandLogo height={52} animate={false} />
+          </motion.div>
 
           <div className="max-w-xl mx-auto space-y-3">
             <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D] leading-tight">
@@ -641,13 +704,15 @@ export default function HomePage() {
           </div>
 
           <div className="pt-2">
-            <a
+            <motion.a
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               href="#shops"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-base shadow-lg shadow-[#176B65]/20 transition-all cursor-pointer"
             >
               <span>Get Started with AbhiiKhula</span>
               <ArrowRight className="w-5 h-5 text-[#F2A15A]" />
-            </a>
+            </motion.a>
           </div>
         </div>
       </section>

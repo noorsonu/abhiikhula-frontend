@@ -13,7 +13,8 @@ export const MOCK_SHOPS = [
     currentServing: "D-004",
     phone: "9876543210",
     openingHours: "10:00 AM – 02:00 PM & 05:00 PM – 09:00 PM",
-    description: "Specialized multi-chair dental treatments with digital contact-free queue management."
+    description: "Specialized multi-chair dental treatments with digital contact-free queue management.",
+    imageUrl: "/images/clinic.jpg"
   },
   {
     id: "s2",
@@ -29,7 +30,8 @@ export const MOCK_SHOPS = [
     currentServing: "M-029",
     phone: "9876543211",
     openingHours: "08:00 AM – 11:30 PM",
-    description: "100% genuine prescription medicines and baby health products with fast pickup counters."
+    description: "100% genuine prescription medicines and baby health products with fast pickup counters.",
+    imageUrl: "/images/pharmacy.jpg"
   },
   {
     id: "s3",
@@ -45,7 +47,8 @@ export const MOCK_SHOPS = [
     currentServing: "L-011",
     phone: "9876543212",
     openingHours: "09:30 AM – 09:30 PM",
-    description: "Premium hair grooming, styling, and skin treatments without waiting in crowded lounges."
+    description: "Premium hair grooming, styling, and skin treatments without waiting in crowded lounges.",
+    imageUrl: "/images/salon.jpg"
   },
   {
     id: "s4",
@@ -61,7 +64,8 @@ export const MOCK_SHOPS = [
     currentServing: "F-054",
     phone: "9876543213",
     openingHours: "04:00 PM – 10:30 PM",
-    description: "Famous Lucknow basket chaat, pure ghee sweets, and hot savories."
+    description: "Famous Lucknow basket chaat, pure ghee sweets, and hot savories.",
+    imageUrl: "/images/food.jpg"
   },
   {
     id: "s5",
@@ -77,7 +81,8 @@ export const MOCK_SHOPS = [
     currentServing: "C-002",
     phone: "9876543214",
     openingHours: "07:00 AM – 07:00 PM",
-    description: "Certified routine blood work and health checkup packages with rapid reporting."
+    description: "Certified routine blood work and health checkup packages with rapid reporting.",
+    imageUrl: "/images/diagnostic.jpg"
   },
   {
     id: "s6",
@@ -93,7 +98,8 @@ export const MOCK_SHOPS = [
     currentServing: "A-008",
     phone: "9876543215",
     openingHours: "09:00 AM – 08:00 PM",
-    description: "Express bike servicing, genuine spares and oil change. Queue temporarily paused for lunch."
+    description: "Express bike servicing, genuine spares and oil change. Queue temporarily paused for lunch.",
+    imageUrl: "/images/auto.jpg"
   }
 ];
 

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import OfficialBrandLogo from "@/components/OfficialBrandLogo";
 
 export const metadata = {
   title: "AbhiiKhula | Skip the Wait. Own Your Time.",
@@ -26,19 +27,16 @@ export default function RootLayout({ children }) {
           </Suspense>
         </main>
 
+        {/* Footer with exact Official Logo Graphic (replacing old hindi badge) */}
         <footer className="bg-[#283B3D] text-[#DCE9E3] border-t border-slate-700/50 py-14 text-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center">
-                <span className="font-black text-[#176B65] text-xl">अ</span>
-              </div>
-              <div>
-                <span className="font-black text-white text-base">Abhii<span className="text-[#F2A15A]">Khula</span></span>
-                <p className="text-slate-300 text-[11px] font-medium">Skip the Wait. Own Your Time.</p>
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-white rounded-2xl shadow-md border border-slate-700/60 inline-flex items-center">
+                <OfficialBrandLogo height={42} animate={false} />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 text-slate-300 font-semibold">
+            <div className="flex flex-wrap items-center gap-6 text-slate-300 font-semibold text-xs">
               <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
               <a href="#shops" className="hover:text-white transition-colors">Explore Shops</a>
               <a href="#live-token" className="hover:text-white transition-colors">Live Tracking</a>
@@ -46,7 +44,7 @@ export default function RootLayout({ children }) {
             </div>
 
             <p className="text-slate-400 font-medium">
-              © 2026 AbhiiKhula. Lucknow Pilot Live.
+              © 2026 AbhiiKhula Platform. Lucknow Pilot Live.
             </p>
           </div>
         </footer>

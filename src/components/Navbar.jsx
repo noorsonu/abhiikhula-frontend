@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Compass, Ticket, Store, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import FreshUrbanLogo from './FreshUrbanLogo';
+import OfficialBrandLogo from './OfficialBrandLogo';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -26,26 +27,9 @@ export default function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
-          {/* Logo with Fresh Urban Styling */}
-          <Link href="/" className="flex items-center gap-3.5 group">
-            <motion.div 
-              whileHover={{ scale: 1.06, rotate: [-1, 2, 0] }}
-              transition={{ duration: 0.3 }}
-            >
-              <FreshUrbanLogo size={48} />
-            </motion.div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-black tracking-tight text-[#283B3D]">
-                  Abhii<span className="text-[#176B65]">Khula</span>
-                </span>
-                <span className="flex h-2.5 w-2.5 rounded-full bg-[#F2A15A] animate-ping"></span>
-              </div>
-              <p className="hidden sm:block text-[10px] font-black tracking-widest uppercase text-[#283B3D]/70">
-                Skip the Wait • Own Your Time
-              </p>
-            </div>
+          {/* Official Brand Logo from User Spec */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <OfficialBrandLogo height={46} animate={true} />
           </Link>
 
           {/* Desktop Navigation Links */}
