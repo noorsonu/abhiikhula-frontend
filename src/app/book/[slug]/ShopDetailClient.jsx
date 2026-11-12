@@ -6,11 +6,34 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
-  Lock, ArrowRight, RefreshCw, KeyRound
+  Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
 import { authApi, queueApi, shopApi } from '@/lib/api';
+
+const getCategoryServices = (catName = '') => {
+  const cat = (catName || '').toLowerCase();
+  if (cat.includes('salon') || cat.includes('barber')) {
+    return ['Haircut', 'Beard Trim & Styling', 'Hair Spa', 'Facial & Glow', 'Shave & Detan'];
+  }
+  if (cat.includes('pharmacy') || cat.includes('medical')) {
+    return ['Prescription Medicines', 'OTC Medicines', 'Baby Care & Diapers', 'Health Supplements'];
+  }
+  if (cat.includes('clinic') || cat.includes('doctor') || cat.includes('dental')) {
+    return ['Doctor Consultation', 'Dental Checkup / Scaling', 'Routine Follow-up', 'Tooth Pain / Cavity'];
+  }
+  if (cat.includes('food') || cat.includes('chaat') || cat.includes('restaurant')) {
+    return ['Dine-in Table', 'Takeaway Packing', 'Evening Snacks', 'Party Order'];
+  }
+  if (cat.includes('diagnostic') || cat.includes('lab')) {
+    return ['Routine Blood Test', 'Complete Hemogram (CBC)', 'Sugar & Thyroid Panel', 'Report Collection'];
+  }
+  if (cat.includes('auto') || cat.includes('bike')) {
+    return ['Engine Oil Replacement', 'Periodic Service', 'Brake & Chain Tune-up', 'Tire & Puncture Check'];
+  }
+  return ['General Consultation', 'Quick Service', 'Product Purchase', 'Inquiry'];
+};
 
 export default function ShopDetailClient() {
   const params = useParams();
@@ -21,11 +44,14 @@ export default function ShopDetailClient() {
     return MOCK_SHOPS.find(s => s.slug === slug) || MOCK_SHOPS[0];
   });
 
-  // Group Token State (1 to 4 persons)
-  const [groupSize, setGroupSize] = useState(1);
+  // Group Token State (1, 2, or Custom Count)
+  const [selectedGroupMode, setSelectedGroupMode] = useState('1'); // '1', '2', 'custom'
+  const [customCount, setCustomCount] = useState(3);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [companionNames, setCompanionNames] = useState(['', '', '']);
+  const [customerPurpose, setCustomerPurpose] = useState('');
+  const [companionDetails, setCompanionDetails] = useState([]); // [{ name: '', purpose: '' }]
+
   const [booking, setBooking] = useState(false);
   const [bookedToken, setBookedToken] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -36,6 +62,21 @@ export default function ShopDetailClient() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
+
+  // Effective group size calculated from selection
+  const effectiveGroupSize = selectedGroupMode === '1' ? 1 : selectedGroupMode === '2' ? 2 : Math.max(3, customCount);
+
+  // Sync companionDetails array whenever group size changes
+  useEffect(() => {
+    const companionCount = Math.max(0, effectiveGroupSize - 1);
+    setCompanionDetails(prev => {
+      const next = [];
+      for (let i = 0; i < companionCount; i++) {
+        next.push(prev[i] || { name: '', purpose: '' });
+      }
+      return next;
+    });
+  }, [effectiveGroupSize]);
 
   // Auto-fill phone if previously logged in
   useEffect(() => {
@@ -63,6 +104,8 @@ export default function ShopDetailClient() {
         });
     }
   }, [slug]);
+
+  const serviceSuggestions = getCategoryServices(shop.categoryName);
 
   // Initiate Booking
   const handleInitiateBooking = async (e) => {
@@ -92,7 +135,6 @@ export default function ShopDetailClient() {
       setOtpSuccessMessage(res.data?.data?.message || `OTP sent to +91 ${cleanPhone}`);
       setShowOtpModal(true);
     } catch (err) {
-      // If sendOtp fails (e.g. offline), we still allow demo flow with 1234
       setOtpSuccessMessage(`OTP sent to +91 ${cleanPhone} (Dev OTP: 1234)`);
       setShowOtpModal(true);
     } finally {
@@ -143,9 +185,16 @@ export default function ShopDetailClient() {
       setBooking(true);
       setErrorMsg('');
 
-      const names = [customerName || 'Customer'];
-      for (let i = 1; i < groupSize; i++) {
-        names.push(companionNames[i - 1] || `${names[0]} (Guest ${i + 1})`);
+      // Build member names list with purpose notes
+      const mainName = customerName || 'Customer';
+      const mainEntry = customerPurpose ? `${mainName} (${customerPurpose})` : mainName;
+
+      const memberEntries = [mainEntry];
+      for (let i = 0; i < companionDetails.length; i++) {
+        const comp = companionDetails[i];
+        const cName = comp.name.trim() || `Companion #${i + 2}`;
+        const cPurp = comp.purpose.trim();
+        memberEntries.push(cPurp ? `${cName} (${cPurp})` : cName);
       }
 
       // Backend shop UUID (fallback to default real store if mock string id)
@@ -154,10 +203,10 @@ export default function ShopDetailClient() {
         : 'd1b2c3d4-0000-0000-0000-000000000001';
 
       const payload = {
-        customerName: customerName || 'Customer',
+        customerName: mainName,
         customerPhone: phone,
-        groupSize,
-        memberNames: names,
+        groupSize: Math.min(effectiveGroupSize, 4), // Cap at 4 for legacy backend DTO limit
+        memberNames: memberEntries,
         source: 'APP',
       };
 
@@ -171,6 +220,9 @@ export default function ShopDetailClient() {
             shopName: shop.name,
             address: shop.address,
             imageUrl: shop.imageUrl,
+            groupSize: effectiveGroupSize,
+            customerPurpose,
+            companions: companionDetails,
           };
         }
       } catch (backendErr) {
@@ -184,15 +236,17 @@ export default function ShopDetailClient() {
           id: String(Date.now()),
           displayToken: `${shop.name.charAt(0).toUpperCase()}-0${randomNum}`,
           tokenNumber: randomNum,
-          groupSize,
-          memberNames: names,
+          groupSize: effectiveGroupSize,
+          memberNames: memberEntries,
+          customerPurpose,
+          companions: companionDetails,
           peopleAhead: shop.waitingCount ?? 2,
           estimatedWaitMin: shop.estimatedWaitMin ?? 15,
           shopName: shop.name,
           address: shop.address,
           status: 'WAITING',
           joinedAt: new Date().toISOString(),
-          customerName: customerName || 'Customer',
+          customerName: mainName,
           customerPhone: phone,
           imageUrl: shop.imageUrl,
         };
@@ -241,9 +295,14 @@ export default function ShopDetailClient() {
           <div className="flex items-center justify-between border-b border-white/15 pb-4">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#DCE9E3]">
-                {bookedToken.groupSize > 1 ? `Linked Group (${bookedToken.groupSize} Persons)` : 'Single Ticket'}
+                {bookedToken.groupSize > 1 ? `Group Booking (${bookedToken.groupSize} Persons)` : 'Single Ticket'}
               </span>
               <p className="text-lg font-bold text-white">{customerName || 'Customer'}</p>
+              {customerPurpose && (
+                <span className="inline-block text-xs text-[#DCE9E3] font-medium mt-0.5">
+                  Service: {customerPurpose}
+                </span>
+              )}
             </div>
             <Ticket className="w-8 h-8 text-[#DCE9E3]" />
           </div>
@@ -272,16 +331,22 @@ export default function ShopDetailClient() {
             </div>
           </div>
 
-          {bookedToken.memberNames && bookedToken.memberNames.length > 1 && (
-            <div className="pt-2">
-              <span className="text-[10px] uppercase font-bold text-[#DCE9E3] block mb-1.5">
-                Group Member Passes:
+          {/* Group Members & Purpose Breakdown */}
+          {bookedToken.companions && bookedToken.companions.length > 0 && (
+            <div className="pt-2 border-t border-white/15 space-y-2">
+              <span className="text-[10px] uppercase font-bold text-[#DCE9E3] block">
+                Group Member Services:
               </span>
-              <div className="flex flex-wrap gap-2">
-                {bookedToken.memberNames.map((name, idx) => (
-                  <span key={idx} className="text-xs bg-white/15 px-3 py-1 rounded-xl text-white font-medium border border-white/10">
-                    #{idx + 1} {name}
-                  </span>
+              <div className="space-y-1.5">
+                <div className="text-xs bg-white/10 px-3 py-2 rounded-xl text-white flex items-center justify-between border border-white/10">
+                  <span className="font-bold">#1 {customerName || 'Customer'} (Primary)</span>
+                  <span className="text-[#DCE9E3] font-medium text-[11px]">{customerPurpose || 'General Service'}</span>
+                </div>
+                {bookedToken.companions.map((comp, idx) => (
+                  <div key={idx} className="text-xs bg-white/10 px-3 py-2 rounded-xl text-white flex items-center justify-between border border-white/10">
+                    <span className="font-semibold">#{idx + 2} {comp.name || `Companion #${idx + 2}`}</span>
+                    <span className="text-[#DCE9E3] font-medium text-[11px]">{comp.purpose || 'General Service'}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -390,37 +455,103 @@ export default function ShopDetailClient() {
           <div>
             <h2 className="text-2xl font-black text-[#283B3D]">Book Your Digital Token</h2>
             <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
-              Select group size and verify your phone number to get your official queue pass.
+              Select people count, specify optional service requirements, and verify your phone.
             </p>
           </div>
 
           <form onSubmit={handleInitiateBooking} className="space-y-6">
             
-            {/* Group Size Selection (1 to 4) */}
+            {/* 1. Group Size Mode Selection (1, 2, or Custom) */}
             <div>
               <label className="block text-xs font-bold text-[#283B3D] mb-2">
-                Number of Persons (1 to 4)
+                Number of Persons
               </label>
-              <div className="grid grid-cols-4 gap-2.5">
-                {[1, 2, 3, 4].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setGroupSize(num)}
-                    className={`py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
-                      groupSize === num
-                        ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm'
-                        : 'bg-[#F3F1E9]/70 text-[#283B3D] border-[#DCE9E3] hover:bg-[#DCE9E3]'
-                    }`}
-                  >
-                    {num} {num === 1 ? 'Person' : 'People'}
-                  </button>
-                ))}
+              
+              <div className="grid grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupMode('1')}
+                  className={`py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                    selectedGroupMode === '1'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm'
+                      : 'bg-[#F3F1E9]/70 text-[#283B3D] border-[#DCE9E3] hover:bg-[#DCE9E3]'
+                  }`}
+                >
+                  1 Person
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupMode('2')}
+                  className={`py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                    selectedGroupMode === '2'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm'
+                      : 'bg-[#F3F1E9]/70 text-[#283B3D] border-[#DCE9E3] hover:bg-[#DCE9E3]'
+                  }`}
+                >
+                  2 People
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupMode('custom')}
+                  className={`py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                    selectedGroupMode === 'custom'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm'
+                      : 'bg-[#F3F1E9]/70 text-[#283B3D] border-[#DCE9E3] hover:bg-[#DCE9E3]'
+                  }`}
+                >
+                  Custom Group (3+)
+                </button>
               </div>
+
+              {/* Custom Number Input if 'custom' is selected */}
+              {selectedGroupMode === 'custom' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-4 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between"
+                >
+                  <div>
+                    <span className="text-xs font-bold text-[#283B3D] block">Enter Total People Count:</span>
+                    <span className="text-[11px] text-[#283B3D]/60 font-medium">For families, groups, or multiple persons</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCustomCount(prev => Math.max(3, prev - 1))}
+                      className="w-8 h-8 rounded-xl bg-white border border-[#DCE9E3] flex items-center justify-center font-bold text-[#176B65] hover:bg-[#DCE9E3] transition-colors"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+
+                    <input
+                      type="number"
+                      min={3}
+                      max={10}
+                      value={customCount}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 3;
+                        setCustomCount(Math.min(10, Math.max(3, val)));
+                      }}
+                      className="w-14 text-center font-token font-bold text-base bg-white border border-[#DCE9E3] rounded-xl py-1 focus:outline-none focus:border-[#176B65]"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setCustomCount(prev => Math.min(10, prev + 1))}
+                      className="w-8 h-8 rounded-xl bg-white border border-[#DCE9E3] flex items-center justify-center font-bold text-[#176B65] hover:bg-[#DCE9E3] transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
-            {/* Customer Details */}
-            <div className="space-y-4">
+            {/* 2. Customer Details & Service Required */}
+            <div className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs font-bold text-[#283B3D] mb-1.5">
                   Your Full Name
@@ -437,7 +568,7 @@ export default function ShopDetailClient() {
 
               <div>
                 <label className="block text-xs font-bold text-[#283B3D] mb-1.5">
-                  10-Digit Mobile Number (For SMS & OTP Turn Alerts)
+                  10-Digit Mobile Number (For SMS & Live Alerts)
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-3.5 text-xs font-bold text-[#283B3D]/60">+91</span>
@@ -453,28 +584,105 @@ export default function ShopDetailClient() {
                 </div>
               </div>
 
-              {/* Group Companion Names (if groupSize > 1) */}
-              {groupSize > 1 && (
-                <div className="space-y-3 pt-2 border-t border-[#DCE9E3]">
-                  <span className="text-xs font-bold text-[#176B65] flex items-center gap-1.5">
-                    <UserPlus className="w-4 h-4" />
-                    <span>Companion Member Names ({groupSize - 1} guests)</span>
-                  </span>
-                  {Array.from({ length: groupSize - 1 }).map((_, idx) => (
-                    <div key={idx}>
-                      <input
-                        type="text"
-                        placeholder={`Companion #${idx + 2} Name`}
-                        value={companionNames[idx]}
-                        onChange={(e) => {
-                          const updated = [...companionNames];
-                          updated[idx] = e.target.value;
-                          setCompanionNames(updated);
-                        }}
-                        className="w-full px-4 py-2.5 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-[#F3F1E9]/30"
-                      />
-                    </div>
+              {/* Service Required / Purpose of Visit (Optional) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#283B3D] flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-[#176B65]" />
+                    <span>Service Needed / Purpose of Visit <span className="text-slate-400 font-normal">(Optional)</span></span>
+                  </label>
+                </div>
+
+                {/* Quick Selection Tags */}
+                <div className="flex flex-wrap gap-1.5">
+                  {serviceSuggestions.map((srv, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCustomerPurpose(srv)}
+                      className={`text-[11px] px-2.5 py-1 rounded-xl transition-all border ${
+                        customerPurpose === srv
+                          ? 'bg-[#176B65] text-white border-[#176B65] font-bold'
+                          : 'bg-[#F3F1E9] text-[#283B3D]/80 border-[#DCE9E3] hover:border-[#176B65] font-medium'
+                      }`}
+                    >
+                      {srv}
+                    </button>
                   ))}
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Or write custom service (e.g. Haircut & Beard, Tooth checkup...)"
+                  value={customerPurpose}
+                  onChange={(e) => setCustomerPurpose(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-[#F3F1E9]/30"
+                />
+              </div>
+
+              {/* 3. Companion Members Details (if groupSize > 1) */}
+              {effectiveGroupSize > 1 && (
+                <div className="space-y-4 pt-3 border-t border-[#DCE9E3]">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-[#176B65]" />
+                    <span className="text-xs font-bold text-[#176B65]">
+                      Companion Details ({effectiveGroupSize - 1} Members) — What services do they need?
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {companionDetails.map((comp, idx) => (
+                      <div key={idx} className="p-3.5 bg-[#F3F1E9]/60 rounded-2xl border border-[#DCE9E3] space-y-2">
+                        <span className="text-[11px] font-bold text-[#283B3D]">
+                          Person #{idx + 2} Details:
+                        </span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Companion #${idx + 2} Name (Optional)`}
+                            value={comp.name}
+                            onChange={(e) => {
+                              const updated = [...companionDetails];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setCompanionDetails(updated);
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-white"
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="What do they need? (e.g. Shave, Checkup...)"
+                            value={comp.purpose}
+                            onChange={(e) => {
+                              const updated = [...companionDetails];
+                              updated[idx] = { ...updated[idx], purpose: e.target.value };
+                              setCompanionDetails(updated);
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-white"
+                          />
+                        </div>
+
+                        {/* Quick preset chips for this companion */}
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {serviceSuggestions.slice(0, 3).map((srv, sIdx) => (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => {
+                                const updated = [...companionDetails];
+                                updated[idx] = { ...updated[idx], purpose: srv };
+                                setCompanionDetails(updated);
+                              }}
+                              className="text-[10px] px-2 py-0.5 rounded-lg bg-white border border-[#DCE9E3] text-[#283B3D]/70 hover:text-[#176B65] hover:border-[#176B65]"
+                            >
+                              + {srv}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -506,7 +714,7 @@ export default function ShopDetailClient() {
 
           <div className="bg-[#DCE9E3]/50 rounded-2xl p-3.5 text-[11px] text-[#283B3D]/80 flex items-center gap-2.5">
             <Zap className="w-4 h-4 text-[#176B65] shrink-0" />
-            <span>Digital queue tokens update live. You do not need to stand in a physical line.</span>
+            <span>Specifying your services helps the store staff prepare your counter slot in advance.</span>
           </div>
         </div>
 

@@ -398,6 +398,11 @@ export default function MyTokensPage() {
                         <p className="text-xs text-[#283B3D]/60 font-semibold mt-0.5">
                           {token.customerName || 'Customer'}
                         </p>
+                        {token.customerPurpose && (
+                          <span className="inline-block text-[11px] font-bold text-[#176B65] bg-[#DCE9E3]/70 px-2 py-0.5 rounded-md mt-1">
+                            Service: {token.customerPurpose}
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
                         <span className={`font-token text-4xl font-bold tracking-tight ${
@@ -410,6 +415,19 @@ export default function MyTokensPage() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Companions breakdown if any */}
+                    {token.companions && token.companions.length > 0 && (
+                      <div className="p-3 bg-[#F3F1E9]/80 rounded-2xl border border-[#DCE9E3] text-[11px] space-y-1.5">
+                        <span className="font-bold text-[#283B3D]/70 block">Group Member Requirements:</span>
+                        {token.companions.map((c, i) => (
+                          <div key={i} className="flex items-center justify-between text-[#283B3D]/80">
+                            <span>#{i + 2} {c.name || `Companion #${i + 2}`}</span>
+                            <span className="font-bold text-[#176B65]">{c.purpose || 'General Service'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Progress Metrics */}
                     <div className="bg-[#F3F1E9] rounded-2xl p-4 grid grid-cols-2 gap-3 text-center border border-[#DCE9E3]">
