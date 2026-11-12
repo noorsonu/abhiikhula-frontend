@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Ticket, Clock, CheckCircle2, RefreshCw, Store, Users, 
-  MapPin, Zap, XCircle, AlertCircle, Compass, Volume2, Radio, BellRing
+  MapPin, Zap, XCircle, AlertCircle, Compass, Volume2, VolumeX, Radio, BellRing
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { queueApi } from '@/lib/api';
@@ -34,7 +34,9 @@ export default function MyTokensPage() {
             backendTokens = res.data.data;
           }
         } catch (err) {
-          console.warn('Backend active tokens fetch:', err);
+          if (err?.response?.status === 401) {
+            localStorage.removeItem('ak_token');
+          }
         }
       }
 
@@ -65,6 +67,12 @@ export default function MyTokensPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSound = localStorage.getItem('ak_sound_enabled');
+      if (savedSound !== null) {
+        setSoundEnabled(savedSound === 'true');
+      }
+    }
     loadTokens();
   }, []);
 
@@ -277,14 +285,37 @@ export default function MyTokensPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Sound Test Button */}
+          {/* Sound Notification Toggle */}
           <button
-            onClick={handleTestChime}
-            title="Test Turn Audio Chime"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-[#DCE9E3] shadow-xs text-xs font-bold text-[#176B65] hover:bg-[#DCE9E3]/50 transition-all cursor-pointer"
+            type="button"
+            onClick={() => {
+              const next = !soundEnabled;
+              setSoundEnabled(next);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('ak_sound_enabled', String(next));
+              }
+              if (next) {
+                playChime('reminder');
+              }
+            }}
+            title={soundEnabled ? "Turn Alerts: Sound ON (Click to Mute)" : "Turn Alerts: Muted (Click to Turn ON)"}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              soundEnabled
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 shadow-xs'
+                : 'bg-white text-slate-500 border-[#DCE9E3] hover:bg-slate-50'
+            }`}
           >
-            <Volume2 className="w-4 h-4 text-[#176B65]" />
-            <span className="hidden sm:inline">Test Chime</span>
+            {soundEnabled ? (
+              <>
+                <Volume2 className="w-4 h-4 text-emerald-600" />
+                <span>Sound: ON</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-4 h-4 text-slate-400" />
+                <span>Muted</span>
+              </>
+            )}
           </button>
 
           {/* Sync / Refresh Button */}
