@@ -258,108 +258,43 @@ export default function MerchantDashboardPage() {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
-
-    // Seed realistic initial Khata demo accounts for shopkeeper
-    const initialKhata = [
-      {
-        id: 'kh-1',
-        customerName: 'Rohit Sharma',
-        customerPhone: '9876543210',
-        totalPending: 250,
-        lastUpdated: new Date(Date.now() - 2 * 86400000).toISOString(),
-        transactions: [
-          {
-            id: 'tx-1',
-            date: new Date(Date.now() - 2 * 86400000).toISOString(),
-            type: 'CREDIT',
-            amount: 250,
-            balanceAfter: 250,
-            serviceOrReason: 'Service bill partial balance (Will pay next visit)',
-            paymentMode: 'PENDING',
-            tokenNumber: '14'
-          }
-        ]
-      },
-      {
-        id: 'kh-2',
-        customerName: 'Amit Verma Ji',
-        customerPhone: '9123456789',
-        totalPending: 180,
-        lastUpdated: new Date(Date.now() - 86400000).toISOString(),
-        transactions: [
-          {
-            id: 'tx-2',
-            date: new Date(Date.now() - 86400000).toISOString(),
-            type: 'CREDIT',
-            amount: 180,
-            balanceAfter: 180,
-            serviceOrReason: 'Medicine / Grooming purchase',
-            paymentMode: 'PENDING',
-            tokenNumber: '08'
-          }
-        ]
-      },
-      {
-        id: 'kh-3',
-        customerName: 'Sunil Gupta (Indira Nagar)',
-        customerPhone: '9988776655',
-        totalPending: 420,
-        lastUpdated: new Date(Date.now() - 4 * 86400000).toISOString(),
-        transactions: [
-          {
-            id: 'tx-3',
-            date: new Date(Date.now() - 4 * 86400000).toISOString(),
-            type: 'CREDIT',
-            amount: 420,
-            balanceAfter: 420,
-            serviceOrReason: 'Emergency service credit',
-            paymentMode: 'PENDING',
-            tokenNumber: '03'
-          }
-        ]
-      }
-    ];
-
-    try {
-      localStorage.setItem(key, JSON.stringify(initialKhata));
-    } catch (e) {}
-    return initialKhata;
+    return [];
   };
 
   // BRD FR-711: Staff Attendance & Multi-Operator Storage Keys & Default Archetypes
   const CATEGORY_DEFAULT_STAFF = {
     SALON: [
-      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 8, revenueGeneratedToday: 1600 },
-      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 5, revenueGeneratedToday: 850 },
-      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'ON_BREAK', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 3, revenueGeneratedToday: 1200 }
+      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'ON_BREAK', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     CLINIC: [
-      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 12, revenueGeneratedToday: 6000 },
-      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 9, revenueGeneratedToday: 1350 },
+      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
       { id: 'stf-3', name: 'Dr. Neha (Dentist)', role: 'Dental Care', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     PHARMACY: [
-      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 18, revenueGeneratedToday: 4200 },
-      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:15 AM', clockOutTime: null, servedCountToday: 14, revenueGeneratedToday: 2100 }
+      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:15 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     DIAGNOSTIC: [
-      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '08:30 AM', clockOutTime: null, servedCountToday: 14, revenueGeneratedToday: 3800 },
-      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 11, revenueGeneratedToday: 2200 }
+      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '08:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     FOOD: [
-      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 22, revenueGeneratedToday: 5500 },
-      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 20, revenueGeneratedToday: 4800 }
+      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     AUTO: [
-      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 7, revenueGeneratedToday: 3200 },
-      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 6, revenueGeneratedToday: 1900 }
+      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     RETAIL: [
-      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 25, revenueGeneratedToday: 8200 },
-      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 19, revenueGeneratedToday: 4100 }
+      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ]
   };
 
@@ -492,385 +427,10 @@ export default function MerchantDashboardPage() {
       const savedStr = localStorage.getItem(key);
       if (savedStr) {
         const parsed = JSON.parse(savedStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Check if parsed already has non-zero amounts
-          const hasAmounts = parsed.some(r => r.amount !== undefined && r.amount > 0);
-          if (hasAmounts) {
-            return parsed;
-          }
-          // Migrate legacy records to include amount and paymentMode if missing
-          const fallbackAmounts = [250, 150, 500, 350, 300, 950, 450, 200, 600, 380];
-          const migrated = parsed.map((item, idx) => {
-            if (item.status === 'NO_SHOW' || item.status === 'SKIPPED') {
-              return { ...item, amount: 0, paymentMode: '-' };
-            }
-            const amt = item.amount !== undefined && item.amount !== null ? item.amount : fallbackAmounts[idx % fallbackAmounts.length];
-            return {
-              ...item,
-              amount: amt,
-              paymentMode: item.paymentMode || (idx % 2 === 0 ? 'UPI' : 'CASH'),
-              serviceBreakdown: item.serviceBreakdown || item.service || 'General Service'
-            };
-          });
-          try {
-            localStorage.setItem(key, JSON.stringify(migrated));
-          } catch(e) {}
-          return migrated;
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
-      
-      // Initialize realistic historical data for yesterday, 7 days, and monthly
-      const prefix = shop.tokenPrefix || 'AK';
-      const now = Date.now();
-      const oneDay = 86400000;
-      const yesterdayDate = new Date(now - oneDay).toISOString().slice(0, 10);
-      const twoDaysAgo = new Date(now - 2 * oneDay).toISOString().slice(0, 10);
-      const threeDaysAgo = new Date(now - 3 * oneDay).toISOString().slice(0, 10);
-      const fourDaysAgo = new Date(now - 4 * oneDay).toISOString().slice(0, 10);
-      const fiveDaysAgo = new Date(now - 5 * oneDay).toISOString().slice(0, 10);
-      const sixDaysAgo = new Date(now - 6 * oneDay).toISOString().slice(0, 10);
-      const tenDaysAgo = new Date(now - 10 * oneDay).toISOString().slice(0, 10);
-      const fifteenDaysAgo = new Date(now - 15 * oneDay).toISOString().slice(0, 10);
-      const twentyDaysAgo = new Date(now - 20 * oneDay).toISOString().slice(0, 10);
-      const twentyEightDaysAgo = new Date(now - 28 * oneDay).toISOString().slice(0, 10);
-
-      const initialHistory = [
-        // Yesterday's Real Customer Records (10 AM to 8 PM) - Total: ₹2,950
-        {
-          id: 'hist-y-1',
-          tokenNumber: `${prefix}-001`,
-          customerName: 'Amitabh Saxena',
-          customerPhone: '9839120011',
-          groupSize: 1,
-          service: 'Haircut & Styling',
-          serviceBreakdown: 'Haircut & Styling',
-          amount: 250,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 10 * 3600000).toISOString(),
-          completedAt: '10:35 AM',
-          date: yesterdayDate,
-          hour: 10,
-          waitMin: 10,
-          durationMin: 25
-        },
-        {
-          id: 'hist-y-2',
-          tokenNumber: `${prefix}-002`,
-          customerName: 'Rohan Gupta',
-          customerPhone: '9839443322',
-          groupSize: 1,
-          service: 'Beard Grooming',
-          serviceBreakdown: 'Beard Grooming & Shape',
-          amount: 150,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 9 * 3600000).toISOString(),
-          completedAt: '11:20 AM',
-          date: yesterdayDate,
-          hour: 11,
-          waitMin: 8,
-          durationMin: 18
-        },
-        {
-          id: 'hist-y-3',
-          tokenNumber: `${prefix}-003`,
-          customerName: 'Dr. Ananya Roy',
-          customerPhone: '9415098765',
-          groupSize: 2,
-          service: 'General Consultation',
-          serviceBreakdown: 'General Consultation (2 Pax)',
-          amount: 500,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 8 * 3600000).toISOString(),
-          completedAt: '12:45 PM',
-          date: yesterdayDate,
-          hour: 12,
-          waitMin: 14,
-          durationMin: 30
-        },
-        {
-          id: 'hist-y-4',
-          tokenNumber: `${prefix}-004`,
-          customerName: 'Karan Malhotra',
-          customerPhone: '9935123456',
-          groupSize: 1,
-          service: 'Head Massage & Spa',
-          serviceBreakdown: 'Head Massage + Herbal Oil',
-          amount: 350,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 5 * 3600000).toISOString(),
-          completedAt: '03:30 PM',
-          date: yesterdayDate,
-          hour: 15,
-          waitMin: 12,
-          durationMin: 22
-        },
-        {
-          id: 'hist-y-5',
-          tokenNumber: `${prefix}-005`,
-          customerName: 'Manish Tiwari',
-          customerPhone: '9889776655',
-          groupSize: 1,
-          service: 'Haircut & Shave',
-          serviceBreakdown: 'Haircut + Clean Shave',
-          amount: 300,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 3 * 3600000).toISOString(),
-          completedAt: '05:15 PM',
-          date: yesterdayDate,
-          hour: 17,
-          waitMin: 18,
-          durationMin: 24
-        },
-        {
-          id: 'hist-y-6',
-          tokenNumber: `${prefix}-006`,
-          customerName: 'Vikas Singh',
-          customerPhone: '9794112233',
-          groupSize: 1,
-          service: 'Beard Trim',
-          serviceBreakdown: 'Beard Trim',
-          amount: 0,
-          paymentMode: '-',
-          status: 'NO_SHOW',
-          createdAt: new Date(now - oneDay - 2 * 3600000).toISOString(),
-          completedAt: '06:05 PM',
-          date: yesterdayDate,
-          hour: 18,
-          waitMin: 0,
-          durationMin: 0
-        },
-        {
-          id: 'hist-y-7',
-          tokenNumber: `${prefix}-007`,
-          customerName: 'Suresh Sharma',
-          customerPhone: '9838009988',
-          groupSize: 3,
-          service: 'Family Grooming Session',
-          serviceBreakdown: 'Family Grooming (Haircut x3 + Beard)',
-          amount: 950,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay - 1 * 3600000).toISOString(),
-          completedAt: '07:20 PM',
-          date: yesterdayDate,
-          hour: 19,
-          waitMin: 15,
-          durationMin: 45
-        },
-        {
-          id: 'hist-y-8',
-          tokenNumber: `${prefix}-008`,
-          customerName: 'Neha Agarwal',
-          customerPhone: '9450123890',
-          groupSize: 1,
-          service: 'Hair Styling & Wash',
-          serviceBreakdown: 'Hair Styling & Conditioning Wash',
-          amount: 450,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - oneDay).toISOString(),
-          completedAt: '08:15 PM',
-          date: yesterdayDate,
-          hour: 20,
-          waitMin: 10,
-          durationMin: 28
-        },
-
-        // Earlier records (2 to 7 days ago - Rolling 7 Days)
-        {
-          id: 'hist-w-1',
-          tokenNumber: `${prefix}-W01`,
-          customerName: 'Pooja Verma',
-          customerPhone: '9839911223',
-          groupSize: 1,
-          service: 'General Consultation',
-          serviceBreakdown: 'General Consultation',
-          amount: 500,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 2 * oneDay).toISOString(),
-          completedAt: '11:40 AM',
-          date: twoDaysAgo,
-          hour: 11,
-          waitMin: 12,
-          durationMin: 20
-        },
-        {
-          id: 'hist-w-2',
-          tokenNumber: `${prefix}-W02`,
-          customerName: 'Rahul Srivastava',
-          customerPhone: '9451122334',
-          groupSize: 2,
-          service: 'Haircut & Styling',
-          serviceBreakdown: 'Haircut x2 + Styling Gel',
-          amount: 600,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 2 * oneDay).toISOString(),
-          completedAt: '05:30 PM',
-          date: twoDaysAgo,
-          hour: 17,
-          waitMin: 16,
-          durationMin: 35
-        },
-        {
-          id: 'hist-w-3',
-          tokenNumber: `${prefix}-W03`,
-          customerName: 'Gaurav Mishra',
-          customerPhone: '9919223344',
-          groupSize: 1,
-          service: 'Beard Trim & Spa',
-          serviceBreakdown: 'Beard Trim + Face Steam',
-          amount: 380,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 3 * oneDay).toISOString(),
-          completedAt: '04:15 PM',
-          date: threeDaysAgo,
-          hour: 16,
-          waitMin: 10,
-          durationMin: 25
-        },
-        {
-          id: 'hist-w-4',
-          tokenNumber: `${prefix}-W04`,
-          customerName: 'Deepak Shukla',
-          customerPhone: '9839334455',
-          groupSize: 1,
-          service: 'General Consultation',
-          serviceBreakdown: 'General Consultation',
-          amount: 0,
-          paymentMode: '-',
-          status: 'NO_SHOW',
-          createdAt: new Date(now - 5 * oneDay).toISOString(),
-          completedAt: '01:10 PM',
-          date: fiveDaysAgo,
-          hour: 13,
-          waitMin: 0,
-          durationMin: 0
-        },
-        {
-          id: 'hist-w-5',
-          tokenNumber: `${prefix}-W05`,
-          customerName: 'Sunil Chaurasia',
-          customerPhone: '9415778899',
-          groupSize: 2,
-          service: 'Haircut & Shave',
-          serviceBreakdown: 'Haircut + D-Tan Pack',
-          amount: 850,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 4 * oneDay).toISOString(),
-          completedAt: '02:30 PM',
-          date: fourDaysAgo,
-          hour: 14,
-          waitMin: 14,
-          durationMin: 32
-        },
-        {
-          id: 'hist-w-6',
-          tokenNumber: `${prefix}-W06`,
-          customerName: 'Alok Pandey',
-          customerPhone: '9839665544',
-          groupSize: 1,
-          service: 'Head Massage & Spa',
-          serviceBreakdown: 'Head Massage 30min',
-          amount: 400,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 6 * oneDay).toISOString(),
-          completedAt: '06:40 PM',
-          date: sixDaysAgo,
-          hour: 18,
-          waitMin: 12,
-          durationMin: 28
-        },
-
-        // Earlier records (10 to 28 days ago - Monthly View)
-        {
-          id: 'hist-m-1',
-          tokenNumber: `${prefix}-M01`,
-          customerName: 'Praveen Yadav',
-          customerPhone: '9838112299',
-          groupSize: 2,
-          service: 'Family Grooming Session',
-          serviceBreakdown: 'Full Family Package (Haircut + Facial)',
-          amount: 1450,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 10 * oneDay).toISOString(),
-          completedAt: '03:15 PM',
-          date: tenDaysAgo,
-          hour: 15,
-          waitMin: 15,
-          durationMin: 50
-        },
-        {
-          id: 'hist-m-2',
-          tokenNumber: `${prefix}-M02`,
-          customerName: 'Sanjay Rastogi',
-          customerPhone: '9450334411',
-          groupSize: 1,
-          service: 'General Consultation',
-          serviceBreakdown: 'General Health Checkup & Prescription',
-          amount: 600,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 15 * oneDay).toISOString(),
-          completedAt: '12:10 PM',
-          date: fifteenDaysAgo,
-          hour: 12,
-          waitMin: 10,
-          durationMin: 20
-        },
-        {
-          id: 'hist-m-3',
-          tokenNumber: `${prefix}-M03`,
-          customerName: 'Shalini Dixit',
-          customerPhone: '9919556677',
-          groupSize: 1,
-          service: 'Hair Styling & Wash',
-          serviceBreakdown: 'Hair Spa & Deep Conditioning',
-          amount: 1200,
-          paymentMode: 'UPI',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 20 * oneDay).toISOString(),
-          completedAt: '04:50 PM',
-          date: twentyDaysAgo,
-          hour: 16,
-          waitMin: 18,
-          durationMin: 45
-        },
-        {
-          id: 'hist-m-4',
-          tokenNumber: `${prefix}-M04`,
-          customerName: 'Harish Chandra',
-          customerPhone: '9839441188',
-          groupSize: 1,
-          service: 'Haircut & Styling',
-          serviceBreakdown: 'Haircut + Beard Styling',
-          amount: 450,
-          paymentMode: 'CASH',
-          status: 'COMPLETED',
-          createdAt: new Date(now - 28 * oneDay).toISOString(),
-          completedAt: '01:25 PM',
-          date: twentyEightDaysAgo,
-          hour: 13,
-          waitMin: 8,
-          durationMin: 22
-        }
-      ];
-
-      localStorage.setItem(key, JSON.stringify(initialHistory));
-      return initialHistory;
-    } catch (e) {
-      return [];
-    }
+    } catch (e) {}
+    return [];
   };
 
   const getReviewsStorageKey = (shop) => `ak_merchant_reviews_${(shop?.slug || 'shop').toLowerCase()}`;
@@ -880,101 +440,12 @@ export default function MerchantDashboardPage() {
     try {
       const key = getReviewsStorageKey(shop);
       const saved = localStorage.getItem(key);
-      if (saved) return JSON.parse(saved);
-
-      const prefix = shop.tokenPrefix || 'AK';
-      const initialReviews = [
-        {
-          id: 'rev-1',
-          customerName: 'Aman Saxena',
-          tokenNumber: `${prefix}-014`,
-          rating: 5,
-          date: 'Today, 11:45 AM',
-          serviceName: 'Haircut & Styling',
-          tags: ['Punctual Service', 'Polite Staff', 'Clean Counter'],
-          comment: 'Bahut smooth experience raha! Ghar se live token track kiya aur jab sirf 2 log bache tab dukaan pahuncha. Bilkul wait nahi karna pada.',
-          merchantReply: 'Thank you Aman ji! Hamari koshish rehti hai ki kisi grahak ka time waste na ho. Fir se zaroor aayein!',
-          merchantReplyDate: 'Today, 12:10 PM',
-          verifiedVisit: true,
-          flagged: false
-        },
-        {
-          id: 'rev-2',
-          customerName: 'Priya Gupta',
-          tokenNumber: `${prefix}-009`,
-          rating: 5,
-          date: 'Yesterday, 04:30 PM',
-          serviceName: 'General Consultation',
-          tags: ['Great Experience', 'Value for Money'],
-          comment: 'AbhiiKhula QR pass system bohot badiya hai. Line me khade hone ka jhanjhat khatam ho gaya. Counter par aate hi turant call hua.',
-          merchantReply: null,
-          merchantReplyDate: null,
-          verifiedVisit: true,
-          flagged: false
-        },
-        {
-          id: 'rev-3',
-          customerName: 'Rohit Keshari',
-          tokenNumber: `${prefix}-022`,
-          rating: 4,
-          date: '2 days ago',
-          serviceName: 'Beard Trim & Grooming',
-          tags: ['Clean Counter', 'Skilled Work'],
-          comment: 'Staff kaafi polite hai aur counter clean tha. Thoda sa rush zyada tha shaam ko par overall kaafi accha service mila.',
-          merchantReply: 'Shukriya Rohit ji feedback ke liye. Shaam ke peak rush ko kam karne ke liye humne average pace optimize kiya hai!',
-          merchantReplyDate: 'Yesterday',
-          verifiedVisit: true,
-          flagged: false
-        },
-        {
-          id: 'rev-4',
-          customerName: 'Dr. Sameer Rizvi',
-          tokenNumber: `${prefix}-003`,
-          rating: 5,
-          date: '3 days ago',
-          serviceName: 'Express Service',
-          tags: ['Super Fast', 'Polite Staff'],
-          comment: 'Ekdum professional management! Lucknow me har shop par aisa digital counter hona chahiye. Best shop in Hazratganj.',
-          merchantReply: null,
-          merchantReplyDate: null,
-          verifiedVisit: true,
-          flagged: false
-        },
-        {
-          id: 'rev-5',
-          customerName: 'Vikram Chaurasia',
-          tokenNumber: `${prefix}-018`,
-          rating: 4,
-          date: '5 days ago',
-          serviceName: 'Hair Spa & Conditioning',
-          tags: ['Good Ambience'],
-          comment: 'Service quality was top-notch. Reasonable hisaab and UPI payment seamlessly accepted.',
-          merchantReply: null,
-          merchantReplyDate: null,
-          verifiedVisit: true,
-          flagged: false
-        },
-        {
-          id: 'rev-6',
-          customerName: 'Sunita Mehra',
-          tokenNumber: `${prefix}-007`,
-          rating: 3,
-          date: '1 week ago',
-          serviceName: 'Consultation & Service',
-          tags: ['Slight Delay'],
-          comment: 'Service acchi thi par bich me counter ne 15 min ka tea break liya toh thoda wait karna pada. Baki staff helpful tha.',
-          merchantReply: 'Sunita ji, asuvidha ke liye khed hai. Aage se hum break timer pass par pehle hi alert kar denge.',
-          merchantReplyDate: '5 days ago',
-          verifiedVisit: true,
-          flagged: false
-        }
-      ];
-
-      localStorage.setItem(key, JSON.stringify(initialReviews));
-      return initialReviews;
-    } catch (e) {
-      return [];
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
   };
 
   const getBroadcastStorageKey = (shop) => `ak_shop_broadcast_${(shop?.slug || 'shop').toLowerCase()}`;
@@ -2630,6 +2101,51 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setStaffFeedbackMsg(''), 4000);
   };
 
+  // 1-Tap Clean Start: Purge all local dummy/test records for clean real-time verification
+  const handleClearAllDummyData = () => {
+    if (typeof window === 'undefined') return;
+    if (!confirm('Kya aap sach me saara purana test / dummy data clear karke fresh real-time session start karna chahte hain?')) return;
+
+    // Remove all local storage keys related to tokens, queue, history, khata, reviews
+    localStorage.removeItem('ak_customer_tokens');
+    localStorage.removeItem('ak_customer_history');
+    if (activeShop) {
+      localStorage.removeItem(getStorageKey(activeShop));
+      localStorage.removeItem(getKhataStorageKey(activeShop));
+      localStorage.removeItem(getReviewsStorageKey(activeShop));
+      localStorage.removeItem(getStaffStorageKey(activeShop));
+      localStorage.removeItem(getStationsStorageKey(activeShop));
+      localStorage.removeItem(`ak_merchant_cap_${(activeShop.slug || 'shop').toLowerCase()}`);
+      localStorage.removeItem(`ak_shop_break_${(activeShop.slug || 'shop').toLowerCase()}`);
+      localStorage.removeItem(getBroadcastStorageKey(activeShop));
+    }
+
+    // Reset local component states to zero
+    setWaitingQueue([]);
+    setServingToken(null);
+    setCompletedList([]);
+    setAbsentList([]);
+    setShopRecords([]);
+    setKhataList([]);
+    setReviewsList([]);
+    setActiveBroadcast(null);
+    setBreakRemainingSeconds(0);
+    setShopStatus('OPEN');
+
+    if (activeShop) {
+      const freshStaff = loadShopStaff(activeShop);
+      setStaffList(freshStaff);
+      setActiveOperator(freshStaff[0] || null);
+      const freshStations = loadShopStations(activeShop);
+      setStationsList(freshStations);
+    }
+
+    window.dispatchEvent(new Event('storage'));
+    playChime();
+    setAnnouncementMsg('✨ All old test data deleted! Ready for clean real-time customer testing.');
+    setTimeout(() => setAnnouncementMsg(''), 5000);
+  };
+
   // Sync token state changes with customer localStorage
   const syncWithCustomerStorage = (nextServing, prevCompleted, nextAbsent, billDetails) => {
     if (typeof window === 'undefined') return;
@@ -3353,6 +2869,18 @@ export default function MerchantDashboardPage() {
               Closed
             </button>
           </div>
+
+          {/* Purge All Dummy Data & Fresh Session (Clean Testing) */}
+          <button
+            type="button"
+            onClick={handleClearAllDummyData}
+            className="px-3 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Purge all old test tokens and local data for a clean real-time test"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <span className="hidden sm:inline">Fresh Start (Clean)</span>
+            <span className="sm:hidden">Reset</span>
+          </button>
 
           {/* Day-End Close & Reset Queue Button (BRD FR-708) */}
           <button
