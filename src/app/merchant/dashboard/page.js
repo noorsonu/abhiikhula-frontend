@@ -13,7 +13,8 @@ import {
   Moon, RotateCcw, Archive, ShieldAlert,
   Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
   Radio, Siren, Send, Copy, ExternalLink, Trash2,
-  BookOpen, Wallet, History
+  BookOpen, Wallet, History,
+  KeyRound, BadgeCheck, Fingerprint
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -89,6 +90,23 @@ export default function MerchantDashboardPage() {
   const [newKhataPhone, setNewKhataPhone] = useState('');
   const [newKhataInitialDue, setNewKhataInitialDue] = useState('');
   const [newKhataNotes, setNewKhataNotes] = useState('');
+
+  // BRD FR-711: Staff Attendance & Multi-Operator Login with PIN State
+  const [staffList, setStaffList] = useState([]);
+  const [activeOperator, setActiveOperator] = useState(null);
+  const [staffPinModalOpen, setStaffPinModalOpen] = useState(false);
+  const [staffManageModalOpen, setStaffManageModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinTargetStaff, setPinTargetStaff] = useState(null);
+  const [pinAction, setPinAction] = useState('SWITCH'); // 'SWITCH' | 'CLOCK_IN' | 'CLOCK_OUT' | 'BREAK' | 'OWNER_SETTINGS'
+  const [pinError, setPinError] = useState('');
+  const [staffFeedbackMsg, setStaffFeedbackMsg] = useState('');
+  const [ownerMasterPin, setOwnerMasterPin] = useState('9999');
+  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState('');
+  const [newStaffPhone, setNewStaffPhone] = useState('');
+  const [newStaffPin, setNewStaffPin] = useState('');
 
   // Persistent Real Records for Analytics & Customer Logs
   const [shopRecords, setShopRecords] = useState([]);
@@ -309,6 +327,72 @@ export default function MerchantDashboardPage() {
       localStorage.setItem(key, JSON.stringify(initialKhata));
     } catch (e) {}
     return initialKhata;
+  };
+
+  // BRD FR-711: Staff Attendance & Multi-Operator Storage Keys & Default Archetypes
+  const CATEGORY_DEFAULT_STAFF = {
+    SALON: [
+      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 8, revenueGeneratedToday: 1600 },
+      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 5, revenueGeneratedToday: 850 },
+      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'ON_BREAK', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 3, revenueGeneratedToday: 1200 }
+    ],
+    CLINIC: [
+      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 12, revenueGeneratedToday: 6000 },
+      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 9, revenueGeneratedToday: 1350 },
+      { id: 'stf-3', name: 'Dr. Neha (Dentist)', role: 'Dental Care', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+    ],
+    PHARMACY: [
+      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 18, revenueGeneratedToday: 4200 },
+      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:15 AM', clockOutTime: null, servedCountToday: 14, revenueGeneratedToday: 2100 }
+    ],
+    DIAGNOSTIC: [
+      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '08:30 AM', clockOutTime: null, servedCountToday: 14, revenueGeneratedToday: 3800 },
+      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 11, revenueGeneratedToday: 2200 }
+    ],
+    FOOD: [
+      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 22, revenueGeneratedToday: 5500 },
+      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 20, revenueGeneratedToday: 4800 }
+    ],
+    AUTO: [
+      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 7, revenueGeneratedToday: 3200 },
+      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 6, revenueGeneratedToday: 1900 }
+    ],
+    RETAIL: [
+      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 25, revenueGeneratedToday: 8200 },
+      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 19, revenueGeneratedToday: 4100 }
+    ]
+  };
+
+  const getStaffStorageKey = (shop) => `ak_shop_staff_${(shop?.slug || 'shop').toLowerCase()}`;
+  const getOwnerPinStorageKey = (shop) => `ak_shop_owner_pin_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopStaff = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getStaffStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+
+    const catKey = detectCategoryKey(shop);
+    const defaults = CATEGORY_DEFAULT_STAFF[catKey] || CATEGORY_DEFAULT_STAFF.SALON;
+    try {
+      localStorage.setItem(key, JSON.stringify(defaults));
+    } catch (e) {}
+    return defaults;
+  };
+
+  const loadOwnerPin = (shop) => {
+    if (!shop || typeof window === 'undefined') return '9999';
+    const key = getOwnerPinStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved && saved.trim()) return saved.trim();
+    } catch (e) {}
+    return '9999';
   };
 
   // Universal Industry Category Default Catalogs (BRD FR-604 / FR-1201)
@@ -1170,6 +1254,14 @@ export default function MerchantDashboardPage() {
           const kList = loadShopKhata(parsed);
           setKhataList(kList);
 
+          // Load Staff Attendance & Multi-Operator Roster (BRD FR-711)
+          const sList = loadShopStaff(parsed);
+          setStaffList(sList);
+          const firstOnDuty = sList.find(s => s.status === 'ON_DUTY') || sList[0] || null;
+          setActiveOperator(firstOnDuty);
+          const oPin = loadOwnerPin(parsed);
+          setOwnerMasterPin(oPin);
+
           // Load Daily Token Cap (BRD FR-314)
           try {
             const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
@@ -1236,6 +1328,10 @@ export default function MerchantDashboardPage() {
         setStationsList(stns);
         const kList = loadShopKhata(activeShop);
         setKhataList(kList);
+        const sList = loadShopStaff(activeShop);
+        setStaffList(sList);
+        const oPin = loadOwnerPin(activeShop);
+        setOwnerMasterPin(oPin);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -2367,6 +2463,173 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setKhataFeedbackMsg(''), 4000);
   };
 
+  // BRD FR-711: Staff Attendance & Multi-Operator Operations Handlers
+  const saveStaffList = (updated) => {
+    setStaffList(updated);
+    if (!activeShop || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getStaffStorageKey(activeShop), JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  };
+
+  const saveOwnerPin = (newPin) => {
+    setOwnerMasterPin(newPin);
+    if (!activeShop || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getOwnerPinStorageKey(activeShop), newPin);
+    } catch (e) {}
+  };
+
+  const handleTriggerStaffPinModal = (staffMember, action = 'SWITCH') => {
+    setPinTargetStaff(staffMember);
+    setPinAction(action);
+    setPinInput('');
+    setPinError('');
+    setStaffPinModalOpen(true);
+  };
+
+  const handleVerifyAndExecutePin = () => {
+    if (!pinTargetStaff) {
+      setPinError('No operator selected.');
+      return;
+    }
+
+    const expectedPin = pinTargetStaff === 'OWNER' ? ownerMasterPin : (pinTargetStaff.pin || '1111');
+    if (pinInput !== expectedPin) {
+      playAlert();
+      setPinError(`Incorrect 4-digit PIN! (Default demo PIN: ${expectedPin})`);
+      setPinInput('');
+      return;
+    }
+
+    // PIN is correct!
+    playChime();
+    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (pinTargetStaff === 'OWNER') {
+      setIsOwnerUnlocked(true);
+      setStaffPinModalOpen(false);
+      setStaffManageModalOpen(true);
+      setStaffFeedbackMsg('🔓 Owner Master Mode Unlocked!');
+      setTimeout(() => setStaffFeedbackMsg(''), 4000);
+      return;
+    }
+
+    const staffId = pinTargetStaff.id;
+    let feedback = '';
+
+    const updated = staffList.map(st => {
+      if (st.id === staffId) {
+        if (pinAction === 'CLOCK_IN') {
+          feedback = `✅ ${st.name} punched CLOCK-IN at ${nowTimeStr} (On Duty)`;
+          return { ...st, status: 'ON_DUTY', clockInTime: nowTimeStr };
+        } else if (pinAction === 'CLOCK_OUT') {
+          feedback = `👋 ${st.name} punched CLOCK-OUT at ${nowTimeStr} (Off Duty)`;
+          return { ...st, status: 'OFF_DUTY', clockOutTime: nowTimeStr };
+        } else if (pinAction === 'BREAK') {
+          const newStatus = st.status === 'ON_BREAK' ? 'ON_DUTY' : 'ON_BREAK';
+          feedback = newStatus === 'ON_BREAK'
+            ? `☕ ${st.name} stepped out on BREAK at ${nowTimeStr}`
+            : `⚡ ${st.name} resumed duty from break at ${nowTimeStr}`;
+          return { ...st, status: newStatus };
+        } else if (pinAction === 'SWITCH') {
+          feedback = `👤 Active operator switched to ${st.name}`;
+          return { ...st, status: 'ON_DUTY', clockInTime: st.clockInTime || nowTimeStr };
+        }
+      }
+      return st;
+    });
+
+    saveStaffList(updated);
+    const updatedStaff = updated.find(s => s.id === staffId);
+    if (updatedStaff) {
+      setActiveOperator(updatedStaff);
+    }
+    setStaffPinModalOpen(false);
+    setStaffFeedbackMsg(feedback);
+    setTimeout(() => setStaffFeedbackMsg(''), 4500);
+  };
+
+  const handleAddStaffMember = (e) => {
+    e.preventDefault();
+    if (!newStaffName.trim()) {
+      alert('Please enter staff operator name.');
+      return;
+    }
+    const cleanPin = (newStaffPin || '1234').trim().replace(/\D/g, '').slice(0, 4) || '1234';
+    const cleanPhone = (newStaffPhone || '').replace(/\D/g, '').slice(-10);
+
+    const newMember = {
+      id: `stf-${Date.now().toString().slice(-4)}`,
+      name: newStaffName.trim(),
+      role: newStaffRole.trim() || 'Service Operator',
+      phone: cleanPhone || '9876543210',
+      pin: cleanPin,
+      status: 'ON_DUTY',
+      clockInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      clockOutTime: null,
+      servedCountToday: 0,
+      revenueGeneratedToday: 0
+    };
+
+    const updated = [...staffList, newMember];
+    saveStaffList(updated);
+    setActiveOperator(newMember);
+
+    setNewStaffName('');
+    setNewStaffRole('');
+    setNewStaffPhone('');
+    setNewStaffPin('');
+    playChime();
+    setStaffFeedbackMsg(`✅ Added operator "${newMember.name}" with PIN ${newMember.pin}`);
+    setTimeout(() => setStaffFeedbackMsg(''), 4000);
+  };
+
+  const handleDeleteStaffMember = (staffId) => {
+    if (staffList.length <= 1) {
+      alert('At least 1 staff operator must remain registered.');
+      return;
+    }
+    const toRemove = staffList.find(s => s.id === staffId);
+    if (!confirm(`Are you sure you want to remove ${toRemove?.name || 'this operator'}?`)) return;
+
+    const updated = staffList.filter(s => s.id !== staffId);
+    saveStaffList(updated);
+    if (activeOperator?.id === staffId) {
+      setActiveOperator(updated[0] || null);
+    }
+    setStaffFeedbackMsg(`🗑️ Removed operator: ${toRemove?.name}`);
+    setTimeout(() => setStaffFeedbackMsg(''), 4000);
+  };
+
+  const handleDownloadStaffAttendanceCsv = () => {
+    const rows = [
+      ['Staff Name', 'Role', 'Status', 'Clock In Time', 'Clock Out Time', 'Customers Served Today', 'Revenue Generated Today (INR)', 'Contact Phone'],
+      ...staffList.map(s => [
+        `"${(s.name || '').replace(/"/g, '""')}"`,
+        `"${(s.role || '').replace(/"/g, '""')}"`,
+        s.status,
+        s.clockInTime || 'Not punched',
+        s.clockOutTime || '-',
+        s.servedCountToday || 0,
+        s.revenueGeneratedToday || 0,
+        s.phone || '-'
+      ])
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${activeShop?.slug || 'shop'}-staff-attendance-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setStaffFeedbackMsg(`📥 Exported attendance & cuts report for ${staffList.length} staff operators.`);
+    setTimeout(() => setStaffFeedbackMsg(''), 4000);
+  };
+
   // Sync token state changes with customer localStorage
   const syncWithCustomerStorage = (nextServing, prevCompleted, nextAbsent, billDetails) => {
     if (typeof window === 'undefined') return;
@@ -2610,6 +2873,28 @@ export default function MerchantDashboardPage() {
       setServingToken(null);
       setCounterSeconds(0);
     }
+
+    // BRD FR-711: Attribute service count & revenue to Active Operator or Station Staff
+    if (staffList.length > 0) {
+      const staffToCredit = activeStation?.staffName
+        ? staffList.find(s => s.name.toLowerCase().includes(activeStation.staffName.toLowerCase()) || activeStation.staffName.toLowerCase().includes(s.name.toLowerCase())) || activeOperator || staffList[0]
+        : activeOperator || staffList[0];
+
+      if (staffToCredit) {
+        const updatedStaff = staffList.map(s => {
+          if (s.id === staffToCredit.id) {
+            return {
+              ...s,
+              servedCountToday: (s.servedCountToday || 0) + 1,
+              revenueGeneratedToday: (s.revenueGeneratedToday || 0) + finalAmount
+            };
+          }
+          return s;
+        });
+        saveStaffList(updatedStaff);
+      }
+    }
+
     setBillingModalOpen(false);
 
     if (finalAmount > 0) {
@@ -2998,6 +3283,27 @@ export default function MerchantDashboardPage() {
             </span>
           </button>
 
+          {/* Staff Operator & Attendance PIN Switch Button (BRD FR-711) */}
+          <button
+            type="button"
+            onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0] || null, 'SWITCH')}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Switch active operator or punch attendance with PIN (FR-711)"
+          >
+            <KeyRound className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">
+              Staff: <span className="text-[#176B65] font-black">{activeOperator?.name?.split(' ')[0] || 'Staff'}</span>
+            </span>
+            <span className="sm:hidden">Staff</span>
+            {activeOperator?.status === 'ON_DUTY' ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" title="On Duty" />
+            ) : activeOperator?.status === 'ON_BREAK' ? (
+              <span className="w-2 h-2 rounded-full bg-amber-500 ml-0.5" title="On Break" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-slate-300 ml-0.5" title="Off Duty" />
+            )}
+          </button>
+
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
           <div className="flex items-center bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
             <button
@@ -3327,6 +3633,24 @@ export default function MerchantDashboardPage() {
               activeTab === 'REVIEWS' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900 border border-amber-300'
             }`}>
               ★ {avgRating}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('STAFF')}
+            className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'STAFF'
+                ? 'bg-[#176B65] text-white shadow-md'
+                : 'text-[#283B3D]/70 hover:bg-[#DCE9E3]/40'
+            }`}
+          >
+            <BadgeCheck className="w-4 h-4 text-emerald-400" />
+            <span>Staff & Attendance</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === 'STAFF' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+            }`}>
+              {staffList.filter(s => s.status === 'ON_DUTY').length}/{staffList.length} On Duty
             </span>
           </button>
         </div>
@@ -5808,6 +6132,342 @@ export default function MerchantDashboardPage() {
                 </button>
               </div>
             )}
+          </motion.div>
+        );
+      })()}
+
+      {/* ========================================================= */}
+      {/* TAB 5: STAFF ATTENDANCE & MULTI-OPERATOR (BRD FR-711)   */}
+      {/* ========================================================= */}
+      {activeTab === 'STAFF' && (() => {
+        const onDutyStaff = staffList.filter(s => s.status === 'ON_DUTY');
+        const onBreakStaff = staffList.filter(s => s.status === 'ON_BREAK');
+        const offDutyStaff = staffList.filter(s => s.status === 'OFF_DUTY');
+        const totalServedAll = staffList.reduce((acc, s) => acc + (s.servedCountToday || 0), 0);
+        const totalRevenueAll = staffList.reduce((acc, s) => acc + (s.revenueGeneratedToday || 0), 0);
+
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Feedback Alert */}
+            {staffFeedbackMsg && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs">
+                <span>{staffFeedbackMsg}</span>
+                <button onClick={() => setStaffFeedbackMsg('')} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* KEY METRICS SUMMARY */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+              <div className="urban-card rounded-2xl p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider">Total Staff</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-[#176B65]">
+                  {staffList.length}
+                </div>
+                <span className="text-[11px] text-[#283B3D]/70 font-semibold block">Registered Operators</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1 bg-gradient-to-br from-emerald-50 to-white border-emerald-200">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">On Duty Now</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-emerald-700 flex items-center gap-1.5">
+                  <span>{onDutyStaff.length}</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <span className="text-[11px] text-emerald-600/80 font-semibold block">Active at counter stations</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1 bg-gradient-to-br from-amber-50 to-white border-amber-200">
+                <span className="text-[10px] uppercase font-bold text-amber-700 tracking-wider">On Break</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-amber-700">
+                  {onBreakStaff.length}
+                </div>
+                <span className="text-[11px] text-amber-600/80 font-semibold block">Tea / Lunch Paused</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider">Customers Served</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-[#283B3D]">
+                  {totalServedAll}
+                </div>
+                <span className="text-[11px] text-[#283B3D]/70 font-semibold block">Staff cuts / visits today</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1 col-span-2 sm:col-span-1 bg-gradient-to-br from-teal-50 to-white border-teal-200">
+                <span className="text-[10px] uppercase font-bold text-teal-800 tracking-wider">Revenue Attributed</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-teal-800">
+                  ₹{totalRevenueAll.toLocaleString('en-IN')}
+                </div>
+                <span className="text-[11px] text-teal-700/80 font-semibold block">Combined shift billing</span>
+              </div>
+            </div>
+
+            {/* CURRENT ACTIVE OPERATOR DESK BANNER */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#176B65] to-[#283B3D] text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-lg font-black text-white shrink-0 border border-white/25">
+                  {activeOperator?.name ? activeOperator.name.slice(0, 2).toUpperCase() : 'OP'}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase font-black tracking-wider bg-white/25 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                      <KeyRound className="w-3 h-3 text-[#F2A15A]" />
+                      Active Terminal Operator
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      activeOperator?.status === 'ON_DUTY'
+                        ? 'bg-emerald-400/25 text-emerald-200 border border-emerald-400/40'
+                        : activeOperator?.status === 'ON_BREAK'
+                        ? 'bg-amber-400/25 text-amber-200 border border-amber-400/40'
+                        : 'bg-white/15 text-white/80'
+                    }`}>
+                      {activeOperator?.status === 'ON_DUTY' ? '● On Duty' : activeOperator?.status === 'ON_BREAK' ? '☕ On Break' : 'Off Duty'}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                    <span>{activeOperator?.name || 'No Operator Selected'}</span>
+                    <span className="text-xs font-normal text-white/75 bg-white/10 px-2 py-0.5 rounded-md">
+                      {activeOperator?.role || 'Service Specialist'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-white/80">
+                    Punched In: <span className="font-bold text-white">{activeOperator?.clockInTime || 'Pending'}</span> • 
+                    Served Today: <span className="font-bold text-emerald-300">{activeOperator?.servedCountToday || 0} customers</span> • 
+                    Revenue: <span className="font-bold text-[#F2A15A]">₹{(activeOperator?.revenueGeneratedToday || 0).toLocaleString('en-IN')}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Operator Quick Switch / Punch Actions */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {activeOperator?.status === 'ON_DUTY' && (
+                  <button
+                    type="button"
+                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'BREAK')}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <Coffee className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Punch Break</span>
+                  </button>
+                )}
+
+                {activeOperator?.status === 'ON_BREAK' && (
+                  <button
+                    type="button"
+                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'BREAK')}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/45 border border-emerald-400/50 text-emerald-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <PlayCircle className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Resume Duty</span>
+                  </button>
+                )}
+
+                {activeOperator?.status !== 'OFF_DUTY' && (
+                  <button
+                    type="button"
+                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'CLOCK_OUT')}
+                    className="px-3.5 py-2 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/50 text-rose-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-300" />
+                    <span>Clock Out</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0], 'SWITCH')}
+                  className="px-4 py-2 rounded-xl bg-white text-[#176B65] hover:bg-slate-100 text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-[#176B65]" />
+                  <span>Switch Operator</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ACTION TOOLBAR & SEARCH */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#DCE9E3]">
+              <div className="flex items-center gap-2 text-xs font-black text-[#283B3D]">
+                <BadgeCheck className="w-4 h-4 text-[#176B65]" />
+                <span>Shop Staff Directory ({staffList.length} Operators)</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadStaffAttendanceCsv}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-[#283B3D] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                  title="Export Attendance & Performance Log to CSV (FR-711)"
+                >
+                  <Download className="w-4 h-4 text-[#176B65]" />
+                  <span>Export CSV</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isOwnerUnlocked) {
+                      setStaffManageModalOpen(true);
+                    } else {
+                      handleTriggerStaffPinModal('OWNER', 'OWNER_SETTINGS');
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[#283B3D] hover:bg-[#1e2e30] text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                  title="Owner Master Settings & PIN Manager"
+                >
+                  <Lock className="w-4 h-4 text-[#F2A15A]" />
+                  <span>Owner Mode {isOwnerUnlocked ? '(Unlocked)' : ''}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStaffManageModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-black transition-colors flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Add Staff Operator</span>
+                </button>
+              </div>
+            </div>
+
+            {/* STAFF ROSTER CARDS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {staffList.map((staff) => {
+                const isActiveTerminal = activeOperator?.id === staff.id;
+                const initials = staff.name ? staff.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'OP';
+
+                return (
+                  <div
+                    key={staff.id}
+                    className={`urban-card rounded-3xl p-5 space-y-4 transition-all relative ${
+                      isActiveTerminal ? 'border-2 border-[#176B65] shadow-md bg-teal-50/20' : ''
+                    }`}
+                  >
+                    {/* Header: Photo / Initials, Name, Status Badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm relative ${
+                          staff.status === 'ON_DUTY'
+                            ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-400'
+                            : staff.status === 'ON_BREAK'
+                            ? 'bg-amber-100 text-amber-800 border-2 border-amber-400'
+                            : 'bg-slate-100 text-slate-600 border border-slate-300'
+                        }`}>
+                          {initials}
+                          <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                            staff.status === 'ON_DUTY'
+                              ? 'bg-emerald-500 animate-pulse'
+                              : staff.status === 'ON_BREAK'
+                              ? 'bg-amber-500'
+                              : 'bg-slate-300'
+                          }`} />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-black text-sm text-[#283B3D]">{staff.name}</h4>
+                            {isActiveTerminal && (
+                              <span className="text-[10px] font-black uppercase bg-[#176B65] text-white px-1.5 py-0.5 rounded-md">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-semibold text-[#176B65] bg-[#DCE9E3]/70 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                            {staff.role}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-full ${
+                        staff.status === 'ON_DUTY'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : staff.status === 'ON_BREAK'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}>
+                        {staff.status === 'ON_DUTY' ? 'On Duty' : staff.status === 'ON_BREAK' ? 'On Break' : 'Off Duty'}
+                      </span>
+                    </div>
+
+                    {/* Today's Punch Clock & PIN Info */}
+                    <div className="grid grid-cols-2 gap-2 p-3 bg-[#F3F1E9]/60 rounded-2xl border border-[#DCE9E3]/60 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Clock In</span>
+                        <span className="font-bold text-[#283B3D]">{staff.clockInTime || 'Not punched'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">PIN Security</span>
+                        <span className="font-mono font-bold text-[#176B65]">
+                          {isOwnerUnlocked ? staff.pin : '•••• (Locked)'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Customers</span>
+                        <span className="font-bold text-emerald-700">{staff.servedCountToday || 0} served</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Today Revenue</span>
+                        <span className="font-bold text-[#176B65]">₹{(staff.revenueGeneratedToday || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    {/* Quick 1-Tap Attendance Punch Desk Buttons */}
+                    <div className="space-y-2 pt-1 border-t border-[#DCE9E3]">
+                      <div className="grid grid-cols-2 gap-2">
+                        {staff.status === 'OFF_DUTY' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerStaffPinModal(staff, 'CLOCK_IN')}
+                            className="col-span-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                            <span>Clock In with PIN</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerStaffPinModal(staff, 'BREAK')}
+                              className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 ${
+                                staff.status === 'ON_BREAK'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                  : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                              }`}
+                            >
+                              <Coffee className="w-3.5 h-3.5" />
+                              <span>{staff.status === 'ON_BREAK' ? 'Resume Duty' : 'Take Break'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerStaffPinModal(staff, 'CLOCK_OUT')}
+                              className="py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                            >
+                              <LogOut className="w-3.5 h-3.5" />
+                              <span>Clock Out</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {staff.status !== 'OFF_DUTY' && !isActiveTerminal && (
+                        <button
+                          type="button"
+                          onClick={() => handleTriggerStaffPinModal(staff, 'SWITCH')}
+                          className="w-full py-2 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-[#176B65]" />
+                          <span>Make Active Desk Operator</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </motion.div>
         );
       })()}
@@ -8956,6 +9616,378 @@ export default function MerchantDashboardPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 17: STAFF OPERATOR PIN NUMPAD & ATTENDANCE PUNCH (BRD FR-711) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {staffPinModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setStaffPinModalOpen(false)}
+              className="fixed inset-0"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-4 z-10 text-center"
+            >
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-2 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 text-[#176B65] flex items-center justify-center">
+                    <KeyRound className="w-5 h-5 text-[#176B65]" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-[#283B3D]">
+                      {pinTargetStaff === 'OWNER' ? 'Owner Master PIN' : (pinTargetStaff?.name || 'Staff Login')}
+                    </h3>
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded-md inline-block">
+                      {pinAction === 'SWITCH' ? 'Switch Active Terminal' : pinAction === 'CLOCK_IN' ? 'Punch Clock In (Start Duty)' : pinAction === 'CLOCK_OUT' ? 'Punch Clock Out (End Duty)' : pinAction === 'BREAK' ? 'Punch Break / Resume' : 'Owner Master Authentication'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStaffPinModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Action Description */}
+              <p className="text-xs text-[#283B3D]/70 font-semibold">
+                {pinTargetStaff === 'OWNER'
+                  ? 'Enter 4-digit Master Owner PIN to unlock staff manager & PIN editor'
+                  : `Enter 4-digit quick PIN for ${pinTargetStaff?.name || 'operator'}`
+                }
+              </p>
+
+              {/* 4-Digit Display Circles */}
+              <div className="py-2">
+                <div className="flex items-center justify-center gap-3">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const isFilled = pinInput.length > idx;
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black font-mono transition-all border-2 ${
+                          isFilled
+                            ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs scale-105'
+                            : 'bg-[#F3F1E9]/70 text-slate-300 border-[#DCE9E3]'
+                        }`}
+                      >
+                        {isFilled ? '●' : '○'}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Keyboard input field for desktop physical typing */}
+                <input
+                  type="password"
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setPinInput(clean);
+                    setPinError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && pinInput.length === 4) {
+                      handleVerifyAndExecutePin();
+                    }
+                  }}
+                  autoFocus
+                  placeholder="Enter 4-digit PIN"
+                  className="w-full mt-2.5 text-center bg-transparent text-xs font-mono font-bold text-transparent caret-[#176B65] focus:outline-none"
+                />
+              </div>
+
+              {/* Error Message */}
+              {pinError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-shake">
+                  {pinError}
+                </div>
+              )}
+
+              {/* Touch Numpad Grid */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (pinInput.length < 4) {
+                        setPinInput(prev => prev + num);
+                        setPinError('');
+                      }
+                    }}
+                    className="py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                {/* Clear */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinInput('');
+                    setPinError('');
+                  }}
+                  className="py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                >
+                  Clear
+                </button>
+
+                {/* 0 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pinInput.length < 4) {
+                      setPinInput(prev => prev + '0');
+                      setPinError('');
+                    }
+                  }}
+                  className="py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  0
+                </button>
+
+                {/* Backspace */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinInput(prev => prev.slice(0, -1));
+                    setPinError('');
+                  }}
+                  className="py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                >
+                  ⌫
+                </button>
+              </div>
+
+              {/* Hint for demo testing */}
+              <div className="text-[10px] text-slate-400 font-semibold pt-1">
+                Demo Quick PIN: <span className="font-bold text-[#176B65]">{pinTargetStaff === 'OWNER' ? ownerMasterPin : (pinTargetStaff?.pin || '1111')}</span>
+              </div>
+
+              {/* Verify CTA */}
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  disabled={pinInput.length !== 4}
+                  onClick={handleVerifyAndExecutePin}
+                  className={`w-full py-3.5 rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 ${
+                    pinInput.length === 4
+                      ? 'bg-[#176B65] hover:bg-[#125550] text-white shadow-teal-900/20'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Confirm PIN & Execute</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStaffPinModalOpen(false)}
+                  className="w-full py-1.5 rounded-xl text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 18: ADD / MANAGE STAFF OPERATOR STUDIO (BRD FR-711) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {staffManageModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setStaffManageModalOpen(false)}
+              className="fixed inset-0"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-5 z-10"
+            >
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 text-[#176B65] flex items-center justify-center">
+                    <BadgeCheck className="w-5 h-5 text-[#176B65]" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#283B3D]">Staff Operators & PIN Credentials</h3>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Manage operator roster, assign custom 4-digit PINs, and configure store Master PIN
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStaffManageModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form to Register New Staff Operator */}
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/60 border border-[#DCE9E3] space-y-3">
+                <h4 className="text-xs font-black uppercase text-[#176B65] tracking-wider flex items-center gap-1.5">
+                  <UserPlus className="w-4 h-4" />
+                  <span>Register New Staff Operator</span>
+                </h4>
+
+                <form onSubmit={handleAddStaffMember} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-[#283B3D]">Operator Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Rahul Sharma"
+                        value={newStaffName}
+                        onChange={(e) => setNewStaffName(e.target.value)}
+                        required
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-[#283B3D]">Role / Station *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Senior Stylist / Cashier / Doctor"
+                        value={newStaffRole}
+                        onChange={(e) => setNewStaffRole(e.target.value)}
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-[#283B3D]">Contact Phone (Optional)</label>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        placeholder="e.g. 9876543210"
+                        value={newStaffPhone}
+                        onChange={(e) => setNewStaffPhone(e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-[#283B3D]">4-Digit Quick Login PIN *</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        placeholder="e.g. 1234"
+                        value={newStaffPin}
+                        onChange={(e) => setNewStaffPin(e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-black shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Operator to Roster</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Owner Master PIN Settings */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-[#283B3D] block">Store Owner Master PIN</span>
+                  <span className="text-[11px] text-slate-500">Overrides all terminals and unlocks manager mode</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={ownerMasterPin}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      saveOwnerPin(clean);
+                    }}
+                    className="w-20 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-center text-[#283B3D]"
+                  />
+                  <span className="text-[11px] text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded-md">Saved</span>
+                </div>
+              </div>
+
+              {/* Current Staff Operators Table */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase text-[#283B3D] tracking-wider">
+                  Active Staff Directory ({staffList.length})
+                </h4>
+
+                <div className="border border-[#DCE9E3] rounded-2xl overflow-hidden divide-y divide-[#DCE9E3]">
+                  {staffList.map((st) => (
+                    <div key={st.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-[#F3F1E9]/40 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-100 text-[#176B65] font-black text-xs flex items-center justify-center">
+                          {st.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-xs text-[#283B3D]">{st.name}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">
+                              {st.role}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Phone: {st.phone || 'Offline'} • PIN: <span className="font-mono font-bold text-[#176B65]">{st.pin}</span> • Served: {st.servedCountToday || 0}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteStaffMember(st.id)}
+                          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Remove operator"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStaffManageModalOpen(false)}
+                  className="w-full py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-xs font-black transition-colors cursor-pointer text-center"
+                >
+                  Done
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
