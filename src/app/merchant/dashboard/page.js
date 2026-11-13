@@ -138,6 +138,13 @@ export default function MerchantDashboardPage() {
   const [newServiceDuration, setNewServiceDuration] = useState('15');
   const [serviceFeedbackMsg, setServiceFeedbackMsg] = useState('');
 
+  // BRD FR-704 / FR-402: 1-Tap Customer WhatsApp Call & Turn Reminder State
+  const [whatsappSentMap, setWhatsappSentMap] = useState({});
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
+  const [whatsappTargetCustomer, setWhatsappTargetCustomer] = useState(null);
+  const [whatsappMessagePreset, setWhatsappMessagePreset] = useState('CALLING_SOON');
+  const [whatsappCustomText, setWhatsappCustomText] = useState('');
+
   // Universal Industry Category Default Catalogs (BRD FR-604 / FR-1201)
   const CATEGORY_DEFAULT_SERVICES = {
     PHARMACY: [
@@ -1604,6 +1611,55 @@ export default function MerchantDashboardPage() {
     playChime();
   };
 
+  // BRD FR-704 / FR-402: WhatsApp Turn Alert Helper Functions
+  const getWhatsAppMessageText = (customer, preset = 'CALLING_SOON') => {
+    if (!customer) return '';
+    const shopName = activeShop?.name || 'Our Store';
+    const name = customer.customerName || 'Customer';
+    const token = customer.tokenNumber || 'AK-01';
+    const peopleAhead = customer.waitAhead ?? 0;
+    const waitMin = customer.estWaitMin ?? 10;
+
+    switch (preset) {
+      case 'CALLING_SOON':
+        return `Namaste ${name} ji! 🙏\n\n*${shopName}* se aapka *Token #${token}* aane wala hai (Aapke aage sirf ${peopleAhead} vyakti hain, ~${waitMin} min).\n\nKripya service counter par aa jayein taaki turn skip na ho.\n\nLive Pass Dekhein: https://abhiikhula.in/tokens\n- Powered by AbhiiKhula`;
+      case 'SERVING_NOW':
+        return `Namaste ${name} ji! 🔔\n\n*${shopName}* par aapka *Token #${token}* counter par serve ho raha hai! Kripya turant service counter par step-up karein.\n- Powered by AbhiiKhula`;
+      case 'ABSENT_RECALL':
+        return `Namaste ${name} ji! ⚠️\n\n*${shopName}* par aapka *Token #${token}* call kiya gaya tha lekin aap uplabdh nahi the. Aapka token 10-minute grace hold par hai. Kripya turant counter par sampark karein!\n- Powered by AbhiiKhula`;
+      case 'DELAY_NOTICE':
+        return `Namaste ${name} ji! ⏳\n\n*${shopName}* par counter par thoda atirikt samay lag raha hai. Aapka *Token #${token}* lagbhag ~${waitMin + 10} minute me call hoga. Asuvidha ke liye khed hai.\n- Powered by AbhiiKhula`;
+      default:
+        return whatsappCustomText || `Namaste ${name} ji! *${shopName}* se aapke Token #${token} ke baare me counter update.`;
+    }
+  };
+
+  const handleOpenWhatsAppModal = (customer, defaultPreset = 'CALLING_SOON') => {
+    setWhatsappTargetCustomer(customer);
+    setWhatsappMessagePreset(defaultPreset);
+    setWhatsappCustomText(getWhatsAppMessageText(customer, defaultPreset));
+    setWhatsappModalOpen(true);
+  };
+
+  const handleDirectWhatsAppSend = (customer, preset = 'CALLING_SOON', customTextOverride = null) => {
+    if (!customer?.customerPhone || customer.customerPhone === 'Offline') return;
+    const cleanPhone = customer.customerPhone.replace(/\D/g, '').slice(-10);
+    const msg = customTextOverride || getWhatsAppMessageText(customer, preset);
+    const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    
+    // Mark timestamp in state
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setWhatsappSentMap(prev => ({
+      ...prev,
+      [customer.tokenNumber]: timeStr
+    }));
+    setAnnouncementMsg(`💬 WhatsApp alert sent to ${customer.customerName} (${customer.tokenNumber})!`);
+    playChime();
+
+    // Open WhatsApp
+    window.open(url, '_blank');
+  };
+
   // Play browser chime
   const playChime = () => {
     if (!soundEnabled || typeof window === 'undefined') return;
@@ -2730,7 +2786,30 @@ export default function MerchantDashboardPage() {
 
                   <div className="sm:text-right space-y-1">
                     <span className="text-lg font-black text-[#DCE9E3] block">{servingToken.customerName}</span>
-                    <span className="text-xs text-slate-400 block">+91 {servingToken.customerPhone}</span>
+                    <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
+                      <span className="text-xs text-slate-400">+91 {servingToken.customerPhone}</span>
+                      {servingToken.customerPhone && servingToken.customerPhone !== 'Offline' && (
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={`tel:${servingToken.customerPhone}`}
+                            className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#DCE9E3] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                            title="Direct Phone Call"
+                          >
+                            <PhoneCall className="w-3 h-3 text-emerald-400" />
+                            <span>Call</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDirectWhatsAppSend(servingToken, 'SERVING_NOW')}
+                            className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
+                            title="Send WhatsApp Serving Now Alert"
+                          >
+                            <MessageCircle className="w-3 h-3 fill-current" />
+                            <span>WhatsApp</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <span className="text-[11px] font-bold text-[#F2A15A] bg-black/30 px-2.5 py-0.5 rounded-md inline-block">
                       {servingToken.service} • Party of {servingToken.groupSize}
                     </span>
@@ -2821,16 +2900,31 @@ export default function MerchantDashboardPage() {
 
               <div className="flex flex-wrap gap-2">
                 {absentList.map((a) => (
-                  <button
+                  <div
                     key={a.tokenNumber}
-                    type="button"
-                    onClick={() => handleRecallAbsent(a)}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 hover:border-amber-500 text-xs font-bold text-[#283B3D] flex items-center gap-2 shadow-2xs cursor-pointer"
+                    className="p-1.5 pl-2.5 rounded-xl bg-white border border-amber-300 flex items-center gap-2 shadow-2xs"
                   >
-                    <span className="text-[#176B65] font-token">{a.tokenNumber}</span>
-                    <span>{a.customerName}</span>
-                    <span className="text-[10px] text-amber-700 underline font-normal">Recall</span>
-                  </button>
+                    <span className="text-[#176B65] font-token font-bold text-xs">{a.tokenNumber}</span>
+                    <span className="text-xs font-bold text-[#283B3D]">{a.customerName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRecallAbsent(a)}
+                      className="px-2 py-0.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold cursor-pointer transition-colors"
+                      title="Recall customer back to active counter"
+                    >
+                      Recall Desk
+                    </button>
+                    {a.customerPhone && a.customerPhone !== 'Offline' && (
+                      <button
+                        type="button"
+                        onClick={() => handleDirectWhatsAppSend(a, 'ABSENT_RECALL')}
+                        className="p-1 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] cursor-pointer transition-colors"
+                        title="Send WhatsApp Turn Missed Hold Alert"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -2891,17 +2985,17 @@ export default function MerchantDashboardPage() {
             <div className="overflow-y-auto flex-1 space-y-2.5 divide-y divide-[#DCE9E3]/50 pr-1">
               {waitingQueue.map((item, index) => {
                 const hasPhone = item.customerPhone && item.customerPhone !== 'Offline';
-                const whatsappUrl = hasPhone 
-                  ? `https://wa.me/91${item.customerPhone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Hello ${item.customerName}, your token ${item.tokenNumber} at ${activeShop?.name || 'our shop'} is calling soon! You are next in line. Please proceed to the service counter.`)}`
-                  : null;
+                const sentTime = whatsappSentMap[item.tokenNumber];
 
                 return (
                   <div 
                     key={`${item.id || item.tokenNumber}-${index}`}
-                    className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[#F3F1E9]/60 transition-colors"
+                    className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-[#F3F1E9]/70 transition-all border border-transparent hover:border-[#DCE9E3]"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-6 h-6 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-black flex items-center justify-center shrink-0">
+                      <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
+                        index === 0 ? 'bg-[#176B65] text-white shadow-xs' : 'bg-[#DCE9E3] text-[#176B65]'
+                      }`}>
                         {index + 1}
                       </span>
 
@@ -2909,27 +3003,53 @@ export default function MerchantDashboardPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-token font-bold text-sm text-[#176B65]">{item.tokenNumber}</span>
                           <span className="font-black text-xs text-[#283B3D] truncate">{item.customerName}</span>
+                          {index === 0 && (
+                            <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                              Next
+                            </span>
+                          )}
                         </div>
-                        <span className="text-[11px] text-[#283B3D]/60 block truncate">
-                          {item.service} • Est wait: ~{item.estWaitMin}m
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-[#283B3D]/70">
+                          <span className="truncate">{item.service}</span>
+                          <span>•</span>
+                          <span>~{item.estWaitMin}m</span>
+                          {sentTime && (
+                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              ✓ WA Sent {sentTime}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {whatsappUrl && (
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Send WhatsApp Turn Alert"
-                          className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </a>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {hasPhone && (
+                        <>
+                          <a
+                            href={`tel:${item.customerPhone}`}
+                            title={`Direct phone call to +91 ${item.customerPhone}`}
+                            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#283B3D] transition-colors cursor-pointer"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5" />
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenWhatsAppModal(item, index === 0 ? 'CALLING_SOON' : 'CALLING_SOON')}
+                            title="Send WhatsApp Turn Reminder"
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
+                              sentTime
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-[#25D366] hover:bg-[#20ba59] text-white'
+                            }`}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                            <span className="hidden sm:inline">{sentTime ? 'Ping Again' : 'WA Ping'}</span>
+                          </button>
+                        </>
                       )}
 
-                      <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2 py-0.5 rounded-md">
+                      <span className="text-[10px] font-bold text-[#176B65] bg-[#DCE9E3] px-2 py-1 rounded-lg">
                         {item.waitAhead} Ahead
                       </span>
                     </div>
@@ -6745,6 +6865,139 @@ export default function MerchantDashboardPage() {
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 12: WHATSAPP CUSTOMER TURN REMINDER (BRD FR-704)    */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {whatsappModalOpen && whatsappTargetCustomer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shadow-xs">
+                    <MessageCircle className="w-5 h-5 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">WhatsApp Turn Alert</h3>
+                    <p className="text-xs text-slate-500 font-semibold">
+                      Notify {whatsappTargetCustomer.customerName} (+91 {whatsappTargetCustomer.customerPhone})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Customer Token Card Summary */}
+              <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-[#176B65] text-white font-token font-bold text-sm flex items-center justify-center shadow-xs">
+                    {whatsappTargetCustomer.tokenNumber}
+                  </div>
+                  <div>
+                    <span className="font-black text-sm text-[#283B3D] block">{whatsappTargetCustomer.customerName}</span>
+                    <span className="text-[11px] text-slate-500 font-semibold block">
+                      {whatsappTargetCustomer.service} • {whatsappTargetCustomer.waitAhead ?? 0} Ahead (~{whatsappTargetCustomer.estWaitMin ?? 10}m)
+                    </span>
+                  </div>
+                </div>
+
+                <a
+                  href={`tel:${whatsappTargetCustomer.customerPhone}`}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#283B3D] flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Call Phone</span>
+                </a>
+              </div>
+
+              {/* Template Presets */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#283B3D] block">
+                  ⚡ Choose Notification Template:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'CALLING_SOON', label: '🔔 Calling Soon', desc: 'Next in line alert' },
+                    { id: 'SERVING_NOW', label: '🟢 Serving Now', desc: 'Step up to desk' },
+                    { id: 'ABSENT_RECALL', label: '⚠️ Grace Hold', desc: 'Turn missed notice' },
+                    { id: 'DELAY_NOTICE', label: '⏳ Delay Notice', desc: '+10m extra wait' }
+                  ].map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        setWhatsappMessagePreset(tpl.id);
+                        setWhatsappCustomText(getWhatsAppMessageText(whatsappTargetCustomer, tpl.id));
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        whatsappMessagePreset === tpl.id
+                          ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                          : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
+                      }`}
+                    >
+                      <div className="text-xs font-black">{tpl.label}</div>
+                      <div className={`text-[10px] font-semibold ${whatsappMessagePreset === tpl.id ? 'text-white/80' : 'text-slate-400'}`}>
+                        {tpl.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message Textarea */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#283B3D]">Message Content (Editable):</label>
+                  <span className="text-[10px] text-slate-400 font-semibold">{whatsappCustomText.length} chars</span>
+                </div>
+                <textarea
+                  rows={5}
+                  value={whatsappCustomText}
+                  onChange={(e) => setWhatsappCustomText(e.target.value)}
+                  className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl p-3 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65] leading-relaxed"
+                  required
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDirectWhatsAppSend(whatsappTargetCustomer, whatsappMessagePreset, whatsappCustomText);
+                    setWhatsappModalOpen(false);
+                  }}
+                  className="w-full py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <span>Open WhatsApp & Send Message (1-Tap)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWhatsappModalOpen(false)}
+                  className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
