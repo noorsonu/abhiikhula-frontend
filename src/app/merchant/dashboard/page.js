@@ -11,7 +11,8 @@ import {
   Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle,
   Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
   Moon, RotateCcw, Archive, ShieldAlert,
-  Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight
+  Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
+  Radio, Siren, Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -110,6 +111,14 @@ export default function MerchantDashboardPage() {
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flaggingReview, setFlaggingReview] = useState(null);
   const [flagReason, setFlagReason] = useState('Not a real customer visit');
+
+  // BRD FR-708 / FR-405: Emergency Flash Queue Broadcast Alert State
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [activeBroadcast, setActiveBroadcast] = useState(null);
+  const [broadcastReason, setBroadcastReason] = useState('Power Outage / Generator Delay');
+  const [broadcastMessage, setBroadcastMessage] = useState('Market power cut in progress. Generator running, queue moving with ~15 min delay.');
+  const [broadcastSeverity, setBroadcastSeverity] = useState('WARNING'); // 'WARNING' | 'CRITICAL' | 'INFO'
+  const [broadcastDelayMinutes, setBroadcastDelayMinutes] = useState(15);
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -605,6 +614,29 @@ export default function MerchantDashboardPage() {
     }
   };
 
+  const getBroadcastStorageKey = (shop) => `ak_shop_broadcast_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopBroadcast = (shop) => {
+    if (!shop || typeof window === 'undefined') return null;
+    try {
+      const key = getBroadcastStorageKey(shop);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const obj = JSON.parse(saved);
+        if (obj && obj.active) {
+          if (!obj.expiresAt || new Date(obj.expiresAt).getTime() > Date.now()) {
+            return obj;
+          } else {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const updateRecordInHistory = (shop, updatedRecord) => {
     if (!shop || !updatedRecord) return;
     setShopRecords(prev => {
@@ -843,6 +875,10 @@ export default function MerchantDashboardPage() {
           const revs = loadShopReviews(parsed);
           setReviewsList(revs);
 
+          // Load Emergency Flash Broadcast if active (BRD FR-708 / FR-405)
+          const bcast = loadShopBroadcast(parsed);
+          setActiveBroadcast(bcast);
+
           // Load Daily Token Cap (BRD FR-314)
           try {
             const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
@@ -901,6 +937,8 @@ export default function MerchantDashboardPage() {
     const handleStorageUpdate = () => {
       if (activeShop) {
         syncCustomerQueueForShop(activeShop);
+        const bcast = loadShopBroadcast(activeShop);
+        setActiveBroadcast(bcast);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -1304,6 +1342,50 @@ export default function MerchantDashboardPage() {
     setFlagModalOpen(false);
     setFlaggingReview(null);
     setAnnouncementMsg(`🚩 Review by ${flaggingReview.customerName} flagged for admin verification.`);
+  };
+
+  // BRD FR-708 / FR-405: Publish Emergency Flash Queue Broadcast
+  const handlePublishBroadcast = (e) => {
+    if (e) e.preventDefault();
+    if (!broadcastMessage.trim()) return;
+
+    const payload = {
+      id: 'bcast-' + Date.now(),
+      active: true,
+      shopSlug: (activeShop?.slug || 'shop').toLowerCase(),
+      shopName: activeShop?.name || 'Shop',
+      reason: broadcastReason,
+      message: broadcastMessage.trim(),
+      severity: broadcastSeverity, // 'WARNING' | 'CRITICAL' | 'INFO'
+      delayMinutes: Number(broadcastDelayMinutes) || 0,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 4 * 3600000).toISOString() // 4 hours validity
+    };
+
+    if (activeShop) {
+      try {
+        localStorage.setItem(getBroadcastStorageKey(activeShop), JSON.stringify(payload));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+
+    setActiveBroadcast(payload);
+    setBroadcastModalOpen(false);
+    setAnnouncementMsg(`📢 Emergency flash broadcast live! Added +${payload.delayMinutes}m delay warning for waiting customers.`);
+    playChime();
+  };
+
+  // Clear / Dismiss Emergency Flash Queue Broadcast
+  const handleClearBroadcast = () => {
+    if (activeShop) {
+      try {
+        localStorage.removeItem(getBroadcastStorageKey(activeShop));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+    setActiveBroadcast(null);
+    setAnnouncementMsg('✅ Flash broadcast cleared. Customer wait times restored to standard pace.');
+    playChime();
   };
 
   // Play browser chime
@@ -1959,6 +2041,25 @@ export default function MerchantDashboardPage() {
             <span className="sm:hidden">Reset</span>
           </button>
 
+          {/* Emergency Flash Queue Broadcast Alert Button (BRD FR-708 / FR-405) */}
+          <button
+            type="button"
+            onClick={() => setBroadcastModalOpen(true)}
+            className={`px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 ${
+              activeBroadcast
+                ? 'bg-amber-600 hover:bg-amber-700 text-white ring-2 ring-amber-400 shadow-md'
+                : 'bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900'
+            }`}
+            title="Broadcast emergency delay alert to all waiting customer passes (FR-405)"
+          >
+            <Radio className={`w-4 h-4 ${activeBroadcast ? 'text-white animate-pulse' : 'text-amber-600'}`} />
+            <span className="hidden sm:inline">{activeBroadcast ? 'Broadcast Live' : 'Flash Alert'}</span>
+            <span className="sm:hidden">Alert</span>
+            {activeBroadcast && (
+              <span className="w-2 h-2 rounded-full bg-white animate-ping ml-0.5" />
+            )}
+          </button>
+
           {/* Shop Switch / Add Shop / Logout Menu */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-[#DCE9E3]">
             <Link
@@ -2052,6 +2153,67 @@ export default function MerchantDashboardPage() {
               >
                 <PlayCircle className="w-4 h-4 text-emerald-700" />
                 <span>Resume Now</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active Emergency Flash Queue Broadcast Alert Banner (BRD FR-708 / FR-405) */}
+      <AnimatePresence>
+        {activeBroadcast && activeBroadcast.active && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`p-4 sm:p-5 rounded-3xl text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-2 ${
+              activeBroadcast.severity === 'CRITICAL'
+                ? 'bg-gradient-to-r from-rose-700 via-rose-600 to-rose-700 border-rose-300'
+                : activeBroadcast.severity === 'INFO'
+                ? 'bg-gradient-to-r from-teal-700 via-teal-600 to-teal-700 border-teal-300'
+                : 'bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 border-amber-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                <Siren className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wider font-black bg-white/25 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                    <Radio className="w-3 h-3 animate-ping" />
+                    Emergency Flash Broadcast • {activeBroadcast.reason}
+                  </span>
+                  {activeBroadcast.delayMinutes > 0 && (
+                    <span className="text-xs font-mono font-black bg-black/40 px-2.5 py-0.5 rounded-md text-amber-200">
+                      ⏱️ +{activeBroadcast.delayMinutes}m delay added to all customer passes
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold bg-white/15 px-2 py-0.5 rounded-md text-white/90">
+                    Live across all customer passes
+                  </span>
+                </div>
+                <p className="text-xs text-white/95 font-semibold">
+                  &ldquo;{activeBroadcast.message}&rdquo;
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setBroadcastModalOpen(true)}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all cursor-pointer border border-white/30 text-center"
+              >
+                Edit Alert
+              </button>
+              <button
+                type="button"
+                onClick={handleClearBroadcast}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white text-slate-900 hover:bg-white/90 text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Dismiss & Restore</span>
               </button>
             </div>
           </motion.div>
@@ -5536,6 +5698,248 @@ export default function MerchantDashboardPage() {
                   Cancel
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 10: EMERGENCY FLASH QUEUE BROADCAST (BRD FR-708/405) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {broadcastModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white ${
+                    broadcastSeverity === 'CRITICAL' ? 'bg-rose-600' : broadcastSeverity === 'INFO' ? 'bg-teal-600' : 'bg-amber-600'
+                  }`}>
+                    <Radio className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Flash Queue Broadcast</h3>
+                    <p className="text-xs text-slate-500 font-semibold">
+                      Instant emergency delay warning pushed to all waiting customer passes
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBroadcastModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Quick Template Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[#283B3D] block">
+                  ⚡ 1-Tap Quick Templates:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      label: '⚡ Power Outage',
+                      reason: 'Power Outage / Generator Delay',
+                      delay: 15,
+                      sev: 'WARNING',
+                      msg: 'Market power cut in progress. Generator running, counter queue moving with ~15 min delay.'
+                    },
+                    {
+                      label: '🚨 Doctor Emergency',
+                      reason: 'Emergency Patient Inflow',
+                      delay: 20,
+                      sev: 'CRITICAL',
+                      msg: 'Doctor attending to an urgent priority medical emergency. Waiting tokens delayed ~20 mins.'
+                    },
+                    {
+                      label: '🧼 Sanitization Break',
+                      reason: 'Equipment Sanitization',
+                      delay: 10,
+                      sev: 'INFO',
+                      msg: 'Brief 10-minute counter & tool sanitization cycle in progress for customer hygiene.'
+                    },
+                    {
+                      label: '🌧️ Heavy Rain / Weather',
+                      reason: 'Heavy Rain / Traffic Delay',
+                      delay: 15,
+                      sev: 'WARNING',
+                      msg: 'Severe weather causing slow traffic turnover. Expect ~15 min additional queue wait.'
+                    }
+                  ].map((tpl, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setBroadcastReason(tpl.reason);
+                        setBroadcastDelayMinutes(tpl.delay);
+                        setBroadcastSeverity(tpl.sev);
+                        setBroadcastMessage(tpl.msg);
+                      }}
+                      className="p-2.5 rounded-xl border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/20 text-left transition-all cursor-pointer text-xs font-bold text-[#283B3D]"
+                    >
+                      <div>{tpl.label}</div>
+                      <div className="text-[10px] text-slate-500 font-semibold mt-0.5">+{tpl.delay}m • {tpl.sev}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={handlePublishBroadcast} className="space-y-4">
+                {/* Broadcast Reason & Severity */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#283B3D]">Broadcast Reason:</label>
+                    <input
+                      type="text"
+                      value={broadcastReason}
+                      onChange={(e) => setBroadcastReason(e.target.value)}
+                      placeholder="e.g. Power Outage, Urgent Sanitization"
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#283B3D]">Alert Severity:</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[
+                        { id: 'WARNING', label: 'Warning', bg: 'bg-amber-500 text-white', border: 'border-amber-300' },
+                        { id: 'CRITICAL', label: 'Critical', bg: 'bg-rose-600 text-white', border: 'border-rose-300' },
+                        { id: 'INFO', label: 'Info', bg: 'bg-teal-600 text-white', border: 'border-teal-300' }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setBroadcastSeverity(item.id)}
+                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                            broadcastSeverity === item.id ? `${item.bg} shadow-xs font-black` : 'bg-white text-slate-600 border-[#DCE9E3]'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delay Adder Stepper */}
+                <div className="space-y-1.5 p-3.5 rounded-2xl bg-[#F3F1E9]/60 border border-[#DCE9E3]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-[#283B3D]">Queue Delay Offset:</span>
+                      <p className="text-[10px] text-slate-500 font-semibold">
+                        Added dynamically to customer wait times on pass screens
+                      </p>
+                    </div>
+                    <span className="text-sm font-black font-mono text-[#176B65] bg-white px-3 py-1 rounded-lg border border-[#DCE9E3]">
+                      +{broadcastDelayMinutes} min
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {[0, 10, 15, 20, 30].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setBroadcastDelayMinutes(mins)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                          broadcastDelayMinutes === mins
+                            ? 'bg-[#176B65] text-white border-[#176B65]'
+                            : 'bg-white hover:bg-slate-100 text-[#283B3D] border-[#DCE9E3]'
+                        }`}
+                      >
+                        {mins === 0 ? '0m' : `+${mins}m`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Broadcast Message Textarea */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#283B3D]">Custom Notice Message:</label>
+                    <span className="text-[10px] text-slate-400 font-semibold">{broadcastMessage.length}/180 chars</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    maxLength={180}
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    placeholder="Write a clear, reassuring message for waiting customers..."
+                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl p-3 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65] leading-relaxed"
+                    required
+                  />
+                </div>
+
+                {/* Live Customer Preview */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                    📱 Live Customer Pass Preview:
+                  </span>
+                  <div className={`p-3.5 rounded-2xl border text-xs shadow-xs ${
+                    broadcastSeverity === 'CRITICAL'
+                      ? 'bg-rose-50 border-rose-300 text-rose-950'
+                      : broadcastSeverity === 'INFO'
+                      ? 'bg-teal-50 border-teal-300 text-teal-950'
+                      : 'bg-amber-50 border-amber-300 text-amber-950'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Radio className="w-3.5 h-3.5 animate-pulse text-amber-600" />
+                      <span className="font-black text-[10px] uppercase tracking-wider bg-black/10 px-1.5 py-0.5 rounded">
+                        Emergency Notice • {broadcastReason || 'Flash Delay'}
+                      </span>
+                      {broadcastDelayMinutes > 0 && (
+                        <span className="text-[10px] font-mono font-bold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded ml-auto">
+                          +{broadcastDelayMinutes}m delay
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-semibold text-xs leading-relaxed">
+                      {broadcastMessage || 'Emergency delay notice message...'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Broadcast Flash Alert (Push to All Passes)</span>
+                  </button>
+
+                  {activeBroadcast && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleClearBroadcast();
+                        setBroadcastModalOpen(false);
+                      }}
+                      className="w-full py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer border border-rose-200 text-center"
+                    >
+                      Clear Existing Broadcast Alert
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastModalOpen(false)}
+                    className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

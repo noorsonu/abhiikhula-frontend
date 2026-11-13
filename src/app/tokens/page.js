@@ -32,6 +32,28 @@ const QUICK_DELAY_REASONS = [
   'Coming from office / metro'
 ];
 
+// Read active emergency broadcast for shop (BRD FR-708 / FR-405)
+const getActiveShopBroadcast = (shopSlug, shopName) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const slug = (shopSlug || (shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).toLowerCase();
+    const saved = localStorage.getItem(`ak_shop_broadcast_${slug}`);
+    if (saved) {
+      const obj = JSON.parse(saved);
+      if (obj && obj.active) {
+        if (!obj.expiresAt || new Date(obj.expiresAt).getTime() > Date.now()) {
+          return obj;
+        } else {
+          localStorage.removeItem(`ak_shop_broadcast_${slug}`);
+        }
+      }
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
 const REVIEW_TAGS = [
   { id: 'ON_TIME', label: '⏱️ On-Time Turn' },
   { id: 'BEHAVIOUR', label: '🤝 Polite Staff' },
@@ -1185,6 +1207,9 @@ export default function MyTokensPage() {
                   const isServing = token.status === 'CALLED' || token.status === 'SERVING' || (token.peopleAhead === 0 && token.currentServing === token.displayToken);
                   const isSkipped = token.status === 'SKIPPED' || token.status === 'NO_SHOW';
                   const hasDelay = !!token.delayMinutes;
+                  const shopBroadcast = getActiveShopBroadcast(token.shopSlug, token.shopName);
+                  const extraDelay = shopBroadcast?.delayMinutes || 0;
+                  const finalWaitMin = Math.max(0, (token.estimatedWaitMin ?? 0) + extraDelay);
 
                   return (
                     <motion.div
@@ -1389,6 +1414,36 @@ export default function MyTokensPage() {
                           </div>
                         )}
 
+                        {/* Emergency Flash Queue Broadcast Notice (BRD FR-708 / FR-405) */}
+                        {shopBroadcast && (
+                          <div className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 shadow-xs ${
+                            shopBroadcast.severity === 'CRITICAL'
+                              ? 'bg-rose-50 border-rose-300 text-rose-950'
+                              : shopBroadcast.severity === 'INFO'
+                              ? 'bg-teal-50 border-teal-300 text-teal-950'
+                              : 'bg-amber-50 border-amber-300 text-amber-950'
+                          }`}>
+                            <Radio className={`w-4 h-4 shrink-0 mt-0.5 animate-pulse ${
+                              shopBroadcast.severity === 'CRITICAL' ? 'text-rose-600' : shopBroadcast.severity === 'INFO' ? 'text-teal-600' : 'text-amber-600'
+                            }`} />
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-black uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-black/10">
+                                  ⚠️ Emergency Notice: {shopBroadcast.reason}
+                                </span>
+                                {shopBroadcast.delayMinutes > 0 && (
+                                  <span className="font-extrabold text-[11px] text-amber-900 bg-amber-200 px-2 py-0.5 rounded-md">
+                                    +{shopBroadcast.delayMinutes}m delay added
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-semibold text-xs leading-relaxed">
+                                {shopBroadcast.message}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Progress Metrics */}
                         <div className="bg-[#F3F1E9] rounded-2xl p-4 grid grid-cols-2 gap-3 text-center border border-[#DCE9E3]">
                           <div className="border-r border-[#DCE9E3]">
@@ -1404,8 +1459,13 @@ export default function MyTokensPage() {
                               Est. Wait
                             </span>
                             <span className="font-token text-2xl font-bold text-[#176B65] mt-0.5 block">
-                              {token.estimatedWaitMin ?? 0} <span className="text-xs font-semibold">min</span>
+                              {finalWaitMin} <span className="text-xs font-semibold">min</span>
                             </span>
+                            {extraDelay > 0 && (
+                              <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded mt-0.5">
+                                +{extraDelay}m emergency delay
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

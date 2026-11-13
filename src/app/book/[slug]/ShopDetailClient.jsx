@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
-  Navigation, ArrowUpRight, Share2, Star, Heart
+  Navigation, ArrowUpRight, Share2, Star, Heart, Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -94,6 +94,30 @@ export default function ShopDetailClient() {
   const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
   const [ratingSummary, setRatingSummary] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [shopBroadcast, setShopBroadcast] = useState(null);
+
+  // BRD FR-708 / FR-405: Check for Emergency Flash Queue Broadcast Notice
+  useEffect(() => {
+    const checkBroadcast = () => {
+      if (typeof window === 'undefined' || !slug) return;
+      try {
+        const saved = localStorage.getItem(`ak_shop_broadcast_${slug.toLowerCase()}`);
+        if (saved) {
+          const obj = JSON.parse(saved);
+          if (obj && obj.active && (!obj.expiresAt || new Date(obj.expiresAt).getTime() > Date.now())) {
+            setShopBroadcast(obj);
+            return;
+          }
+        }
+        setShopBroadcast(null);
+      } catch (e) {
+        setShopBroadcast(null);
+      }
+    };
+    checkBroadcast();
+    window.addEventListener('storage', checkBroadcast);
+    return () => window.removeEventListener('storage', checkBroadcast);
+  }, [slug]);
 
   useEffect(() => {
     if (slug) {
@@ -581,8 +605,15 @@ export default function ShopDetailClient() {
                   <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 block">Wait Time</span>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Clock className="w-4 h-4 text-[#176B65]" />
-                    <span className="font-token font-bold text-sm text-[#283B3D]">~{shop.estimatedWaitMin || 15} mins</span>
+                    <span className="font-token font-bold text-sm text-[#283B3D]">
+                      ~{(shop.estimatedWaitMin || 15) + (shopBroadcast?.delayMinutes || 0)} mins
+                    </span>
                   </div>
+                  {shopBroadcast?.delayMinutes > 0 && (
+                    <span className="text-[9px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded mt-1 inline-block">
+                      +{shopBroadcast.delayMinutes}m delay alert
+                    </span>
+                  )}
                 </div>
 
                 <div className="bg-[#F3F1E9] p-3 rounded-2xl">
@@ -728,6 +759,39 @@ export default function ShopDetailClient() {
                   Select people count, specify optional service requirements, and verify your phone.
                 </p>
               </div>
+
+              {/* Emergency Flash Queue Broadcast Alert Banner (BRD FR-708 / FR-405) */}
+              {shopBroadcast && (
+                <div className={`p-4 rounded-2xl border text-xs flex items-start gap-3 shadow-xs ${
+                  shopBroadcast.severity === 'CRITICAL'
+                    ? 'bg-rose-50 border-rose-300 text-rose-950'
+                    : shopBroadcast.severity === 'INFO'
+                    ? 'bg-teal-50 border-teal-300 text-teal-950'
+                    : 'bg-amber-50 border-amber-300 text-amber-950'
+                }`}>
+                  <Radio className={`w-5 h-5 shrink-0 mt-0.5 animate-pulse ${
+                    shopBroadcast.severity === 'CRITICAL' ? 'text-rose-600' : shopBroadcast.severity === 'INFO' ? 'text-teal-600' : 'text-amber-600'
+                  }`} />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-black uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-black/10">
+                        ⚡ Live Emergency Notice: {shopBroadcast.reason}
+                      </span>
+                      {shopBroadcast.delayMinutes > 0 && (
+                        <span className="font-extrabold text-[11px] text-amber-900 bg-amber-200 px-2 py-0.5 rounded-md">
+                          +{shopBroadcast.delayMinutes} min temporary delay
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-semibold text-xs leading-relaxed">
+                      {shopBroadcast.message}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      ℹ️ You may still take a token; the estimated counter turn time reflects this operational delay.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleInitiateBooking} className="space-y-6">
             
