@@ -119,6 +119,27 @@ export default function ShopDetailClient() {
     return () => window.removeEventListener('storage', checkBroadcast);
   }, [slug]);
 
+  // BRD FR-604 / FR-1201: Load Merchant's customized Service Rate Card
+  const [customServices, setCustomServices] = useState([]);
+  useEffect(() => {
+    const loadServices = () => {
+      if (typeof window === 'undefined' || !slug) return;
+      try {
+        const saved = localStorage.getItem(`ak_shop_services_${slug.toLowerCase()}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCustomServices(parsed.filter(s => s.active !== false));
+            return;
+          }
+        }
+      } catch (e) {}
+    };
+    loadServices();
+    window.addEventListener('storage', loadServices);
+    return () => window.removeEventListener('storage', loadServices);
+  }, [slug]);
+
   useEffect(() => {
     if (slug) {
       const favs = getFavoriteShopSlugs();
@@ -212,7 +233,9 @@ export default function ShopDetailClient() {
       });
   }, [shop?.id]);
 
-  const serviceSuggestions = getCategoryServices(shop.categoryName);
+  const serviceSuggestions = customServices.length > 0 
+    ? customServices.map(s => s.price > 0 ? `${s.name} (₹${s.price})` : s.name)
+    : getCategoryServices(shop.categoryName);
 
   // Initiate Booking
   const handleInitiateBooking = async (e) => {

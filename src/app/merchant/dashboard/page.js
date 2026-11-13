@@ -12,7 +12,7 @@ import {
   Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
   Moon, RotateCcw, Archive, ShieldAlert,
   Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
-  Radio, Siren, Send, Copy, ExternalLink
+  Radio, Siren, Send, Copy, ExternalLink, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -129,6 +129,102 @@ export default function MerchantDashboardPage() {
   const [broadcastMessage, setBroadcastMessage] = useState('Market power cut in progress. Generator running, queue moving with ~15 min delay.');
   const [broadcastSeverity, setBroadcastSeverity] = useState('WARNING'); // 'WARNING' | 'CRITICAL' | 'INFO'
   const [broadcastDelayMinutes, setBroadcastDelayMinutes] = useState(15);
+
+  // BRD FR-604 / FR-1201: Universal Service Menu & Rate Card State
+  const [servicesModalOpen, setServicesModalOpen] = useState(false);
+  const [shopServicesList, setShopServicesList] = useState([]);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServicePrice, setNewServicePrice] = useState('');
+  const [newServiceDuration, setNewServiceDuration] = useState('15');
+  const [serviceFeedbackMsg, setServiceFeedbackMsg] = useState('');
+
+  // Universal Industry Category Default Catalogs (BRD FR-604 / FR-1201)
+  const CATEGORY_DEFAULT_SERVICES = {
+    PHARMACY: [
+      { id: 'srv-rx', name: 'Prescription Medicines Dispensing', price: 350, duration: 8, active: true },
+      { id: 'srv-otc', name: 'OTC Medicines & First Aid Kit', price: 120, duration: 5, active: true },
+      { id: 'srv-baby', name: 'Baby Care & Diapers Pack', price: 450, duration: 6, active: true },
+      { id: 'srv-supp', name: 'Health Supplements & Multivitamins', price: 600, duration: 8, active: true },
+      { id: 'srv-surg', name: 'Surgical Disposables & Syringes', price: 180, duration: 5, active: true },
+      { id: 'srv-diag', name: 'Blood Pressure & Sugar Strip Test', price: 80, duration: 5, active: true }
+    ],
+    CLINIC: [
+      { id: 'srv-opd', name: 'General Physician OPD Consultation', price: 500, duration: 15, active: true },
+      { id: 'srv-dent-chk', name: 'Dental Checkup & Scaling', price: 400, duration: 20, active: true },
+      { id: 'srv-follow', name: 'Routine Follow-up Visit', price: 200, duration: 10, active: true },
+      { id: 'srv-cavity', name: 'Cavity Filling & Tooth Care', price: 800, duration: 30, active: true },
+      { id: 'srv-wound', name: 'Wound Dressing & Injection', price: 150, duration: 10, active: true },
+      { id: 'srv-vacc', name: 'Child Immunization & Wellness', price: 300, duration: 15, active: true }
+    ],
+    DIAGNOSTIC: [
+      { id: 'srv-cbc', name: 'Complete Blood Count (CBC)', price: 350, duration: 10, active: true },
+      { id: 'srv-sugar', name: 'Fasting Sugar & HbA1c Panel', price: 400, duration: 10, active: true },
+      { id: 'srv-thyroid', name: 'Thyroid Profile (T3, T4, TSH)', price: 550, duration: 12, active: true },
+      { id: 'srv-lft', name: 'Lipid & Liver Function Test (LFT)', price: 750, duration: 15, active: true },
+      { id: 'srv-urine', name: 'Urine Routine & Microscopic', price: 150, duration: 8, active: true },
+      { id: 'srv-report', name: 'Report Collection & Doctor Brief', price: 0, duration: 5, active: true }
+    ],
+    SALON: [
+      { id: 'srv-haircut', name: 'Haircut & Styling', price: 150, duration: 20, active: true },
+      { id: 'srv-beard', name: 'Beard Trim & Clean Shave', price: 100, duration: 15, active: true },
+      { id: 'srv-detan', name: 'De-Tan Skin Glow & Cleanup', price: 350, duration: 25, active: true },
+      { id: 'srv-spa', name: 'Anti-Dandruff / Hair Spa', price: 450, duration: 30, active: true },
+      { id: 'srv-massage', name: 'Head & Shoulder Oil Massage', price: 200, duration: 15, active: true },
+      { id: 'srv-facial', name: 'Herbal Glow Facial', price: 600, duration: 40, active: true }
+    ],
+    FOOD: [
+      { id: 'srv-table', name: 'Dine-in Table Booking', price: 0, duration: 35, active: true },
+      { id: 'srv-takeaway', name: 'Takeaway Food & Parcel', price: 250, duration: 15, active: true },
+      { id: 'srv-thali', name: 'Executive Special Lunch Thali', price: 220, duration: 20, active: true },
+      { id: 'srv-chaat', name: 'Evening Snacks & Hot Chaat', price: 120, duration: 12, active: true },
+      { id: 'srv-sweets', name: 'Fresh Sweets Box (1kg/500g)', price: 380, duration: 10, active: true }
+    ],
+    AUTO: [
+      { id: 'srv-oil', name: 'Engine Oil Change & Filter', price: 350, duration: 20, active: true },
+      { id: 'srv-service', name: 'Periodic Bike Maintenance & Wash', price: 650, duration: 45, active: true },
+      { id: 'srv-brake', name: 'Disc Brake & Chain Tune-up', price: 200, duration: 20, active: true },
+      { id: 'srv-tyre', name: 'Tubeless Puncture & Nitrogen Check', price: 80, duration: 10, active: true },
+      { id: 'srv-battery', name: 'Battery Health & Electrical Diagnosis', price: 150, duration: 15, active: true }
+    ],
+    RETAIL: [
+      { id: 'srv-ration', name: 'Monthly Ration Packing List', price: 1500, duration: 25, active: true },
+      { id: 'srv-express', name: 'Quick Grocery Checkout Pass', price: 150, duration: 10, active: true },
+      { id: 'srv-dairy', name: 'Daily Fresh Dairy & Bread Pack', price: 100, duration: 5, active: true },
+      { id: 'srv-print', name: 'Document Printing & Photocopy', price: 50, duration: 5, active: true }
+    ]
+  };
+
+  const detectCategoryKey = (shop) => {
+    const cat = ((shop?.categoryName || '') + ' ' + (shop?.name || '') + ' ' + (shop?.slug || '')).toLowerCase();
+    if (cat.includes('pharmacy') || cat.includes('medical') || cat.includes('chemist') || cat.includes('medicine')) return 'PHARMACY';
+    if (cat.includes('clinic') || cat.includes('doctor') || cat.includes('dental') || cat.includes('dentist') || cat.includes('hospital')) return 'CLINIC';
+    if (cat.includes('diagnostic') || cat.includes('pathology') || cat.includes('lab') || cat.includes('blood') || cat.includes('scan')) return 'DIAGNOSTIC';
+    if (cat.includes('salon') || cat.includes('barber') || cat.includes('parlour') || cat.includes('spa') || cat.includes('grooming')) return 'SALON';
+    if (cat.includes('food') || cat.includes('restaurant') || cat.includes('cafe') || cat.includes('chaat') || cat.includes('sweets') || cat.includes('snack')) return 'FOOD';
+    if (cat.includes('auto') || cat.includes('bike') || cat.includes('garage') || cat.includes('puncture') || cat.includes('motor')) return 'AUTO';
+    return 'RETAIL';
+  };
+
+  const getServicesStorageKey = (shop) => `ak_shop_services_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopServices = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getServicesStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+
+    const catKey = detectCategoryKey(shop);
+    const defaults = CATEGORY_DEFAULT_SERVICES[catKey] || CATEGORY_DEFAULT_SERVICES.SALON;
+    try {
+      localStorage.setItem(key, JSON.stringify(defaults));
+    } catch (e) {}
+    return defaults;
+  };
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -889,6 +985,10 @@ export default function MerchantDashboardPage() {
           const bcast = loadShopBroadcast(parsed);
           setActiveBroadcast(bcast);
 
+          // Load Category Services & Rate Card (BRD FR-604 / FR-1201)
+          const servs = loadShopServices(parsed);
+          setShopServicesList(servs);
+
           // Load Daily Token Cap (BRD FR-314)
           try {
             const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
@@ -949,6 +1049,8 @@ export default function MerchantDashboardPage() {
         syncCustomerQueueForShop(activeShop);
         const bcast = loadShopBroadcast(activeShop);
         setActiveBroadcast(bcast);
+        const servs = loadShopServices(activeShop);
+        setShopServicesList(servs);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -1437,6 +1539,68 @@ export default function MerchantDashboardPage() {
     }
     setActiveBroadcast(null);
     setAnnouncementMsg('✅ Flash broadcast cleared. Customer wait times restored to standard pace.');
+    playChime();
+  };
+
+  // BRD FR-604 / FR-1201: Service Menu & Rate Card Handlers
+  const saveServicesList = (updated) => {
+    setShopServicesList(updated);
+    if (activeShop) {
+      try {
+        localStorage.setItem(getServicesStorageKey(activeShop), JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+  };
+
+  const handleAddService = (e) => {
+    if (e) e.preventDefault();
+    if (!newServiceName.trim()) return;
+    const priceNum = Math.max(0, parseInt(newServicePrice, 10) || 0);
+    const durNum = Math.max(1, parseInt(newServiceDuration, 10) || 15);
+
+    const newObj = {
+      id: 'srv-custom-' + Date.now(),
+      name: newServiceName.trim(),
+      price: priceNum,
+      duration: durNum,
+      active: true
+    };
+
+    const nextList = [...shopServicesList, newObj];
+    saveServicesList(nextList);
+    setNewServiceName('');
+    setNewServicePrice('');
+    setNewServiceDuration('15');
+    setServiceFeedbackMsg(`✅ Service "${newObj.name}" added to rate card!`);
+    setTimeout(() => setServiceFeedbackMsg(''), 3000);
+    playChime();
+  };
+
+  const handleUpdateServicePrice = (id, newPrice) => {
+    const val = Math.max(0, parseInt(newPrice, 10) || 0);
+    const nextList = shopServicesList.map(s => s.id === id ? { ...s, price: val } : s);
+    saveServicesList(nextList);
+  };
+
+  const handleToggleService = (id) => {
+    const nextList = shopServicesList.map(s => s.id === id ? { ...s, active: !s.active } : s);
+    saveServicesList(nextList);
+  };
+
+  const handleDeleteService = (id) => {
+    const nextList = shopServicesList.filter(s => s.id !== id);
+    saveServicesList(nextList);
+    setServiceFeedbackMsg('🗑️ Service removed from rate card.');
+    setTimeout(() => setServiceFeedbackMsg(''), 3000);
+  };
+
+  const handleResetServicesToCategory = () => {
+    const catKey = detectCategoryKey(activeShop);
+    const defaults = CATEGORY_DEFAULT_SERVICES[catKey] || CATEGORY_DEFAULT_SERVICES.SALON;
+    saveServicesList(defaults);
+    setServiceFeedbackMsg(`🔄 Rate card reset to ${catKey} market defaults!`);
+    setTimeout(() => setServiceFeedbackMsg(''), 3000);
     playChime();
   };
 
@@ -2031,6 +2195,18 @@ export default function MerchantDashboardPage() {
             <Settings className="w-4 h-4 text-[#176B65]" />
             <span className="hidden sm:inline">Shop Profile & Timings</span>
             <span className="sm:hidden">Settings</span>
+          </button>
+
+          {/* Universal Service Menu & Rate Card Button (BRD FR-604 / FR-1201) */}
+          <button
+            type="button"
+            onClick={() => setServicesModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Manage Category Rate Card, Prices and Services (FR-604)"
+          >
+            <Receipt className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">Rate Card & Menu</span>
+            <span className="sm:hidden">Rate Card</span>
           </button>
 
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
@@ -4453,6 +4629,27 @@ export default function MerchantDashboardPage() {
                       onChange={(e) => setWalkinService(e.target.value)}
                       className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                     />
+
+                    {/* Quick Service Selection Chips from Shop Rate Card */}
+                    {shopServicesList.filter(s => s.active).length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                        <span className="text-[10px] text-slate-400 font-bold">Rate Card:</span>
+                        {shopServicesList.filter(s => s.active).slice(0, 6).map((srv) => (
+                          <button
+                            key={srv.id}
+                            type="button"
+                            onClick={() => setWalkinService(srv.name)}
+                            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-colors cursor-pointer ${
+                              walkinService === srv.name
+                                ? 'bg-[#176B65] text-white border-[#176B65]'
+                                : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
+                            }`}
+                          >
+                            {srv.name} {srv.price > 0 ? `(₹${srv.price})` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4920,26 +5117,48 @@ export default function MerchantDashboardPage() {
                     className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
                   
-                  {/* Quick Preset Service Chips */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] text-slate-400 font-bold mr-1">Quick Add:</span>
-                    {['+ Haircut', '+ Beard Shave', '+ Facial & Pack', '+ Head Massage', '+ Medicine / OPD', '+ Wash & Dry'].map((chip) => (
+                  {/* Dynamic Rate Card Service Chips with 1-Tap Auto-Amount Calculation */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 font-bold">1-Tap Services (Auto-calculates total amount):</span>
                       <button
-                        key={chip}
                         type="button"
-                        onClick={() => {
-                          const tag = chip.replace('+ ', '');
-                          if (!billServices) {
-                            setBillServices(tag);
-                          } else if (!billServices.includes(tag)) {
-                            setBillServices(`${billServices} + ${tag}`);
-                          }
-                        }}
-                        className="px-2 py-0.5 rounded-lg bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/50 text-[11px] font-bold text-[#283B3D] transition-colors cursor-pointer"
+                        onClick={() => setServicesModalOpen(true)}
+                        className="text-[10px] text-[#176B65] hover:underline font-bold cursor-pointer"
                       >
-                        {chip}
+                        Edit Rate Card
                       </button>
-                    ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {shopServicesList.filter(s => s.active).map((srv) => (
+                        <button
+                          key={srv.id}
+                          type="button"
+                          onClick={() => {
+                            if (!billServices) {
+                              setBillServices(srv.name);
+                            } else if (!billServices.includes(srv.name)) {
+                              setBillServices(`${billServices} + ${srv.name}`);
+                            }
+                            // Auto-add price to total bill amount
+                            if (srv.price > 0) {
+                              setBillAmount(prev => {
+                                const current = parseInt(prev, 10) || 0;
+                                return String(current + srv.price);
+                              });
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                        >
+                          <span>+ {srv.name}</span>
+                          {srv.price > 0 && (
+                            <span className="text-[10px] font-black text-[#176B65] bg-[#DCE9E3]/70 px-1.5 py-0.2 rounded-md">
+                              ₹{srv.price}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -6292,6 +6511,240 @@ export default function MerchantDashboardPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 11: UNIVERSAL SERVICE MENU & RATE CARD (BRD FR-604) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {servicesModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setServicesModalOpen(false)} 
+              className="fixed inset-0"
+            />
+
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#DCE9E3] z-10 overflow-hidden max-h-[92vh] flex flex-col"
+            >
+              {/* Modal Top Bar */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] px-6 py-4 bg-[#F3F1E9]/60 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#176B65] text-white flex items-center justify-center shadow-xs">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Service Menu & Rate Card</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Configure custom services, prices & durations for {activeShop?.name || 'Your Business'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setServicesModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white border border-[#DCE9E3] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Feedback Toast Banner */}
+              {serviceFeedbackMsg && (
+                <div className="px-6 py-2.5 bg-emerald-50 text-emerald-800 text-xs font-bold border-b border-emerald-200 flex items-center justify-between">
+                  <span>{serviceFeedbackMsg}</span>
+                  <button onClick={() => setServiceFeedbackMsg('')} className="text-emerald-600 hover:text-emerald-900">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Modal Body */}
+              <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
+                
+                {/* Category Identity Banner */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#DCE9E3]/70 to-[#F3F1E9] border border-[#176B65]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-md">
+                        {detectCategoryKey(activeShop)} RATE CARD
+                      </span>
+                      <span className="text-xs font-bold text-[#283B3D]">
+                        {shopServicesList.filter(s => s.active).length} Active Services Configured
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
+                      Services and rates defined here are used for 1-tap billing at the counter and customer passes.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleResetServicesToCategory}
+                    className="px-3.5 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#176B65] transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95 flex items-center gap-1.5"
+                    title="Load standard market default services for this industry category"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset to Defaults</span>
+                  </button>
+                </div>
+
+                {/* Add New Custom Service Form */}
+                <form onSubmit={handleAddService} className="p-4 rounded-2xl bg-[#F3F1E9]/60 border border-[#DCE9E3] space-y-3">
+                  <span className="text-xs font-black text-[#283B3D] uppercase tracking-wide block">
+                    ➕ Add New Service / Item
+                  </span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                    <div className="sm:col-span-6">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Service / Item Name:</label>
+                      <input
+                        type="text"
+                        value={newServiceName}
+                        onChange={(e) => setNewServiceName(e.target.value)}
+                        placeholder="e.g. Ultrasonic Scaling, CBC Blood Test, Beard Spa"
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                        required
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Price (₹):</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newServicePrice}
+                          onChange={(e) => setNewServicePrice(e.target.value)}
+                          placeholder="250"
+                          className="w-full bg-white border border-[#DCE9E3] rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Duration (Min):</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="240"
+                        value={newServiceDuration}
+                        onChange={(e) => setNewServiceDuration(e.target.value)}
+                        placeholder="15"
+                        className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Save Service to Rate Card</span>
+                  </button>
+                </form>
+
+                {/* Services List Table */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#283B3D] px-1">
+                    <span>Active Services & Items ({shopServicesList.length}):</span>
+                    <span className="text-[11px] text-slate-400 font-semibold">Prices can be edited directly below</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {shopServicesList.map((srv, idx) => (
+                      <div 
+                        key={srv.id || idx}
+                        className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          srv.active 
+                            ? 'bg-white border-[#DCE9E3] hover:border-[#176B65]' 
+                            : 'bg-slate-50/70 border-slate-200 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-lg bg-[#F3F1E9] text-[10px] font-mono font-bold text-slate-500 flex items-center justify-center shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <div>
+                            <span className="font-bold text-xs text-[#283B3D] block">
+                              {srv.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold">
+                              ⏱️ ~{srv.duration || 15} mins duration
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0 justify-end">
+                          {/* Editable Price Tag */}
+                          <div className="flex items-center bg-[#F3F1E9] border border-[#DCE9E3] rounded-xl px-2.5 py-1">
+                            <span className="text-xs font-black text-[#176B65] mr-1">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={srv.price}
+                              onChange={(e) => handleUpdateServicePrice(srv.id, e.target.value)}
+                              className="w-16 bg-transparent text-xs font-black text-[#283B3D] focus:outline-none"
+                              title="Click to edit price"
+                            />
+                          </div>
+
+                          {/* Toggle Active Switch */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleService(srv.id)}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${
+                              srv.active
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}
+                          >
+                            {srv.active ? 'Active' : 'Disabled'}
+                          </button>
+
+                          {/* Delete Action */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteService(srv.id)}
+                            className="w-7 h-7 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Delete this service"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="border-t border-[#DCE9E3] px-6 py-3.5 bg-[#F3F1E9]/40 flex items-center justify-between shrink-0">
+                <span className="text-[11px] text-slate-500 font-semibold">
+                  Changes save automatically and reflect across customer passes.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setServicesModalOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                >
+                  Done
+                </button>
+              </div>
+
             </motion.div>
           </div>
         )}
