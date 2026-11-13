@@ -41,10 +41,19 @@ export const queueApi = {
   joinQueue: (shopId, payload) => apiClient.post(`/api/shops/${shopId}/queue/tokens/join`, payload),
   getMyActiveTokens: () => apiClient.get('/api/queue/tokens/my'),
   getTokenById: (tokenId) => apiClient.get(`/api/tokens/${tokenId}`),
-  cancelToken: (tokenId, reason = 'Cancelled by customer') => 
+  cancelToken: (tokenId, reason = 'Cancelled by customer') =>
     apiClient.post(`/api/queue/tokens/${tokenId}/cancel`, { reason }),
-  checkIn: (tokenId, lat, lng) => 
-    apiClient.post(`/api/tokens/${tokenId}/checkin`, { latitude: lat, longitude: lng }),
+  reQueue: (tokenId) =>
+    apiClient.post(`/api/tokens/${tokenId}/requeue`),
+  checkIn: (tokenId, lat, lng) =>
+    apiClient.post(`/api/tokens/${tokenId}/checkin`, { lat, lng }),
+};
+
+// Review & Rating APIs (BRD Section 22, FR-1101, FR-1106)
+export const reviewApi = {
+  submitReview: (payload) => apiClient.post('/api/reviews', payload),
+  getShopReviews: (shopId) => apiClient.get(`/api/shops/${shopId}/reviews`),
+  reportAbuse: (reviewId, reason) => apiClient.post(`/api/reviews/${reviewId}/report-abuse`, { reason }),
 };
 
 // Categories & Zones

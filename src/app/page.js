@@ -2,39 +2,119 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   MapPin, Search, Clock, Users, ShieldCheck, Sparkles, Store, 
   ArrowUpRight, ArrowRight, Ticket, CheckCircle2, UserCheck, 
-  ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power, Play
+  ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power, Play, Compass, Heart, Coffee, XCircle,
+  Star, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS, MOCK_CATEGORIES } from '@/lib/mockData';
 import { shopApi } from '@/lib/api';
+import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import FreshUrbanLogo from '@/components/FreshUrbanLogo';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
+import ShopQuickViewModal from '@/components/ShopQuickViewModal';
+import CategoryShopDirectoryModal from '@/components/CategoryShopDirectoryModal';
+
+function resolveShopImage(shop) {
+  const name = (shop?.name || '').toLowerCase();
+  const cat = (shop?.categoryName || '').toLowerCase();
+  const slug = (shop?.slug || '').toLowerCase();
+
+  if (cat.includes('barber') || cat.includes('salon') || name.includes('barber') || slug.includes('barber') || slug.includes('salon')) {
+    return '/images/barber.jpg';
+  }
+  if (cat.includes('pharmacy') || cat.includes('medical') || name.includes('medical') || name.includes('pharmacy') || slug.includes('medical') || slug.includes('pharmacy')) {
+    return '/images/pharmacy.jpg';
+  }
+  if (cat.includes('doctor') || cat.includes('clinic') || cat.includes('dental') || name.includes('dental') || name.includes('doctor') || slug.includes('dental') || slug.includes('clinic')) {
+    return '/images/clinic.jpg';
+  }
+  if (cat.includes('food') || cat.includes('chaat') || cat.includes('restaurant') || name.includes('food') || name.includes('chaat') || slug.includes('food')) {
+    return '/images/food.jpg';
+  }
+  if (cat.includes('diagnostic') || cat.includes('lab') || cat.includes('pathology') || name.includes('pathology') || name.includes('lab') || slug.includes('lab') || slug.includes('pathology')) {
+    return '/images/diagnostic.jpg';
+  }
+  if (cat.includes('auto') || cat.includes('bike') || cat.includes('service') || name.includes('speedwheel') || slug.includes('auto') || slug.includes('speedwheel')) {
+    return '/images/auto.jpg';
+  }
+  return '/images/clinic.jpg';
+}
 
 export default function HomePage() {
-  const [shops, setShops] = useState(MOCK_SHOPS);
+  const router = useRouter();
+  const [isMerchantUser, setIsMerchantUser] = useState(false);
+
+  // If Shopkeeper is logged in, immediately redirect to Merchant Dashboard
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('ak_role');
+      const shop = localStorage.getItem('ak_active_merchant_shop');
+      if (role === 'MERCHANT' && shop) {
+        setIsMerchantUser(true);
+        router.replace('/merchant/dashboard');
+      }
+    }
+  }, [router]);
+
+  const [shops, setShops] = useState(() => MOCK_SHOPS.map(s => ({ ...s, imageUrl: resolveShopImage(s) })));
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [favoriteSlugs, setFavoriteSlugs] = useState([]);
+
+  // Shop Details & Category Directory Modals
+  const [selectedShopForModal, setSelectedShopForModal] = useState(null);
+  const [directoryModalOpen, setDirectoryModalOpen] = useState(false);
+  const [directoryCategory, setDirectoryCategory] = useState('all');
 
   // Live progress simulation for Section 4
   const [progressWidth, setProgressWidth] = useState(65);
   const [activeUserToken, setActiveUserToken] = useState(null);
 
+  // Sync Favorite Shops from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedStr = localStorage.getItem('ak_customer_tokens');
-      if (savedStr) {
-        try {
-          const list = JSON.parse(savedStr);
-          if (Array.isArray(list) && list.length > 0) {
-            setActiveUserToken(list[0]);
-          }
-        } catch (e) {}
+    setFavoriteSlugs(getFavoriteShopSlugs());
+    const onFavUpdate = () => setFavoriteSlugs(getFavoriteShopSlugs());
+    window.addEventListener('ak_favorites_updated', onFavUpdate);
+    return () => window.removeEventListener('ak_favorites_updated', onFavUpdate);
+  }, []);
+
+  const handleToggleFavorite = (slug) => {
+    toggleFavoriteShopSlug(slug);
+    setFavoriteSlugs(getFavoriteShopSlugs());
+  };
+
+  useEffect(() => {
+    const syncActiveToken = () => {
+      if (typeof window !== 'undefined') {
+        const currentPhone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
+        const savedStr = localStorage.getItem('ak_customer_tokens');
+        if (savedStr) {
+          try {
+            const list = JSON.parse(savedStr);
+            if (Array.isArray(list)) {
+              const filtered = list.filter(t => {
+                if (currentPhone) {
+                  return (t.customerPhone || '').replace(/\D/g, '').slice(-10) === currentPhone;
+                }
+                return !t.customerPhone || t.isGuest;
+              });
+              setActiveUserToken(filtered.length > 0 ? filtered[0] : null);
+              return;
+            }
+          } catch (e) {}
+        }
+        setActiveUserToken(null);
       }
-    }
+    };
+
+    syncActiveToken();
+    window.addEventListener('storage', syncActiveToken);
+    return () => window.removeEventListener('storage', syncActiveToken);
   }, []);
 
   useEffect(() => {
@@ -42,14 +122,26 @@ export default function HomePage() {
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
         if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          const merged = res.data.data.map((sh, idx) => ({
+          const liveList = res.data.data;
+          
+          // Map backend live shops with correct images based on category/slug
+          const liveWithImages = liveList.map(sh => ({
             ...sh,
-            imageUrl: MOCK_SHOPS[idx % MOCK_SHOPS.length]?.imageUrl || '/images/clinic.jpg'
+            imageUrl: resolveShopImage(sh)
           }));
-          setShops(merged);
+          
+          // Keep all categories populated by merging unrepresented categories from MOCK_SHOPS
+          const liveSlugs = new Set(liveWithImages.map(s => s.slug));
+          const remainingMock = MOCK_SHOPS.filter(m => !liveSlugs.has(m.slug)).map(m => ({
+            ...m,
+            imageUrl: resolveShopImage(m)
+          }));
+
+          setShops([...liveWithImages, ...remainingMock]);
         }
       } catch (e) {
-        // Fallback to MOCK_SHOPS
+        // Fallback to MOCK_SHOPS with resolveShopImage
+        setShops(MOCK_SHOPS.map(m => ({ ...m, imageUrl: resolveShopImage(m) })));
       }
     }
     fetchLiveShops();
@@ -65,38 +157,55 @@ export default function HomePage() {
     if (!matchesSearch) return false;
     if (!selectedCategory || selectedCategory === 'all') return true;
 
+    // Filter by Favorite / Saved Shops
+    if (selectedCategory === 'favorites') {
+      return favoriteSlugs.includes(shop.slug);
+    }
+
     const catKey = selectedCategory.toLowerCase();
     const shopCat = (shop.categoryName || '').toLowerCase();
+    const shopName = (shop.name || '').toLowerCase();
 
     if (catKey === 'salon' || catKey.includes('salon') || catKey.includes('barber')) {
-      return shopCat.includes('salon') || shopCat.includes('barber');
+      return shopCat.includes('salon') || shopCat.includes('barber') || shopName.includes('barber');
     }
     if (catKey === 'pharmacy' || catKey.includes('pharmacy') || catKey.includes('medical')) {
-      return shopCat.includes('pharmacy') || shopCat.includes('medical');
+      return shopCat.includes('pharmacy') || shopCat.includes('medical') || shopName.includes('medical');
     }
     if (catKey === 'clinic' || catKey.includes('clinic') || catKey.includes('doctor')) {
-      return shopCat.includes('clinic') || shopCat.includes('doctor') || shopCat.includes('dental');
+      return shopCat.includes('clinic') || shopCat.includes('doctor') || shopCat.includes('dental') || shopName.includes('dental');
     }
     if (catKey === 'food' || catKey.includes('food') || catKey.includes('chaat') || catKey.includes('restaurant')) {
-      return shopCat.includes('food') || shopCat.includes('chaat') || shopCat.includes('restaurant');
+      return shopCat.includes('food') || shopCat.includes('chaat') || shopCat.includes('restaurant') || shopName.includes('food');
     }
     if (catKey === 'diagnostic' || catKey.includes('diagnostic') || catKey.includes('lab')) {
-      return shopCat.includes('diagnostic') || shopCat.includes('lab') || shopCat.includes('pathology');
+      return shopCat.includes('diagnostic') || shopCat.includes('lab') || shopCat.includes('pathology') || shopName.includes('lab');
     }
     if (catKey === 'auto' || catKey.includes('auto') || catKey.includes('bike')) {
-      return shopCat.includes('auto') || shopCat.includes('bike') || shopCat.includes('service');
+      return shopCat.includes('auto') || shopCat.includes('bike') || shopCat.includes('service') || shopName.includes('auto');
     }
-    return shopCat.includes(catKey);
+    return shopCat.includes(catKey) || shopName.includes(catKey);
   });
 
+  // If Shopkeeper is logged in, DO NOT render Customer Explore / Category views
+  if (isMerchantUser) {
+    return (
+      <div className="min-h-[75vh] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-[#176B65] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-bold text-[#283B3D]/70">Opening your Merchant Operations Dashboard...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-20 sm:space-y-28">
+    <div className="space-y-10 sm:space-y-14">
       
       {/* ========================================================= */}
       {/* SECTION 1: HERO SECTION                                   */}
       {/* ========================================================= */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 sm:pb-16 relative overflow-hidden">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
           
           {/* Left Side: Punchy Heading & CTAs */}
           <motion.div 
@@ -240,23 +349,6 @@ export default function HomePage() {
 
             </div>
 
-            {/* Small Floating Live Shop Card with Real Photo */}
-            <motion.div 
-              animate={{ y: [0, -10, 0], rotate: [-1, 2, -1] }}
-              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-              className="absolute -bottom-6 -left-6 sm:-left-10 bg-white rounded-2xl p-3 shadow-xl border border-[#DCE9E3] flex items-center gap-3"
-            >
-              <img 
-                src="/images/clinic.jpg" 
-                alt="Dr. Verma Dental" 
-                className="w-12 h-12 rounded-xl object-cover" 
-              />
-              <div className="text-left pr-2">
-                <span className="text-xs font-bold text-[#283B3D] block">Dr. Verma Dental</span>
-                <span className="text-[10px] font-bold text-[#176B65]">● Open (2 ahead)</span>
-              </div>
-            </motion.div>
-
             {/* Secondary Floating Pill */}
             <motion.div 
               animate={{ y: [0, 8, 0], rotate: [1, -2, 1] }}
@@ -275,12 +367,13 @@ export default function HomePage() {
           </motion.div>
 
         </div>
+
       </section>
 
       {/* ========================================================= */}
       {/* SECTION 2: HOW ABHIIKHULA WORKS                           */}
       {/* ========================================================= */}
-      <section id="how-it-works" className="bg-[#DCE9E3]/45 py-16 sm:py-24 border-y border-[#DCE9E3]">
+      <section id="how-it-works" className="bg-[#DCE9E3]/45 py-10 sm:py-14 border-y border-[#DCE9E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-2xl mx-auto space-y-3">
@@ -372,16 +465,29 @@ export default function HomePage() {
         
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#DCE9E3] pb-6">
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Neighborhood Directory</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore Nearby Shops</h2>
-            <p className="text-sm text-[#283B3D]/70 font-medium">Verified local pilot shops currently connected to live queue desks.</p>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Category Directory</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore by Category</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setDirectoryCategory('all');
+                  setDirectoryModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] bg-[#DCE9E3] hover:bg-[#cde0d7] px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>+ Browse Directory (List View)</span>
+              </button>
+            </div>
+            <p className="text-sm text-[#283B3D]/70 font-medium">Click on any category card below to see its shops list, customer reviews & photos, and take digital queue tokens.</p>
           </div>
 
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             <input
               type="text"
-              placeholder="Search by name, salon, clinic..."
+              placeholder="Search category (Medical, Salon, Clinic)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-xs"
@@ -391,124 +497,183 @@ export default function HomePage() {
 
         {/* Categories Bar */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
-          {categories.map((c) => {
-            const isSelected = (!selectedCategory && c.id === 'all') || selectedCategory === c.id || selectedCategory === c.name;
-            return (
-              <button
-                key={c.id || c.name}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (c.id === 'all') {
-                    setSelectedCategory(null);
-                  } else {
-                    setSelectedCategory(isSelected ? null : c.id);
-                  }
-                }}
-                className={`px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#176B65] text-white shadow-sm'
-                    : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
-                }`}
-              >
-                {c.name}
-              </button>
-            );
-          })}
+          {/* 1. All Categories (First Button) */}
+          <button
+            type="button"
+            onClick={() => {
+              setDirectoryCategory('all');
+              setDirectoryModalOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
+          >
+            <Store className="w-3.5 h-3.5 text-[#176B65]" />
+            <span>All Categories</span>
+          </button>
+
+          {/* 2. Favorites Filter Tab (Shows only the user's saved places) */}
+          <button
+            type="button"
+            onClick={() => {
+              setDirectoryCategory('favorites');
+              setDirectoryModalOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-rose-300 hover:bg-rose-50 hover:border-rose-400 shadow-2xs"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+            <span>Saved Places</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700">
+              {favoriteSlugs.length}
+            </span>
+          </button>
+
+          {/* 3. The 6 Category Buttons */}
+          {categories.slice(0, 6).map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                setDirectoryCategory(c.id);
+                setDirectoryModalOpen(true);
+              }}
+              className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
 
-        {/* Shop Cards Grid with Real Shop Photos */}
+        {/* Category Cards Grid (Strictly 6 Authentic Category Cards - No "All Places" card!) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredShops.map((shop) => {
-            const isOpen = shop.status === 'OPEN';
-            const isBusy = shop.status === 'BUSY';
-            const isPaused = shop.status === 'PAUSED';
+          {categories
+            .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+            .slice(0, 6)
+            .map((cat) => {
+              const matchingShops = shops.filter(shop => {
+                const catKey = cat.id.toLowerCase();
+                const shopCat = (shop.categoryName || '').toLowerCase();
+                if (catKey.includes('salon') || catKey.includes('barber')) return shopCat.includes('salon') || shopCat.includes('barber');
+                if (catKey.includes('pharmacy') || catKey.includes('medical')) return shopCat.includes('pharmacy') || shopCat.includes('medical');
+                if (catKey.includes('clinic') || catKey.includes('doctor')) return shopCat.includes('clinic') || shopCat.includes('doctor') || shopCat.includes('dental');
+                if (catKey.includes('food') || catKey.includes('chaat')) return shopCat.includes('food') || shopCat.includes('chaat');
+                if (catKey.includes('diagnostic') || catKey.includes('lab')) return shopCat.includes('diagnostic') || shopCat.includes('lab');
+                if (catKey.includes('auto') || catKey.includes('repair') || catKey.includes('bike')) return shopCat.includes('auto') || shopCat.includes('repair') || shopCat.includes('bike') || shopCat.includes('service');
+                return false;
+              });
 
-            return (
-              <motion.div
-                key={shop.id}
-                whileHover={{ y: -6 }}
-                transition={{ duration: 0.2 }}
-                className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between"
-              >
-                <div>
-                  {/* Shop Photo Header */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                    <img 
-                      src={shop.imageUrl || '/images/clinic.jpg'} 
-                      alt={shop.name} 
-                      className="w-full h-full object-cover" 
-                    />
-                    
-                    {/* Status Pill on Photo */}
-                    <span className={`absolute top-3 right-3 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm backdrop-blur-md ${
-                      isOpen 
-                        ? 'bg-emerald-600/90 text-white' 
-                        : isBusy 
-                        ? 'bg-amber-600/90 text-white' 
-                        : 'bg-rose-600/90 text-white'
-                    }`}>
-                      {isOpen ? '● Open' : isBusy ? '● Heavy Crowd' : isPaused ? '● Paused' : '● Closed'}
-                    </span>
+              // Strict guaranteed photo per category
+              const catPhoto = cat.id === 'salon' ? '/images/barber.jpg' :
+                               cat.id === 'pharmacy' ? '/images/pharmacy.jpg' :
+                               cat.id === 'clinic' ? '/images/clinic.jpg' :
+                               cat.id === 'food' ? '/images/food.jpg' :
+                               cat.id === 'diagnostic' ? '/images/diagnostic.jpg' :
+                               cat.id === 'auto' ? '/images/auto.jpg' :
+                               cat.imageUrl || '/images/clinic.jpg';
 
-                    <span className="absolute bottom-3 left-3 bg-[#283B3D]/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                      {shop.categoryName}
-                    </span>
-                  </div>
+              return (
+                <motion.div
+                  key={cat.id}
+                  whileHover={{ y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => {
+                    setDirectoryCategory(cat.id);
+                    setDirectoryModalOpen(true);
+                  }}
+                  className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer group border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
+                >
+                  <div>
+                    {/* Category Photo Header */}
+                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                      <img 
+                        src={catPhoto} 
+                        alt={cat.name} 
+                        className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"></div>
 
-                  {/* Content Body */}
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <h3 className="font-black text-lg text-[#283B3D] line-clamp-1">{shop.name}</h3>
-                      <p className="text-xs text-[#283B3D]/60 mt-1 line-clamp-1 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{shop.address}</span>
+                      {/* Top Badges */}
+                      <span className="absolute top-3 left-3 bg-[#176B65] text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                        {cat.name}
+                      </span>
+
+                      <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#283B3D] text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs">
+                        {matchingShops.length || cat.count || 2} Places Connected
+                      </span>
+
+                      {/* Bottom Category Name on Photo */}
+                      <div className="absolute bottom-3 left-4 right-4 text-white">
+                        <h3 className="text-2xl font-black drop-shadow-md">{cat.name}</h3>
+                      </div>
+                    </div>
+
+                    {/* Content Body */}
+                    <div className="p-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors">
+                          {cat.name}
+                        </h3>
+                        <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg">
+                          {matchingShops.length || cat.count || 2} Shops
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2">
+                        {cat.description}
                       </p>
-                    </div>
 
-                    {/* People Waiting & Wait Time */}
-                    <div className="bg-[#F3F1E9] rounded-2xl p-3 grid grid-cols-2 gap-2 text-center border border-[#DCE9E3]">
-                      <div className="border-r border-[#DCE9E3]">
-                        <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">People Waiting</span>
-                        <span className="font-token font-bold text-base text-[#283B3D] mt-0.5 block">{shop.waitingCount} in line</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-[#283B3D]/50 block">Wait Time</span>
-                        <span className="font-token font-bold text-base text-[#176B65] mt-0.5 block">~{shop.estimatedWaitMin} min</span>
+                      <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 text-[#283B3D]/80">
+                          <Clock className="w-3.5 h-3.5 text-[#176B65]" />
+                          <span className="font-semibold text-[11px]">Avg. Wait:</span>
+                          <span className="font-bold text-[#176B65] text-[11px]">{cat.avgWait || '~10-15 min'}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          Zero Physical Line
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-5 pt-0">
-                  <Link
-                    href={`/book/${shop.slug}`}
-                    className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                  >
-                    <Ticket className="w-4 h-4 text-[#DCE9E3]" />
-                    <span>Get Token</span>
-                  </Link>
-                </div>
-              </motion.div>
-            );
-          })}
+                  {/* Card Action Button */}
+                  <div className="p-5 pt-0">
+                    <button
+                      type="button"
+                      className="w-full py-3.5 rounded-2xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      <span>View {cat.name} Shops & Tokens</span>
+                      <ArrowRight className="w-4 h-4 text-[#F2A15A] group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+        </div>
 
-          {filteredShops.length === 0 && (
-            <div className="col-span-full py-16 text-center urban-card rounded-3xl p-8 space-y-3">
-              <Compass className="w-8 h-8 text-[#176B65] mx-auto" />
-              <h3 className="font-bold text-[#283B3D] text-base">No places found in this category</h3>
-              <p className="text-xs text-[#283B3D]/70 font-medium">
-                Try selecting "All Places" to see all available stores.
-              </p>
-              <button 
-                type="button"
-                onClick={() => { setSelectedCategory(null); setSearchQuery(''); }}
-                className="px-5 py-2.5 rounded-2xl bg-[#176B65] text-white font-bold text-xs hover:bg-[#125550] transition-colors cursor-pointer"
-              >
-                View All Places
-              </button>
+        {/* More Options / All Directory Banner */}
+        <div className="bg-white border border-[#DCE9E3] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xs">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-bold">
+              <Store className="w-3.5 h-3.5" />
+              <span>More Options & Full City Directory</span>
             </div>
-          )}
+            <h3 className="text-xl sm:text-2xl font-black text-[#283B3D]">
+              Looking for other shops or want to see all in a list?
+            </h3>
+            <p className="text-xs sm:text-sm text-[#283B3D]/70 font-medium max-w-2xl">
+              Explore the complete directory of verified salons, medical stores, diagnostic labs, doctor clinics, chaat points, and auto repairs in Lucknow with live queue status, reviews, and instant tokens.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setDirectoryCategory('all');
+              setDirectoryModalOpen(true);
+            }}
+            className="px-6 py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shrink-0 flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
+          >
+            <Store className="w-4 h-4 text-[#F2A15A]" />
+            <span>Open Full Directory (List View)</span>
+            <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
+          </button>
         </div>
 
       </section>
@@ -708,6 +873,30 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Shop Reviews & Full Photo Quick View Modal */}
+      <ShopQuickViewModal
+        shop={selectedShopForModal}
+        isOpen={Boolean(selectedShopForModal)}
+        onClose={() => setSelectedShopForModal(null)}
+        onBack={() => {
+          setSelectedShopForModal(null);
+          setDirectoryModalOpen(true);
+        }}
+      />
+
+      {/* Category-Wise Shop Directory Modal (List View with Reviews & Get Token) */}
+      <CategoryShopDirectoryModal
+        isOpen={directoryModalOpen && !selectedShopForModal}
+        onClose={() => setDirectoryModalOpen(false)}
+        shops={shops}
+        categories={categories}
+        initialCategory={directoryCategory}
+        onSelectShopForDetails={(shop) => {
+          setDirectoryModalOpen(false);
+          setSelectedShopForModal(shop);
+        }}
+      />
 
     </div>
   );
