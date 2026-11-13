@@ -12,10 +12,11 @@ import {
   Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
   Moon, RotateCcw, Archive, ShieldAlert,
   Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
-  Radio, Siren, Send
+  Radio, Siren, Send, Copy, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
+import QRCode from 'qrcode';
 
 export default function MerchantDashboardPage() {
   // Authorization Gate State
@@ -41,8 +42,17 @@ export default function MerchantDashboardPage() {
   const [tokenGenerationMode, setTokenGenerationMode] = useState('INDIVIDUAL'); // 'INDIVIDUAL' | 'GROUP'
   const [walkinService, setWalkinService] = useState('General Service');
 
-  // QR Poster Modal
+  // BRD FR-605 / FR-302: Printable Counter QR Standee Generator State
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [standeeQrUrl, setStandeeQrUrl] = useState('');
+  const [standeeFormat, setStandeeFormat] = useState('TABLETOP'); // 'TABLETOP' (A5) | 'POSTER' (A4) | 'STICKER' (Square)
+  const [standeeTheme, setStandeeTheme] = useState('EMERALD'); // 'EMERALD' | 'MIDNIGHT' | 'MINIMAL'
+  const [standeeTagline, setStandeeTagline] = useState('Line me khade mat raho, QR scan karo aur aaram se baithiye!');
+  const [showStandeeHours, setShowStandeeHours] = useState(true);
+  const [showStandeeWifi, setShowStandeeWifi] = useState(false);
+  const [standeeWifiName, setStandeeWifiName] = useState('');
+  const [standeeWifiPass, setStandeeWifiPass] = useState('');
+  const [standeeCopied, setStandeeCopied] = useState(false);
 
   // Sound chime notification toggle
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -952,6 +962,48 @@ export default function MerchantDashboardPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // BRD FR-605 / FR-302: Generate high-resolution QR Code when shop or theme changes
+  useEffect(() => {
+    if (!activeShop || typeof window === 'undefined') return;
+    const origin = window.location.origin || 'https://abhiikhula.in';
+    const bookingUrl = `${origin}/book/${(activeShop.slug || 'shop').toLowerCase()}`;
+    const darkColor = standeeTheme === 'MIDNIGHT' ? '#283B3D' : standeeTheme === 'EMERALD' ? '#176B65' : '#111827';
+
+    QRCode.toDataURL(bookingUrl, {
+      width: 600,
+      margin: 1,
+      color: {
+        dark: darkColor,
+        light: '#FFFFFF'
+      }
+    })
+      .then(url => setStandeeQrUrl(url))
+      .catch(err => console.error('Failed to generate QR', err));
+  }, [activeShop, standeeTheme, qrModalOpen]);
+
+  // Copy Booking Link to Clipboard
+  const handleCopyBookingLink = () => {
+    if (typeof window === 'undefined' || !activeShop) return;
+    const origin = window.location.origin || 'https://abhiikhula.in';
+    const bookingUrl = `${origin}/book/${(activeShop.slug || 'shop').toLowerCase()}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(bookingUrl);
+    }
+    setStandeeCopied(true);
+    setAnnouncementMsg('📋 Booking link copied to clipboard!');
+    setTimeout(() => setStandeeCopied(false), 3000);
+  };
+
+  // Download High-Resolution QR Code Image
+  const handleDownloadQrPng = () => {
+    if (!standeeQrUrl || !activeShop) return;
+    const link = document.createElement('a');
+    link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
+    link.href = standeeQrUrl;
+    link.click();
+    setAnnouncementMsg('📥 High-resolution QR code downloaded!');
+  };
 
   const formatTimer = (sec) => {
     const m = Math.floor(sec / 60);
@@ -1957,14 +2009,16 @@ export default function MerchantDashboardPage() {
             )}
           </button>
 
-          {/* QR Poster Button */}
+          {/* Counter QR Standee Generator Button (BRD FR-605 / FR-302) */}
           <button
             type="button"
             onClick={() => setQrModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Generate & print branded counter tabletop QR standee (FR-605)"
           >
             <QrCode className="w-4 h-4 text-[#176B65]" />
-            <span>Counter QR Pass</span>
+            <span className="hidden sm:inline">Counter QR Standee</span>
+            <span className="sm:hidden">QR Standee</span>
           </button>
 
           {/* Shop Profile & Timings Editor Button (BRD FR-602) */}
@@ -4423,11 +4477,11 @@ export default function MerchantDashboardPage() {
       </AnimatePresence>
 
       {/* ========================================================= */}
-      {/* MODAL 2: PRINTABLE COUNTER QR CODE POSTER                */}
+      {/* MODAL 2: PRINTABLE COUNTER QR CODE STANDEE (BRD FR-605)   */}
       {/* ========================================================= */}
       <AnimatePresence>
         {qrModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -4437,53 +4491,351 @@ export default function MerchantDashboardPage() {
             />
 
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-5 z-10 text-center"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-[#DCE9E3] z-10 overflow-hidden max-h-[92vh] flex flex-col"
             >
-              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
-                <span className="text-xs font-bold text-[#176B65] uppercase tracking-wider">Counter QR Pass</span>
-                <button onClick={() => setQrModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="bg-[#F3F1E9] rounded-2xl p-6 border-2 border-dashed border-[#176B65] space-y-4">
-                <OfficialBrandLogo height={36} animate={false} />
-                <h4 className="font-black text-sm text-[#283B3D]">{activeShop?.name}</h4>
-
-                <div className="w-44 h-44 bg-white rounded-2xl p-2 mx-auto shadow-xs border border-[#DCE9E3] flex items-center justify-center">
-                  <QrCode className="w-36 h-36 text-[#283B3D]" />
+              {/* Modal Top Bar */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] px-6 py-4 bg-[#F3F1E9]/60 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#176B65] text-white flex items-center justify-center shadow-xs">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Counter QR Standee Generator</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Printable table-top standee & door poster for customer self-service (BRD FR-605 / FR-302)
+                    </p>
+                  </div>
                 </div>
-
-                <div className="space-y-1 text-xs">
-                  <span className="font-bold text-[#176B65] block">Scan to take token pass</span>
-                  <span className="text-[10px] text-slate-500 block">No crowded lobby • Check turn live on phone</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="flex-1 py-3 rounded-2xl bg-[#176B65] text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-4 h-4 text-[#F2A15A]" />
-                  <span>Print Poster</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setQrModalOpen(false)}
-                  className="px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-xs cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white border border-[#DCE9E3] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  Close
+                  <X className="w-4 h-4" />
                 </button>
+              </div>
+
+              {/* Modal Body: 2 Columns */}
+              <div className="grid grid-cols-1 md:grid-cols-12 overflow-y-auto p-5 sm:p-6 gap-6">
+                
+                {/* Left Column: Standee Controls & Options */}
+                <div className="md:col-span-5 space-y-4">
+                  
+                  {/* Format Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#283B3D] block">1. Standee Size / Format:</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: 'TABLETOP', label: 'Tabletop (A5)', desc: 'Acrylic Stand' },
+                        { id: 'POSTER', label: 'Poster (A4)', desc: 'Door / Wall' },
+                        { id: 'STICKER', label: 'Sticker', desc: 'Counter Desk' }
+                      ].map((fmt) => (
+                        <button
+                          key={fmt.id}
+                          type="button"
+                          onClick={() => setStandeeFormat(fmt.id)}
+                          className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                            standeeFormat === fmt.id
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          <div className="text-xs font-black">{fmt.label}</div>
+                          <div className={`text-[9px] font-semibold ${standeeFormat === fmt.id ? 'text-white/80' : 'text-slate-400'}`}>
+                            {fmt.desc}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Theme Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#283B3D] block">2. Color Theme:</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: 'EMERALD', label: 'Emerald Luxe', dot: 'bg-[#176B65]' },
+                        { id: 'MIDNIGHT', label: 'Midnight', dot: 'bg-[#283B3D]' },
+                        { id: 'MINIMAL', label: 'Ink-Saver (B&W)', dot: 'bg-slate-900' }
+                      ].map((thm) => (
+                        <button
+                          key={thm.id}
+                          type="button"
+                          onClick={() => setStandeeTheme(thm.id)}
+                          className={`p-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            standeeTheme === thm.id
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          <span className={`w-2.5 h-2.5 rounded-full ${thm.dot} border border-white`} />
+                          <span>{thm.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Hindi / English Tagline */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#283B3D] block">3. Customer Notice Headline:</label>
+                    <input
+                      type="text"
+                      value={standeeTagline}
+                      onChange={(e) => setStandeeTagline(e.target.value)}
+                      placeholder="Line me khade mat raho..."
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+
+                  {/* Toggle Options */}
+                  <div className="space-y-2.5 p-3.5 rounded-2xl bg-[#F3F1E9]/60 border border-[#DCE9E3]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#283B3D]">Show Timings & Weekly Off</span>
+                      <input
+                        type="checkbox"
+                        checked={showStandeeHours}
+                        onChange={(e) => setShowStandeeHours(e.target.checked)}
+                        className="w-4 h-4 accent-[#176B65] cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#283B3D]">Show Free Wi-Fi Details</span>
+                      <input
+                        type="checkbox"
+                        checked={showStandeeWifi}
+                        onChange={(e) => setShowStandeeWifi(e.target.checked)}
+                        className="w-4 h-4 accent-[#176B65] cursor-pointer"
+                      />
+                    </div>
+
+                    {showStandeeWifi && (
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#DCE9E3]">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500">Wi-Fi Name (SSID):</label>
+                          <input
+                            type="text"
+                            value={standeeWifiName}
+                            onChange={(e) => setStandeeWifiName(e.target.value)}
+                            placeholder="e.g. RoyalGuest"
+                            className="w-full bg-white border border-[#DCE9E3] rounded-lg px-2 py-1 text-xs font-semibold text-[#283B3D] focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500">Password:</label>
+                          <input
+                            type="text"
+                            value={standeeWifiPass}
+                            onChange={(e) => setStandeeWifiPass(e.target.value)}
+                            placeholder="e.g. royal1234"
+                            className="w-full bg-white border border-[#DCE9E3] rounded-lg px-2 py-1 text-xs font-semibold text-[#283B3D] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="pt-2 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      <Printer className="w-4 h-4 text-[#F2A15A]" />
+                      <span>Print Standee Now</span>
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadQrPng}
+                        className="py-2.5 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/30 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Download className="w-3.5 h-3.5 text-[#176B65]" />
+                        <span>Download QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCopyBookingLink}
+                        className="py-2.5 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/30 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        {standeeCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#176B65]" />}
+                        <span>{standeeCopied ? 'Copied!' : 'Copy Link'}</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 font-semibold text-center pt-1">
+                      💡 Tip: Select &ldquo;Save as PDF&rdquo; in the print dialog to download a high-res PDF poster for laminating!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Column: Live Printable Standee Card */}
+                <div className="md:col-span-7 flex flex-col items-center justify-center bg-slate-100/70 p-4 sm:p-6 rounded-3xl border border-[#DCE9E3]">
+                  
+                  {/* Standee Container (Targeted by @media print) */}
+                  <div 
+                    id="printable-standee-card"
+                    className={`w-full max-w-sm rounded-3xl p-6 sm:p-7 shadow-xl border-2 transition-all flex flex-col justify-between text-center relative overflow-hidden bg-white ${
+                      standeeTheme === 'MIDNIGHT'
+                        ? 'border-[#283B3D]'
+                        : standeeTheme === 'MINIMAL'
+                        ? 'border-slate-800'
+                        : 'border-[#176B65]'
+                    }`}
+                  >
+                    {/* Top Standee Header Strip */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <OfficialBrandLogo height={32} animate={false} />
+                      </div>
+                      
+                      <div className="space-y-0.5">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full inline-block ${
+                          standeeTheme === 'MIDNIGHT'
+                            ? 'bg-[#283B3D] text-white'
+                            : standeeTheme === 'MINIMAL'
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-[#176B65] text-white'
+                        }`}>
+                          Official Digital Queue Partner
+                        </span>
+                        <h2 className="text-xl font-black text-[#283B3D] tracking-tight line-clamp-1 pt-1">
+                          {activeShop?.name || 'Partner Store'}
+                        </h2>
+                        <p className="text-[11px] text-[#283B3D]/70 font-bold line-clamp-1">
+                          {activeShop?.categoryName || 'Service Counter'} • {activeShop?.address || 'Indira Nagar, Lucknow'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* QR Code Center Frame */}
+                    <div className="my-4 py-2">
+                      <div className={`p-4 rounded-3xl mx-auto shadow-md border-2 inline-block bg-white ${
+                        standeeTheme === 'MIDNIGHT'
+                          ? 'border-[#283B3D]'
+                          : standeeTheme === 'MINIMAL'
+                          ? 'border-slate-800'
+                          : 'border-[#176B65]'
+                      }`}>
+                        {standeeQrUrl ? (
+                          <img
+                            src={standeeQrUrl}
+                            alt="Scan to join queue"
+                            className="w-48 h-48 mx-auto object-contain block"
+                          />
+                        ) : (
+                          <div className="w-48 h-48 flex items-center justify-center text-slate-400">
+                            <QrCode className="w-32 h-32 animate-pulse" />
+                          </div>
+                        )}
+                        <div className="text-[10px] font-black uppercase tracking-wider text-[#176B65] mt-1 pt-1 border-t border-[#DCE9E3]">
+                          ⚡ SCAN TO TAKE PASS
+                        </div>
+                      </div>
+
+                      {/* Compatible Scanner Apps */}
+                      <p className="text-[10px] font-bold text-slate-500 mt-2">
+                        Scan with Phone Camera, Paytm, PhonePe, GPay or WhatsApp
+                      </p>
+                    </div>
+
+                    {/* Catchy Hindi Headline & Notice */}
+                    <div className="space-y-1 bg-[#F3F1E9]/80 p-3 rounded-2xl border border-[#DCE9E3]">
+                      <h4 className="text-xs font-black text-[#176B65] uppercase tracking-wide">
+                        लाइन में खड़े मत रहो, टोकन लो!
+                      </h4>
+                      <p className="text-[11px] text-[#283B3D] font-semibold leading-snug">
+                        {standeeTagline || 'Line me khade mat raho, QR scan karo aur aaram se baithiye!'}
+                      </p>
+                    </div>
+
+                    {/* 3 Simple Visual Steps */}
+                    <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold pt-3">
+                      <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                        <div className="text-sm mb-0.5">📸</div>
+                        <div className="font-black text-[#283B3D]">1. Scan QR</div>
+                        <div className="text-[9px] text-slate-500">Camera / UPI</div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                        <div className="text-sm mb-0.5">🎫</div>
+                        <div className="font-black text-[#283B3D]">2. Get Token</div>
+                        <div className="text-[9px] text-slate-500">On your phone</div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                        <div className="text-sm mb-0.5">🔔</div>
+                        <div className="font-black text-[#283B3D]">3. Relax</div>
+                        <div className="text-[9px] text-slate-500">Walk up on turn</div>
+                      </div>
+                    </div>
+
+                    {/* Footer Info Strip */}
+                    <div className="mt-4 pt-3 border-t border-[#DCE9E3] space-y-1 text-[10px] text-slate-600">
+                      {showStandeeHours && (
+                        <div className="flex items-center justify-between font-bold text-[#283B3D]">
+                          <span>⏰ Open: {activeShop?.openTime || '09:30 AM'} - {activeShop?.closeTime || '08:30 PM'}</span>
+                          <span>Off: {activeShop?.weeklyOff || 'None'}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-slate-500 font-semibold">
+                        <span>Pace: ~{activeShop?.avgWaitMin || 12} mins / turn</span>
+                        <span>Token Prefix: #{activeShop?.tokenPrefix || 'AK'}</span>
+                      </div>
+
+                      {showStandeeWifi && (standeeWifiName || standeeWifiPass) && (
+                        <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold text-[9px] flex items-center justify-between">
+                          <span>📶 Free Wi-Fi: {standeeWifiName || 'ShopGuest'}</span>
+                          <span>Password: {standeeWifiPass || '12345678'}</span>
+                        </div>
+                      )}
+
+                      <div className="text-[9px] text-slate-400 font-semibold pt-1">
+                        Powered by <strong>AbhiiKhula</strong> • Bharat Ka Hyperlocal Queue Network
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Global Print Media Style for Crisp Vector Standee Output */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-standee-card, #printable-standee-card * {
+            visibility: visible !important;
+          }
+          #printable-standee-card {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 175mm !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: 3px solid #176B65 !important;
+            margin: 0 auto !important;
+            padding: 8mm !important;
+            background: white !important;
+            z-index: 9999999 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
 
       {/* ========================================================= */}
       {/* MODAL 3: SERVICE BILLING / HISAAB (OPTIONAL ON SERVICE DONE)*/}
