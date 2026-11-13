@@ -4587,12 +4587,20 @@ export default function MerchantDashboardPage() {
         const settledCustomers = khataList.filter(c => (c.totalPending || 0) === 0);
 
         // Filter and search
+        const cleanQuery = khataSearch.trim().toLowerCase();
+        const digitsQuery = khataSearch.replace(/\D/g, '');
         let filteredKhata = khataList.filter(c => {
-          const matchSearch = (c.customerName || '').toLowerCase().includes(khataSearch.toLowerCase()) ||
-                              (c.customerPhone || '').includes(khataSearch);
-          if (!matchSearch) return false;
+          if (cleanQuery) {
+            const nameMatch = (c.customerName || '').toLowerCase().includes(cleanQuery);
+            const rawPhone = (c.customerPhone || '');
+            const digitsPhone = rawPhone.replace(/\D/g, '');
+            const phoneMatch = rawPhone.includes(cleanQuery) || (digitsQuery && digitsPhone.includes(digitsQuery));
+            const reasonMatch = c.transactions && c.transactions.some(tx => (tx.serviceOrReason || '').toLowerCase().includes(cleanQuery));
+            if (!nameMatch && !phoneMatch && !reasonMatch) return false;
+          }
           if (khataFilter === 'DUE') return (c.totalPending || 0) > 0;
           if (khataFilter === 'SETTLED') return (c.totalPending || 0) === 0;
+          if (khataFilter === 'HIGH') return (c.totalPending || 0) >= 300;
           return true;
         });
 
@@ -4713,12 +4721,13 @@ export default function MerchantDashboardPage() {
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                   <span className="text-[11px] font-bold text-slate-500 mr-1 hidden sm:inline">Filter:</span>
                   {[
                     { id: 'ALL', label: `All (${khataList.length})` },
                     { id: 'DUE', label: `Pending Due (${customersWithDue.length})` },
-                    { id: 'SETTLED', label: `Cleared (${settledCustomers.length})` }
+                    { id: 'SETTLED', label: `Cleared (${settledCustomers.length})` },
+                    { id: 'HIGH', label: `High Due ≥₹300 (${khataList.filter(c => (c.totalPending || 0) >= 300).length})` }
                   ].map((flt) => (
                     <button
                       key={flt.id}
@@ -4810,16 +4819,17 @@ export default function MerchantDashboardPage() {
 
                             {/* Actions */}
                             <td className="py-3.5 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
                                 {/* Jama (Receive Payment) */}
                                 {isDue && (
                                   <button
                                     type="button"
                                     onClick={() => handleOpenKhataEntryModal(customer, 'PAYMENT')}
-                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95"
+                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
                                     title="Receive payment from customer (Jama)"
                                   >
-                                    Jama Karein
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Jama</span>
                                   </button>
                                 )}
 
@@ -4827,10 +4837,11 @@ export default function MerchantDashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleOpenKhataEntryModal(customer, 'CREDIT')}
-                                  className="px-2.5 py-1 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-all cursor-pointer active:scale-95"
+                                  className="px-2.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-all cursor-pointer active:scale-95 flex items-center gap-1"
                                   title="Add manual credit / udhaar entry"
                                 >
-                                  + Udhaar
+                                  <Plus className="w-3.5 h-3.5 text-[#176B65]" />
+                                  <span>+ Udhaar</span>
                                 </button>
 
                                 {/* WhatsApp Reminder */}
@@ -4838,10 +4849,11 @@ export default function MerchantDashboardPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleSendWhatsAppKhataReminder(customer)}
-                                    className="p-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                    className="px-2.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-[11px] transition-all cursor-pointer active:scale-95 shadow-2xs flex items-center gap-1"
                                     title="Send polite WhatsApp payment reminder"
                                   >
                                     <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                    <span>Remind</span>
                                   </button>
                                 )}
 
@@ -4852,10 +4864,11 @@ export default function MerchantDashboardPage() {
                                     setStatementCustomer(customer);
                                     setStatementModalOpen(true);
                                   }}
-                                  className="p-1.5 rounded-xl text-slate-400 hover:text-[#176B65] hover:bg-[#DCE9E3]/50 transition-colors cursor-pointer"
+                                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
                                   title="View complete Khata statement passbook"
                                 >
-                                  <History className="w-4 h-4" />
+                                  <History className="w-3.5 h-3.5 text-[#176B65]" />
+                                  <span>Passbook</span>
                                 </button>
                               </div>
                             </td>
@@ -8743,15 +8756,25 @@ export default function MerchantDashboardPage() {
                             {tx.type === 'PAYMENT' ? '↓' : '↑'}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className={`text-xs font-black ${tx.type === 'PAYMENT' ? 'text-emerald-800' : 'text-rose-800'}`}>
-                                {tx.type === 'PAYMENT' ? 'Jama (Payment)' : 'Udhaar (Credit)'}
+                                {tx.type === 'PAYMENT' ? '🟢 Jama (Payment)' : '🔴 Udhaar (Credit)'}
                               </span>
                               <span className="text-[10px] font-bold text-slate-400">
-                                {tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : 'Recent'}
+                                {tx.date ? new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent'}
                               </span>
+                              {tx.paymentMode && (
+                                <span className="text-[9px] uppercase font-bold bg-white/80 px-1.5 py-0.2 rounded border border-slate-200 text-slate-600">
+                                  {tx.paymentMode}
+                                </span>
+                              )}
+                              {tx.tokenNumber && tx.tokenNumber !== '-' && (
+                                <span className="text-[9px] font-token font-bold text-[#176B65] bg-[#DCE9E3]/70 px-1.5 py-0.2 rounded">
+                                  Pass #{tx.tokenNumber}
+                                </span>
+                              )}
                             </div>
-                            <span className="text-[11px] text-slate-600 font-semibold block line-clamp-1">
+                            <span className="text-[11px] text-slate-600 font-semibold block line-clamp-1 mt-0.5">
                               {tx.serviceOrReason || (tx.type === 'PAYMENT' ? 'Cash/UPI Payment' : 'Service Udhaar')}
                             </span>
                           </div>
@@ -8775,14 +8798,33 @@ export default function MerchantDashboardPage() {
                 </div>
               </div>
 
-              {/* Close Button */}
-              <div className="pt-2">
+              {/* Action Buttons: WhatsApp Statement + Done */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                {statementCustomer.customerPhone && statementCustomer.customerPhone !== 'Offline' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanPhone = statementCustomer.customerPhone.replace(/\D/g, '').slice(-10);
+                      const shopName = activeShop?.name || 'Hamari Dukan';
+                      const txLines = (statementCustomer.transactions || []).slice(0, 5).map(tx => 
+                        `• ${tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : 'Recent'}: ${tx.type === 'PAYMENT' ? '🟢 Jama' : '🔴 Udhaar'} ₹${tx.amount} (${tx.serviceOrReason || ''})`
+                      ).join('\n');
+                      const msg = `Namaste ${statementCustomer.customerName} ji! 🙏\n\n${shopName} Khata Passbook Hisaab:\n\n${txLines}\n\n👉 Kul Baqaya Balance Due: ₹${(statementCustomer.totalPending || 0).toLocaleString('en-IN')}\n\nDhanyawad! ✨\n— ${shopName}`;
+                      window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    className="flex-1 py-3 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-current" />
+                    <span>Send Statement on WhatsApp</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setStatementModalOpen(false)}
-                  className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all cursor-pointer text-center"
+                  className="flex-1 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all cursor-pointer text-center"
                 >
-                  Done
+                  Done & Close
                 </button>
               </div>
             </motion.div>
