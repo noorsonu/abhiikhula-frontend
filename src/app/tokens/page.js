@@ -347,7 +347,29 @@ export default function MyTokensPage() {
 
       // Read locally stored active tokens
       const localStr = typeof window !== 'undefined' ? localStorage.getItem('ak_customer_tokens') : null;
-      const localTokens = localStr ? JSON.parse(localStr) : [];
+      let localTokens = localStr ? JSON.parse(localStr) : [];
+
+      // Auto-purge any legacy mock/dummy tokens from client device
+      const cleanedLocal = localTokens.filter(t => {
+        const sSlug = (t.shopSlug || '').toLowerCase();
+        const sName = (t.shopName || '').toLowerCase();
+        const tId = String(t.id || '').toLowerCase();
+        return (
+          !sSlug.includes('royal-barber') &&
+          !sSlug.includes('gupta-medical') &&
+          !sSlug.includes('suresh-sweets') &&
+          !sName.includes('royal barber') &&
+          !sName.includes('gupta care') &&
+          !sName.includes('suresh sweets') &&
+          !tId.includes('royal-barber') &&
+          !tId.includes('sample') &&
+          !tId.includes('mock')
+        );
+      });
+      if (cleanedLocal.length !== localTokens.length && typeof window !== 'undefined') {
+        localStorage.setItem('ak_customer_tokens', JSON.stringify(cleanedLocal));
+        localTokens = cleanedLocal;
+      }
 
       // Strictly isolate tokens: phone matches ONLY phone's data, guest gets ONLY unassigned guest tokens
       let scopedLocal = [];
@@ -533,6 +555,16 @@ export default function MyTokensPage() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadTokens();
+  };
+
+  const handleClearDeviceCache = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ak_customer_tokens');
+      localStorage.removeItem('ak_customer_history');
+      setTokens([]);
+      setHistoryTokens([]);
+      window.dispatchEvent(new Event('storage'));
+    }
   };
 
   // Open Cancel Modal
@@ -1150,9 +1182,20 @@ export default function MyTokensPage() {
             onClick={handleRefresh}
             disabled={refreshing}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#DCE9E3] shadow-xs text-xs font-bold text-[#176B65] hover:bg-[#DCE9E3]/50 transition-all cursor-pointer disabled:opacity-50"
+            title="Sync latest live token status from cloud"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#176B65] ${refreshing ? 'animate-spin' : ''}`} />
             <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
+          </button>
+
+          {/* Device Cache Reset Button */}
+          <button
+            onClick={handleClearDeviceCache}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-rose-200 shadow-xs text-xs font-bold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+            title="Phone me saved purana cache aur test tokens saaf karein"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span className="hidden sm:inline">Reset Storage</span>
           </button>
         </div>
       </div>
@@ -1786,7 +1829,7 @@ export default function MyTokensPage() {
 
                     <div className="pt-2 border-t border-[#DCE9E3]">
                       <Link
-                        href={`/book/${item.shopSlug || 'royal-barber-indira-nagar'}`}
+                        href={`/book/${item.shopSlug || ''}`}
                         className="w-full py-2.5 rounded-xl bg-white hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] text-[#176B65] font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>Book Again</span>

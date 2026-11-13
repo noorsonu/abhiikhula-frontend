@@ -2679,10 +2679,10 @@ export default function MerchantDashboardPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-[#283B3D]">
-                {activeShop?.name || 'Royal Barber & Hair Style'}
+                {activeShop?.name || 'Apni Dukan Darj Karein'}
               </h1>
               <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#DCE9E3] text-[#176B65]">
-                {activeShop?.categoryName || 'Salon & Barber'}
+                {activeShop?.categoryName || 'Dukan'}
               </span>
               <button
                 type="button"
@@ -2697,7 +2697,7 @@ export default function MerchantDashboardPage() {
 
             <p className="text-xs text-[#283B3D]/70 font-medium flex items-center gap-1.5 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-[#F2A15A]" />
-              <span>{activeShop?.zone || 'Indira Nagar'}, Lucknow</span>
+              <span>{activeShop?.zone ? `${activeShop.zone}, Lucknow` : 'Location Not Set'}</span>
               <span>•</span>
               <span className="text-slate-400">Prefix: {activeShop?.tokenPrefix || 'AK'}</span>
             </p>
