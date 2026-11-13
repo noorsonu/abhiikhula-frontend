@@ -173,23 +173,11 @@ export default function MerchantRegisterPage() {
       return;
     }
 
-    // Default demo shop fallback for testing if none registered yet
-    const fallbackShop = {
-      id: `shop-${clean}`,
-      name: 'My Neighborhood Shop',
-      categoryName: 'Salon & Barber',
-      categoryId: 'salon',
-      zone: 'Indira Nagar',
-      address: 'Sector 14, Main Market, Indira Nagar, Lucknow',
-      phone: clean,
-      ownerName: 'Shop Partner',
-      tokenPrefix: 'AK',
-      avgWaitMin: 12
-    };
-    localStorage.setItem('ak_active_merchant_shop', JSON.stringify(fallbackShop));
-    localStorage.setItem('ak_role', 'MERCHANT');
-    window.dispatchEvent(new Event('storage'));
-    router.push('/merchant/dashboard');
+    // No registered shop found for this phone - guide merchant to fill their real shop details
+    setLoginError('Is mobile number par koi dukan registered nahi mili. Kripya pehle apni dukan ki details bharein.');
+    setOwnerPhone(clean);
+    setIsPhoneVerified(true);
+    setStep(2);
   };
 
   // Direct login with already detected shop

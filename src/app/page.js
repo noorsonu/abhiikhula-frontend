@@ -60,7 +60,25 @@ export default function HomePage() {
     }
   }, [router]);
 
-  const [shops, setShops] = useState(() => MOCK_SHOPS.map(s => ({ ...s, imageUrl: resolveShopImage(s) })));
+  const loadRegisteredLocalShops = () => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const activeStr = localStorage.getItem('ak_active_merchant_shop');
+      const allStr = localStorage.getItem('ak_merchant_shops');
+      const all = allStr ? JSON.parse(allStr) : [];
+      if (activeStr) {
+        const active = JSON.parse(activeStr);
+        if (active && !all.some(s => s.slug === active.slug || s.id === active.id)) {
+          all.unshift(active);
+        }
+      }
+      return all.map(s => ({ ...s, imageUrl: resolveShopImage(s) }));
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const [shops, setShops] = useState(() => loadRegisteredLocalShops());
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,30 +137,21 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchLiveShops() {
+      const localShops = loadRegisteredLocalShops();
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
         if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          const liveList = res.data.data;
-          
-          // Map backend live shops with correct images based on category/slug
-          const liveWithImages = liveList.map(sh => ({
+          const liveList = res.data.data.map(sh => ({
             ...sh,
             imageUrl: resolveShopImage(sh)
           }));
-          
-          // Keep all categories populated by merging unrepresented categories from MOCK_SHOPS
-          const liveSlugs = new Set(liveWithImages.map(s => s.slug));
-          const remainingMock = MOCK_SHOPS.filter(m => !liveSlugs.has(m.slug)).map(m => ({
-            ...m,
-            imageUrl: resolveShopImage(m)
-          }));
-
-          setShops([...liveWithImages, ...remainingMock]);
+          const liveSlugs = new Set(liveList.map(s => s.slug));
+          const uniqueLocal = localShops.filter(s => !liveSlugs.has(s.slug));
+          setShops([...liveList, ...uniqueLocal]);
+          return;
         }
-      } catch (e) {
-        // Fallback to MOCK_SHOPS with resolveShopImage
-        setShops(MOCK_SHOPS.map(m => ({ ...m, imageUrl: resolveShopImage(m) })));
-      }
+      } catch (e) {}
+      setShops(localShops);
     }
     fetchLiveShops();
   }, []);

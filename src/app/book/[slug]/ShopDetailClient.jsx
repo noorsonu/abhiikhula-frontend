@@ -70,9 +70,26 @@ export default function ShopDetailClient() {
   const router = useRouter();
   const slug = params?.slug;
 
-  const [shop, setShop] = useState(() => {
-    return MOCK_SHOPS.find(s => s.slug === slug) || MOCK_SHOPS[0];
-  });
+  const loadShopBySlug = (targetSlug) => {
+    if (!targetSlug || typeof window === 'undefined') return null;
+    const cleanSlug = targetSlug.toLowerCase();
+    try {
+      const activeStr = localStorage.getItem('ak_active_merchant_shop');
+      if (activeStr) {
+        const active = JSON.parse(activeStr);
+        if (active && (active.slug || '').toLowerCase() === cleanSlug) return active;
+      }
+      const allShopsStr = localStorage.getItem('ak_merchant_shops');
+      if (allShopsStr) {
+        const allShops = JSON.parse(allShopsStr);
+        const match = allShops.find(s => (s.slug || '').toLowerCase() === cleanSlug);
+        if (match) return match;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const [shop, setShop] = useState(() => loadShopBySlug(slug));
 
   // Group Token State (1, 2, or Custom Count)
   const [selectedGroupMode, setSelectedGroupMode] = useState('1'); // '1', '2', 'custom'
@@ -219,26 +236,28 @@ export default function ShopDetailClient() {
     }
   }, []);
 
-  // Try fetching shop by slug from backend if available
+  // Fetch shop by slug from localStorage registered shops or backend API
   useEffect(() => {
     if (slug) {
+      const local = loadShopBySlug(slug);
+      if (local) {
+        setShop(local);
+      }
       shopApi.getShopBySlug(slug)
         .then((res) => {
           if (res?.data?.data) {
             setShop(prev => {
               const updated = {
-                ...prev,
+                ...(prev || {}),
                 ...res.data.data,
-                id: res.data.data.id || prev.id,
+                id: res.data.data.id || prev?.id,
               };
               updated.imageUrl = updated.imageUrl || resolveShopImage(updated);
               return updated;
             });
           }
         })
-        .catch(() => {
-          // Keep mock shop fallback
-        });
+        .catch(() => {});
     }
   }, [slug]);
 
@@ -441,6 +460,50 @@ export default function ShopDetailClient() {
       setBooking(false);
     }
   };
+
+  // SHOP NOT REGISTERED YET VIEW (Zero Dummy Fallback)
+  if (!shop) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="urban-card max-w-md w-full p-8 rounded-3xl text-center space-y-5 border border-[#DCE9E3] shadow-lg bg-white"
+        >
+          <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl border border-amber-200">
+            🏪
+          </div>
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-full inline-block">
+              Registration Pending
+            </span>
+            <h2 className="text-xl font-black text-[#283B3D]">Dukan Abhi Darj (Register) Nahi Hui Hai</h2>
+            <p className="text-xs text-[#283B3D]/70 font-medium">
+              Aap jis dukan ka link khol rahe hain (<span className="font-mono font-bold text-[#176B65]">{slug}</span>), shopkeeper ne abhi uski details fill nahi ki hain.
+            </p>
+          </div>
+          <div className="p-3.5 bg-[#F3F1E9]/70 rounded-2xl text-xs font-semibold text-[#283B3D]/80 border border-[#DCE9E3] text-left space-y-1">
+            <span className="font-bold text-[#176B65] block">💡 Shopkeeper ke liye:</span>
+            <span>Agar aap is dukan ke maalik hain, toh pehle apni dukan ka naam, category, pata aur operating hours darj karein taaki grahak digital token le sakein.</span>
+          </div>
+          <div className="space-y-2 pt-2">
+            <Link
+              href="/merchant/register"
+              className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-black shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <span>+ Dukan Register Karein (Merchant)</span>
+            </Link>
+            <Link
+              href="/"
+              className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-xs font-bold transition-colors block text-center cursor-pointer"
+            >
+              Home Par Wapas Jayein
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   // SUCCESS CONFIRMATION VIEW
   if (bookedToken) {
