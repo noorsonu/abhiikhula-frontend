@@ -145,6 +145,70 @@ export default function MerchantDashboardPage() {
   const [whatsappMessagePreset, setWhatsappMessagePreset] = useState('CALLING_SOON');
   const [whatsappCustomText, setWhatsappCustomText] = useState('');
 
+  // BRD FR-709: Multi-Counter / Multi-Station State
+  const [stationsList, setStationsList] = useState([]);
+  const [stationModalOpen, setStationModalOpen] = useState(false);
+  const [newStationName, setNewStationName] = useState('');
+  const [newStationStaff, setNewStationStaff] = useState('');
+  const [newStationRole, setNewStationRole] = useState('');
+  const [stationFeedbackMsg, setStationFeedbackMsg] = useState('');
+  const [billingStationId, setBillingStationId] = useState(null);
+
+  // Industry Archetypes for Multi-Counter Stations (BRD FR-709)
+  const CATEGORY_DEFAULT_STATIONS = {
+    SALON: [
+      { id: 'st-1', name: 'Chair #1', staffName: 'Ramesh (Senior Stylist)', role: 'Hair & Styling', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Chair #2', staffName: 'Sonu (Grooming Expert)', role: 'Beard & Shave', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-3', name: 'Chair #3', staffName: 'Wasim (Spa Specialist)', role: 'Facial & Spa', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    CLINIC: [
+      { id: 'st-1', name: 'Chamber #1', staffName: 'Dr. Verma (OPD)', role: 'General Consultation', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Procedure Room', staffName: 'Nurse Sunita', role: 'Dressing & Injection', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-3', name: 'Dental Chair', staffName: 'Dr. Neha (Dentist)', role: 'Dental Scaling & Care', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    PHARMACY: [
+      { id: 'st-1', name: 'Counter #1', staffName: 'Pharmacist Imran', role: 'Prescription Medicines', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Counter #2', staffName: 'Cashier Alok', role: 'Express OTC & Billing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    DIAGNOSTIC: [
+      { id: 'st-1', name: 'Phlebotomy Chair #1', staffName: 'Technician Rajesh', role: 'Blood Sample Draw', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Collection Room #2', staffName: 'Sister Preeti', role: 'Urine & Report Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    FOOD: [
+      { id: 'st-1', name: 'Dine-in Floor', staffName: 'Captain Manoj', role: 'Table Seating & Order', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Takeaway Counter', staffName: 'Packaging Staff', role: 'Parcel Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    AUTO: [
+      { id: 'st-1', name: 'Bay #1', staffName: 'Ustad Aslam', role: 'Engine & Oil Servicing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Bay #2', staffName: 'Mechanic Deepu', role: 'Brakes, Chain & Wash', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ],
+    RETAIL: [
+      { id: 'st-1', name: 'Billing Desk #1', staffName: 'Operator Vikas', role: 'Main Checkout', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Express Desk #2', staffName: 'Operator Priya', role: 'Quick Items (<5 items)', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+    ]
+  };
+
+  const getStationsStorageKey = (shop) => `ak_shop_stations_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopStations = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getStationsStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+
+    const catKey = detectCategoryKey(shop);
+    const defaults = CATEGORY_DEFAULT_STATIONS[catKey] || CATEGORY_DEFAULT_STATIONS.SALON;
+    try {
+      localStorage.setItem(key, JSON.stringify(defaults));
+    } catch (e) {}
+    return defaults;
+  };
+
   // Universal Industry Category Default Catalogs (BRD FR-604 / FR-1201)
   const CATEGORY_DEFAULT_SERVICES = {
     PHARMACY: [
@@ -996,6 +1060,10 @@ export default function MerchantDashboardPage() {
           const servs = loadShopServices(parsed);
           setShopServicesList(servs);
 
+          // Load Multi-Counter Stations (BRD FR-709)
+          const stns = loadShopStations(parsed);
+          setStationsList(stns);
+
           // Load Daily Token Cap (BRD FR-314)
           try {
             const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
@@ -1058,6 +1126,8 @@ export default function MerchantDashboardPage() {
         setActiveBroadcast(bcast);
         const servs = loadShopServices(activeShop);
         setShopServicesList(servs);
+        const stns = loadShopStations(activeShop);
+        setStationsList(stns);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -1068,6 +1138,7 @@ export default function MerchantDashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCounterSeconds(prev => prev + 1);
+      setStationsList(prev => prev.map(s => s.currentToken ? { ...s, timerSeconds: (s.timerSeconds || 0) + 1 } : s));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -1725,6 +1796,259 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setAnnouncementMsg(''), 3500);
   };
 
+  // BRD FR-709: Multi-Station / Multi-Counter Operations Handlers
+  const saveStationsList = (updated) => {
+    setStationsList(updated);
+    if (!activeShop || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getStationsStorageKey(activeShop), JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  };
+
+  const handleToggleStationActive = (stationId) => {
+    const updated = stationsList.map(s => s.id === stationId ? { ...s, active: !s.active } : s);
+    saveStationsList(updated);
+  };
+
+  const handleDeleteStation = (stationId) => {
+    if (stationsList.length <= 1) {
+      alert('You must have at least one station or counter.');
+      return;
+    }
+    const updated = stationsList.filter(s => s.id !== stationId);
+    saveStationsList(updated);
+    setStationFeedbackMsg('🗑️ Station removed successfully.');
+    setTimeout(() => setStationFeedbackMsg(''), 3000);
+  };
+
+  const handleAddStation = (e) => {
+    e.preventDefault();
+    if (!newStationName.trim()) {
+      alert('Please enter a station or counter name (e.g. Chair #4, Chamber #2).');
+      return;
+    }
+    const newStation = {
+      id: `st-${Date.now()}`,
+      name: newStationName.trim(),
+      staffName: newStationStaff.trim() || 'Assigned Staff',
+      role: newStationRole.trim() || 'Service Specialist',
+      active: true,
+      currentToken: null,
+      timerSeconds: 0,
+      totalServedToday: 0
+    };
+    const updated = [...stationsList, newStation];
+    saveStationsList(updated);
+    setNewStationName('');
+    setNewStationStaff('');
+    setNewStationRole('');
+    setStationFeedbackMsg(`✅ Added ${newStation.name} successfully!`);
+    setTimeout(() => setStationFeedbackMsg(''), 3500);
+  };
+
+  const handleResetStationsToCategory = () => {
+    if (confirm('Reset all stations to industry category defaults? Any custom stations will be restored.')) {
+      const catKey = detectCategoryKey(activeShop);
+      const defaults = CATEGORY_DEFAULT_STATIONS[catKey] || CATEGORY_DEFAULT_STATIONS.SALON;
+      saveStationsList(defaults);
+      setStationFeedbackMsg(`🔄 Stations reset to ${catKey} market defaults!`);
+      setTimeout(() => setStationFeedbackMsg(''), 3500);
+    }
+  };
+
+  const handleCallNextForStation = (stationId) => {
+    const station = stationsList.find(s => s.id === stationId);
+    if (!station) return;
+    if (!station.active) {
+      alert(`${station.name} is currently inactive or on leave.`);
+      return;
+    }
+    if (waitingQueue.length === 0) {
+      alert('No more customers currently waiting in the queue.');
+      return;
+    }
+
+    playChime();
+
+    const prevStationToken = station.currentToken;
+    const todayDate = new Date().toISOString().slice(0, 10);
+    if (prevStationToken) {
+      const durMins = Math.max(1, Math.floor((station.timerSeconds || 0) / 60));
+      setCompletedList(prev => [
+        {
+          tokenNumber: prevStationToken.tokenNumber,
+          customerName: prevStationToken.customerName,
+          completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          duration: `${durMins} min`,
+          amount: 0,
+          paymentMode: '-',
+          service: prevStationToken.service || 'General Service',
+          stationName: station.name
+        },
+        ...prev
+      ]);
+
+      updateRecordInHistory(activeShop, {
+        id: prevStationToken.id || `token-${prevStationToken.tokenNumber}`,
+        tokenNumber: prevStationToken.tokenNumber,
+        customerName: prevStationToken.customerName,
+        customerPhone: prevStationToken.customerPhone || 'Offline',
+        groupSize: prevStationToken.groupSize || 1,
+        service: prevStationToken.service || 'General Service',
+        date: todayDate,
+        hour: new Date().getHours(),
+        status: 'COMPLETED',
+        completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        durationMin: durMins,
+        amount: 0,
+        paymentMode: '-',
+        assignedStation: station.name
+      });
+    }
+
+    const nextToken = waitingQueue[0];
+    const remaining = waitingQueue.slice(1).map((item, idx) => ({
+      ...item,
+      waitAhead: idx + 1,
+      estWaitMin: (idx + 1) * (activeShop?.avgWaitMin || 12)
+    }));
+    setWaitingQueue(remaining);
+
+    const tokenWithStation = {
+      ...nextToken,
+      assignedStation: {
+        id: station.id,
+        name: station.name,
+        staffName: station.staffName,
+        role: station.role
+      }
+    };
+
+    const updated = stationsList.map(s => {
+      if (s.id === stationId) {
+        return {
+          ...s,
+          currentToken: tokenWithStation,
+          timerSeconds: 0,
+          totalServedToday: prevStationToken ? (s.totalServedToday || 0) + 1 : (s.totalServedToday || 0)
+        };
+      }
+      return s;
+    });
+    saveStationsList(updated);
+
+    if (!servingToken) {
+      setServingToken(tokenWithStation);
+      setCounterSeconds(0);
+    }
+
+    updateRecordInHistory(activeShop, {
+      id: nextToken.id || `token-${nextToken.tokenNumber}`,
+      tokenNumber: nextToken.tokenNumber,
+      customerName: nextToken.customerName,
+      customerPhone: nextToken.customerPhone || 'Offline',
+      groupSize: nextToken.groupSize || 1,
+      service: nextToken.service || 'General Service',
+      date: todayDate,
+      hour: new Date().getHours(),
+      status: 'SERVING',
+      waitMin: nextToken.estWaitMin || 0,
+      assignedStation: station.name
+    });
+
+    if (soundEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const text = `Token ${nextToken.tokenNumber}. ${nextToken.customerName || 'Customer'}, please proceed to ${station.name}.`;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {}
+    }
+
+    syncWithCustomerStorage(tokenWithStation, prevStationToken);
+
+    setAnnouncementMsg(`🪑 Calling Token ${nextToken.tokenNumber} to ${station.name} (${station.staffName})`);
+    setTimeout(() => setAnnouncementMsg(''), 4500);
+  };
+
+  const handleOpenStationBilling = (stationId) => {
+    const station = stationsList.find(s => s.id === stationId);
+    if (!station || !station.currentToken) return;
+    setBillingStationId(stationId);
+    setBillServices(station.currentToken.service || 'General Service');
+    setBillAmount('');
+    setBillPaymentMode('CASH');
+    setBillNotes('');
+    setBillingModalOpen(true);
+  };
+
+  const handleAnnounceStationToken = (stationId) => {
+    const station = stationsList.find(s => s.id === stationId);
+    if (!station || !station.currentToken) return;
+    if (!soundEnabled) {
+      setAnnouncementMsg('⚠️ Audio is currently MUTED. Click the Voice button in the header to Unmute.');
+      setTimeout(() => setAnnouncementMsg(''), 4000);
+      return;
+    }
+    playChime();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const text = `Token ${station.currentToken.tokenNumber}. ${station.currentToken.customerName || 'Customer'}, please proceed to ${station.name}.`;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {}
+    }
+    setAnnouncementMsg(`📢 Re-announced: Token ${station.currentToken.tokenNumber} to ${station.name}`);
+    setTimeout(() => setAnnouncementMsg(''), 3500);
+  };
+
+  const handleMarkStationAbsent = (stationId) => {
+    const station = stationsList.find(s => s.id === stationId);
+    if (!station || !station.currentToken) return;
+    const absToken = station.currentToken;
+    const todayDate = new Date().toISOString().slice(0, 10);
+
+    setAbsentList(prev => [
+      {
+        ...absToken,
+        skippedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        stationName: station.name
+      },
+      ...prev
+    ]);
+
+    updateRecordInHistory(activeShop, {
+      id: absToken.id || `token-${absToken.tokenNumber}`,
+      tokenNumber: absToken.tokenNumber,
+      customerName: absToken.customerName,
+      customerPhone: absToken.customerPhone || 'Offline',
+      groupSize: absToken.groupSize || 1,
+      service: absToken.service || 'General Service',
+      date: todayDate,
+      hour: new Date().getHours(),
+      status: 'NO_SHOW',
+      skippedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      assignedStation: station.name
+    });
+
+    syncWithCustomerStorage(null, null, absToken);
+
+    const updated = stationsList.map(s => s.id === stationId ? { ...s, currentToken: null, timerSeconds: 0 } : s);
+    saveStationsList(updated);
+
+    if (servingToken?.tokenNumber === absToken.tokenNumber) {
+      setServingToken(null);
+      setCounterSeconds(0);
+    }
+
+    setAnnouncementMsg(`Skipped & Marked Absent: ${absToken.customerName} (${absToken.tokenNumber}) from ${station.name}`);
+    setTimeout(() => setAnnouncementMsg(''), 4500);
+  };
+
   // Sync token state changes with customer localStorage
   const syncWithCustomerStorage = (nextServing, prevCompleted, nextAbsent, billDetails) => {
     if (typeof window === 'undefined') return;
@@ -1736,7 +2060,13 @@ export default function MerchantDashboardPage() {
           const updated = list.map(t => {
             const tokenIdentifier = t.displayToken || t.tokenNumber;
             if (nextServing && (tokenIdentifier === nextServing.tokenNumber)) {
-              return { ...t, status: 'SERVING', peopleAhead: 0, estimatedWaitMin: 0 };
+              return { 
+                ...t, 
+                status: 'SERVING', 
+                peopleAhead: 0, 
+                estimatedWaitMin: 0,
+                assignedStation: nextServing.assignedStation || t.assignedStation || null
+              };
             }
             if (prevCompleted && (tokenIdentifier === prevCompleted.tokenNumber)) {
               return { 
@@ -1746,19 +2076,22 @@ export default function MerchantDashboardPage() {
                 duration: `${Math.max(1, Math.floor(counterSeconds / 60))} min`,
                 amount: billDetails?.amount !== undefined ? billDetails.amount : (t.amount || 0),
                 paymentMode: billDetails?.paymentMode || t.paymentMode || '-',
-                serviceDetails: billDetails?.serviceDetails || t.customerPurpose || t.service
+                serviceDetails: billDetails?.serviceDetails || t.customerPurpose || t.service,
+                assignedStation: prevCompleted.assignedStation || t.assignedStation || null
               };
             }
             if (nextAbsent && (tokenIdentifier === nextAbsent.tokenNumber)) {
               return { 
                 ...t, 
                 status: 'NO_SHOW',
-                skippedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                skippedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                assignedStation: nextAbsent.assignedStation || t.assignedStation || null
               };
             }
             return t;
           });
           localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
+          window.dispatchEvent(new Event('storage'));
         }
       }
     } catch (e) {}
@@ -1847,6 +2180,7 @@ export default function MerchantDashboardPage() {
   // Action: Open Service Billing / Hisaab Modal
   const handleOpenBillingModal = () => {
     if (!servingToken) return;
+    setBillingStationId(null);
     setBillServices(servingToken.service || 'General Service');
     setBillAmount('');
     setBillPaymentMode('CASH');
@@ -1856,43 +2190,49 @@ export default function MerchantDashboardPage() {
 
   // Action: Finalize Service (With Bill Amount or Optional Skip)
   const handleFinalizeService = ({ skipBilling = false } = {}) => {
-    if (!servingToken) return;
+    // If billingStationId is set, find that station and its currentToken
+    const activeStation = billingStationId ? stationsList.find(s => s.id === billingStationId) : null;
+    const tokenToFinalize = activeStation?.currentToken || servingToken;
+    if (!tokenToFinalize) return;
 
-    const durationMins = Math.max(1, Math.floor(counterSeconds / 60));
+    const durationMins = activeStation 
+      ? Math.max(1, Math.floor((activeStation.timerSeconds || 0) / 60))
+      : Math.max(1, Math.floor(counterSeconds / 60));
     const todayDate = new Date().toISOString().slice(0, 10);
     const finalAmount = skipBilling ? 0 : (Number(billAmount) || 0);
     const finalPayment = skipBilling ? '-' : (finalAmount > 0 ? billPaymentMode : '-');
-    const finalServices = billServices.trim() || servingToken.service || 'General Service';
+    const finalServices = billServices.trim() || tokenToFinalize.service || 'General Service';
     const finalNotes = billNotes.trim();
 
     // Sync with customer storage
-    syncWithCustomerStorage(null, servingToken, null, {
+    syncWithCustomerStorage(null, tokenToFinalize, null, {
       amount: finalAmount,
       paymentMode: finalPayment,
       serviceDetails: finalServices
     });
 
     const completedRecord = {
-      tokenNumber: servingToken.tokenNumber,
-      customerName: servingToken.customerName,
-      customerPhone: servingToken.customerPhone || 'Offline',
+      tokenNumber: tokenToFinalize.tokenNumber,
+      customerName: tokenToFinalize.customerName,
+      customerPhone: tokenToFinalize.customerPhone || 'Offline',
       completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: `${durationMins} min`,
       amount: finalAmount,
       paymentMode: finalPayment,
       service: finalServices,
       serviceBreakdown: finalServices,
-      billNotes: finalNotes
+      billNotes: finalNotes,
+      stationName: activeStation ? activeStation.name : undefined
     };
 
     setCompletedList(prev => [completedRecord, ...prev]);
 
     updateRecordInHistory(activeShop, {
-      id: servingToken.id || `token-${servingToken.tokenNumber}`,
-      tokenNumber: servingToken.tokenNumber,
-      customerName: servingToken.customerName,
-      customerPhone: servingToken.customerPhone || 'Offline',
-      groupSize: servingToken.groupSize || 1,
+      id: tokenToFinalize.id || `token-${tokenToFinalize.tokenNumber}`,
+      tokenNumber: tokenToFinalize.tokenNumber,
+      customerName: tokenToFinalize.customerName,
+      customerPhone: tokenToFinalize.customerPhone || 'Offline',
+      groupSize: tokenToFinalize.groupSize || 1,
       service: finalServices,
       serviceBreakdown: finalServices,
       date: todayDate,
@@ -1902,17 +2242,38 @@ export default function MerchantDashboardPage() {
       durationMin: durationMins,
       amount: finalAmount,
       paymentMode: finalPayment,
-      billNotes: finalNotes
+      billNotes: finalNotes,
+      assignedStation: activeStation ? activeStation.name : undefined
     });
 
-    setServingToken(null);
-    setCounterSeconds(0);
+    if (billingStationId) {
+      const updatedStations = stationsList.map(st => {
+        if (st.id === billingStationId) {
+          return {
+            ...st,
+            currentToken: null,
+            timerSeconds: 0,
+            totalServedToday: (st.totalServedToday || 0) + 1
+          };
+        }
+        return st;
+      });
+      saveStationsList(updatedStations);
+      if (servingToken?.tokenNumber === tokenToFinalize.tokenNumber) {
+        setServingToken(null);
+        setCounterSeconds(0);
+      }
+      setBillingStationId(null);
+    } else {
+      setServingToken(null);
+      setCounterSeconds(0);
+    }
     setBillingModalOpen(false);
 
     if (finalAmount > 0) {
-      setAnnouncementMsg(`✅ Recorded: ${servingToken.customerName} (${servingToken.tokenNumber}). Total: ₹${finalAmount.toLocaleString('en-IN')} [${finalPayment}]`);
+      setAnnouncementMsg(`✅ Recorded: ${tokenToFinalize.customerName} (${tokenToFinalize.tokenNumber}). Total: ₹${finalAmount.toLocaleString('en-IN')} [${finalPayment}]`);
     } else {
-      setAnnouncementMsg(`✅ Marked Completed: ${servingToken.customerName} (${servingToken.tokenNumber})`);
+      setAnnouncementMsg(`✅ Marked Completed: ${tokenToFinalize.customerName} (${tokenToFinalize.tokenNumber})`);
     }
     setTimeout(() => setAnnouncementMsg(''), 4500);
   };
@@ -2263,6 +2624,21 @@ export default function MerchantDashboardPage() {
             <Receipt className="w-4 h-4 text-[#176B65]" />
             <span className="hidden sm:inline">Rate Card & Menu</span>
             <span className="sm:hidden">Rate Card</span>
+          </button>
+
+          {/* Multi-Counter / Multi-Station Studio Button (BRD FR-709) */}
+          <button
+            type="button"
+            onClick={() => setStationModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Manage Multi-Chairs, Doctors or Counter Desks (FR-709)"
+          >
+            <Users className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">Counters & Chairs</span>
+            <span className="sm:hidden">Counters</span>
+            <span className="ml-0.5 text-[10px] font-black bg-[#DCE9E3] text-[#176B65] px-1.5 py-0.5 rounded-full">
+              {stationsList.filter(s => s.active).length}
+            </span>
           </button>
 
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
@@ -2750,6 +3126,169 @@ export default function MerchantDashboardPage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* MULTI-COUNTER & MULTI-CHAIR OPERATIONAL STATIONS (BRD FR-709) */}
+          {/* ========================================================= */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DCE9E3] pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-black text-[#283B3D]">
+                      Multi-Station & Multi-Desk Calling Grid
+                    </h3>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#176B65] text-white">
+                      BRD FR-709
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">
+                      ({stationsList.filter(s => s.active).length} of {stationsList.length} Active)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#283B3D]/70 font-semibold mt-0.5">
+                    Independent calling & billing for barbers, doctors, pharmacy counters & checkout bays.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setStationModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#176B65]" />
+                  <span>Manage Stations</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Stations Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {stationsList.map((station) => {
+                const isStationServing = !!station.currentToken;
+                return (
+                  <div
+                    key={station.id}
+                    className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                      !station.active
+                        ? 'bg-slate-50 border-slate-200 opacity-60'
+                        : isStationServing
+                        ? 'bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-300 shadow-xs'
+                        : 'bg-[#F3F1E9]/40 border-[#DCE9E3] hover:border-[#176B65]/40'
+                    }`}
+                  >
+                    <div>
+                      {/* Station Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-[#DCE9E3]/70 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black text-[#283B3D]">{station.name}</span>
+                            <span className={`w-2 h-2 rounded-full ${station.active ? (isStationServing ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500') : 'bg-slate-400'}`}></span>
+                          </div>
+                          <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
+                            {station.staffName} {station.role ? `• ${station.role}` : ''}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          !station.active
+                            ? 'bg-slate-200 text-slate-600'
+                            : isStationServing
+                            ? 'bg-emerald-600 text-white animate-pulse'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {!station.active ? 'On Leave' : isStationServing ? 'Serving' : 'Available'}
+                        </span>
+                      </div>
+
+                      {/* Station Content */}
+                      <div className="py-3">
+                        {isStationServing ? (
+                          <div className="space-y-2">
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-2xl font-token font-bold text-emerald-800">
+                                {station.currentToken.tokenNumber}
+                              </span>
+                              <span className="text-[11px] font-bold text-[#283B3D]/70 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-[#176B65]" />
+                                <span>{formatTimer(station.timerSeconds || 0)}</span>
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-[#283B3D] line-clamp-1">
+                              {station.currentToken.customerName || 'Customer'}
+                            </div>
+                            <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/60 px-2 py-0.5 rounded-md line-clamp-1">
+                              {station.currentToken.service || 'General Service'}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-3 text-center space-y-1">
+                            <span className="text-xs font-bold text-slate-400 block">
+                              {station.active ? 'Chair / Desk is Empty' : 'Marked Inactive / Off-duty'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {station.totalServedToday || 0} served today
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Station Actions */}
+                    <div className="pt-2 border-t border-[#DCE9E3]/70 space-y-1.5">
+                      {station.active && isStationServing && (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStationBilling(station.id)}
+                            className="col-span-2 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                            title="Complete service & enter billing amount"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Done & Bill</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkStationAbsent(station.id)}
+                            className="py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Customer not present at this counter"
+                          >
+                            <span>Skip</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {station.active && !isStationServing && (
+                        <button
+                          type="button"
+                          onClick={() => handleCallNextForStation(station.id)}
+                          disabled={waitingQueue.length === 0}
+                          className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shadow-xs"
+                        >
+                          <Volume2 className="w-3.5 h-3.5 text-[#F2A15A]" />
+                          <span>Call Next Here {waitingQueue.length > 0 ? `(${waitingQueue[0].tokenNumber})` : ''}</span>
+                        </button>
+                      )}
+
+                      {station.active && isStationServing && (
+                        <button
+                          type="button"
+                          onClick={() => handleAnnounceStationToken(station.id)}
+                          className="w-full py-1 rounded-lg text-slate-500 hover:text-[#176B65] text-[10px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          <span>Re-announce to {station.name}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
       {/* ========================================================= */}
@@ -6996,6 +7535,201 @@ export default function MerchantDashboardPage() {
                   className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
                 >
                   Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 13: MULTI-STATION & COUNTER STUDIO (BRD FR-709)       */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {stationModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-2xl w-full border border-[#DCE9E3] shadow-2xl space-y-6 my-auto max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Stations & Counters Management</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Configure chairs, consultation chambers, billing desks & staff assignments (FR-709)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStationModalOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F3F1E9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Feedback Alert */}
+              {stationFeedbackMsg && (
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                  <span>{stationFeedbackMsg}</span>
+                </div>
+              )}
+
+              {/* Category Default Reset Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-[#DCE9E3]/70 to-[#F3F1E9] border border-[#176B65]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-md">
+                    {detectCategoryKey(activeShop)} Archetype
+                  </span>
+                  <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
+                    Manage service desks for {activeShop?.name || 'Your Business'}. Add, rename, or mark staff on leave.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetStationsToCategory}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#176B65] transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95 flex items-center gap-1.5"
+                  title="Reset to category preset chairs/chambers"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset to Defaults</span>
+                </button>
+              </div>
+
+              {/* Add New Station Form */}
+              <form onSubmit={handleAddStation} className="p-4 rounded-2xl bg-[#F3F1E9]/50 border border-[#DCE9E3] space-y-3">
+                <span className="text-xs font-black text-[#283B3D] block">
+                  Add New Station / Chair / Chamber
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#283B3D]/70 mb-1">
+                      Station Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Chair #4 / Bay #3"
+                      value={newStationName}
+                      onChange={(e) => setNewStationName(e.target.value)}
+                      className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#283B3D]/70 mb-1">
+                      Staff / Operator Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Wasim (Stylist)"
+                      value={newStationStaff}
+                      onChange={(e) => setNewStationStaff(e.target.value)}
+                      className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#283B3D]/70 mb-1">
+                      Role / Department
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Grooming / OPD"
+                      value={newStationRole}
+                      onChange={(e) => setNewStationRole(e.target.value)}
+                      className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Station</span>
+                </button>
+              </form>
+
+              {/* Existing Stations List */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-bold text-[#283B3D]">
+                  <span>Configured Stations ({stationsList.length})</span>
+                  <span className="text-slate-400 font-semibold text-[11px]">Toggle Active/On-leave status below</span>
+                </div>
+
+                <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                  {stationsList.map((st) => (
+                    <div
+                      key={st.id}
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        st.active ? 'bg-white border-[#DCE9E3]' : 'bg-slate-50 border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          st.active ? 'bg-[#DCE9E3] text-[#176B65]' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-[#283B3D]">{st.name}</span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              st.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {st.active ? 'Active' : 'On Leave'}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-semibold block">
+                            {st.staffName} {st.role ? `• ${st.role}` : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 mr-1">
+                          {st.totalServedToday || 0} served
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStationActive(st.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                            st.active 
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200' 
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {st.active ? 'Mark On Leave' : 'Mark Active'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteStation(st.id)}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Station"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStationModalOpen(false)}
+                  className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all cursor-pointer text-center"
+                >
+                  Done & Save Stations
                 </button>
               </div>
             </motion.div>

@@ -140,6 +140,29 @@ export default function ShopDetailClient() {
     return () => window.removeEventListener('storage', loadServices);
   }, [slug]);
 
+  // BRD FR-709: Load Merchant's Multi-Counter Stations (Barbers, Doctors, Chambers)
+  const [shopStations, setShopStations] = useState([]);
+  const [preferredStation, setPreferredStation] = useState('');
+
+  useEffect(() => {
+    const loadStations = () => {
+      if (typeof window === 'undefined' || !slug) return;
+      try {
+        const saved = localStorage.getItem(`ak_shop_stations_${slug.toLowerCase()}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setShopStations(parsed.filter(s => s.active !== false));
+            return;
+          }
+        }
+      } catch (e) {}
+    };
+    loadStations();
+    window.addEventListener('storage', loadStations);
+    return () => window.removeEventListener('storage', loadStations);
+  }, [slug]);
+
   useEffect(() => {
     if (slug) {
       const favs = getFavoriteShopSlugs();
@@ -362,6 +385,7 @@ export default function ShopDetailClient() {
             groupSize: effectiveGroupSize,
             customerPurpose,
             companions: companionDetails,
+            preferredStation: preferredStation || null,
           };
         }
       } catch (backendErr) {
@@ -380,6 +404,7 @@ export default function ShopDetailClient() {
           memberNames: memberEntries,
           customerPurpose,
           companions: companionDetails,
+          preferredStation: preferredStation || null,
           peopleAhead: shop.waitingCount ?? 2,
           estimatedWaitMin: shop.estimatedWaitMin ?? 15,
           shopName: shop.name,
@@ -975,6 +1000,47 @@ export default function ShopDetailClient() {
                   onChange={(e) => setCustomerPurpose(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-[#F3F1E9]/30"
                 />
+
+                {/* Multi-Counter / Multi-Stylist / Doctor Preference (BRD FR-709) */}
+                {shopStations.length > 0 && (
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-[11px] font-bold text-[#283B3D]">
+                      Select Preferred Counter / Doctor / Stylist (Optional):
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPreferredStation('')}
+                        className={`text-[11px] px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer ${
+                          preferredStation === ''
+                            ? 'bg-[#176B65] text-white border-[#176B65] font-bold'
+                            : 'bg-[#F3F1E9] text-[#283B3D]/80 border-[#DCE9E3] hover:border-[#176B65] font-medium'
+                        }`}
+                      >
+                        ⚡ Any Available (Fastest Turn)
+                      </button>
+                      {shopStations.map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setPreferredStation(st.name)}
+                          className={`text-[11px] px-2.5 py-1.5 rounded-xl transition-all border flex items-center gap-1 cursor-pointer ${
+                            preferredStation === st.name
+                              ? 'bg-[#176B65] text-white border-[#176B65] font-bold shadow-2xs'
+                              : 'bg-white text-[#283B3D] border-[#DCE9E3] hover:border-[#176B65] font-semibold'
+                          }`}
+                        >
+                          <span>📍 {st.name}</span>
+                          {st.staffName && (
+                            <span className={`text-[10px] ${preferredStation === st.name ? 'text-white/80' : 'text-slate-400'}`}>
+                              ({st.staffName.split(' ')[0]})
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 3. Companion Members Details (if groupSize > 1) */}

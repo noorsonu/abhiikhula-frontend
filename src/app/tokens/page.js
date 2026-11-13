@@ -1281,6 +1281,37 @@ export default function MyTokensPage() {
                           </div>
                         </div>
 
+                        {/* Assigned Station / Counter Banner (BRD FR-709) */}
+                        {token.assignedStation && (
+                          <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 shadow-2xs ${
+                            isServing 
+                              ? 'bg-gradient-to-r from-emerald-50 to-[#DCE9E3]/50 border-emerald-300' 
+                              : 'bg-[#F3F1E9]/80 border-[#DCE9E3]'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">📍</span>
+                              <div>
+                                <span className="text-[10px] font-black uppercase text-[#176B65] tracking-wider block">
+                                  Assigned Counter / Chair
+                                </span>
+                                <span className="text-xs font-black text-[#283B3D]">
+                                  {typeof token.assignedStation === 'object' ? token.assignedStation.name : token.assignedStation}
+                                </span>
+                                {typeof token.assignedStation === 'object' && token.assignedStation.staffName && (
+                                  <span className="text-[11px] text-[#283B3D]/70 font-bold block">
+                                    {token.assignedStation.staffName} {token.assignedStation.role ? `• ${token.assignedStation.role}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {isServing && (
+                              <span className="text-[10px] font-black bg-[#176B65] text-white px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+                                Step Up Now
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {/* Address & Google Maps Directions */}
                         <div className="flex items-center justify-between text-xs text-[#283B3D]/70 bg-[#F3F1E9]/70 px-3 py-2 rounded-xl border border-[#DCE9E3]">
                           <div className="flex items-center gap-1.5 line-clamp-1 pr-2">
@@ -1476,7 +1507,7 @@ export default function MyTokensPage() {
                           {isServing ? (
                             <span className="text-emerald-700 flex items-center gap-1.5 font-bold">
                               <BellRing className="w-4 h-4 text-emerald-600 animate-bounce" />
-                              <span>It's your turn! Please step up to the service counter.</span>
+                              <span>It&apos;s your turn! Please step up to {typeof token.assignedStation === 'object' ? token.assignedStation.name : (token.assignedStation || 'the service counter')}.</span>
                             </span>
                           ) : (token.peopleAhead ?? 0) <= 1 ? (
                             <span className="text-[#176B65] flex items-center gap-1.5 font-bold">
