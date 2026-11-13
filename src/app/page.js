@@ -137,11 +137,30 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchLiveShops() {
-      const localShops = loadRegisteredLocalShops();
+      const localShops = loadRegisteredLocalShops().filter(s => {
+        const slug = (s.slug || '').toLowerCase();
+        const name = (s.name || '').toLowerCase();
+        return !slug.includes('royal-barber') && !slug.includes('gupta-medical') && !name.includes('royal barber') && !name.includes('gupta medical');
+      });
+
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
         if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          const liveList = res.data.data.map(sh => ({
+          // Strictly reject legacy mock seed shops from cloud backend
+          const DUMMY_SLUGS = ['royal-barber-indira-nagar', 'gupta-medical-indira-nagar', 'suresh-sweets-590'];
+          const validBackendShops = res.data.data.filter(sh => {
+            const slug = (sh.slug || '').toLowerCase();
+            const name = (sh.name || '').toLowerCase();
+            return (
+              !DUMMY_SLUGS.includes(slug) &&
+              !slug.includes('royal-barber') &&
+              !slug.includes('gupta-medical') &&
+              !name.includes('royal barber') &&
+              !name.includes('gupta medical')
+            );
+          });
+
+          const liveList = validBackendShops.map(sh => ({
             ...sh,
             imageUrl: resolveShopImage(sh)
           }));
