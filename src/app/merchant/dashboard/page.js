@@ -3295,31 +3295,39 @@ export default function MerchantDashboardPage() {
                     Average Service Time Per Customer (Minutes)
                   </label>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] p-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] p-1 shrink-0">
                       <button
                         type="button"
-                        onClick={() => setEditAvgWaitMin(Math.max(2, editAvgWaitMin - 1))}
+                        onClick={() => setEditAvgWaitMin(Math.max(1, editAvgWaitMin - 1))}
                         className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-base font-black text-[#283B3D] shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
                       >
                         -
                       </button>
                       <div className="w-24 text-center">
-                        <span className="text-2xl font-token font-bold text-[#176B65]">
-                          {editAvgWaitMin}
-                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={300}
+                          value={editAvgWaitMin}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            setEditAvgWaitMin(isNaN(val) || val < 1 ? 1 : Math.min(300, val));
+                          }}
+                          className="w-16 text-center text-2xl font-token font-bold text-[#176B65] bg-transparent focus:outline-none"
+                        />
                         <span className="text-[10px] text-[#283B3D]/60 block font-bold">min / client</span>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setEditAvgWaitMin(Math.min(120, editAvgWaitMin + 1))}
+                        onClick={() => setEditAvgWaitMin(Math.min(300, editAvgWaitMin + 1))}
                         className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-base font-black text-[#283B3D] shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
                       >
                         +
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
                       {[5, 8, 10, 12, 15, 20, 30].map((preset) => (
                         <button
                           key={preset}
@@ -3334,6 +3342,24 @@ export default function MerchantDashboardPage() {
                           {preset}m
                         </button>
                       ))}
+
+                      {/* Custom Minutes Direct Input Box */}
+                      <div className="flex items-center gap-1.5 bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl px-3 py-1.5 ml-auto sm:ml-0">
+                        <span className="text-[11px] font-bold text-slate-500">Custom Time:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={300}
+                          placeholder="min"
+                          value={editAvgWaitMin}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            setEditAvgWaitMin(isNaN(val) || val < 1 ? 1 : Math.min(300, val));
+                          }}
+                          className="w-14 bg-white border border-[#DCE9E3] rounded-xl px-2 py-1 text-xs font-black text-[#176B65] text-center focus:outline-none focus:border-[#176B65]"
+                        />
+                        <span className="text-xs font-bold text-[#176B65]">min</span>
+                      </div>
                     </div>
                   </div>
 
@@ -4392,27 +4418,62 @@ export default function MerchantDashboardPage() {
                   </div>
                 </div>
 
-                {/* 4. Service Pace per client */}
-                <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-2">
+                {/* 4. Service Pace per client with Custom Input & Stepper */}
+                <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#283B3D]">Service Pace Per Customer</span>
-                    <span className="text-sm font-token font-bold text-[#176B65]">~{editAvgWaitMin} min</span>
+                    <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-[#DCE9E3]">
+                      <span className="text-[11px] font-bold text-slate-500">Custom:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={300}
+                        value={editAvgWaitMin}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setEditAvgWaitMin(isNaN(val) || val < 1 ? 1 : Math.min(300, val));
+                        }}
+                        className="w-12 text-xs font-black text-[#176B65] text-center bg-transparent focus:outline-none"
+                      />
+                      <span className="text-xs font-bold text-[#176B65]">min</span>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-6 gap-1">
-                    {[5, 8, 10, 12, 15, 20].map((num) => (
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-white rounded-xl border border-[#DCE9E3] p-0.5 shrink-0">
                       <button
-                        key={num}
                         type="button"
-                        onClick={() => setEditAvgWaitMin(num)}
-                        className={`py-1 rounded-lg text-xs font-bold border transition-colors ${
-                          editAvgWaitMin === num
-                            ? 'bg-[#176B65] text-white border-[#176B65]'
-                            : 'bg-white hover:bg-slate-100 text-[#283B3D] border-[#DCE9E3]'
-                        }`}
+                        onClick={() => setEditAvgWaitMin(Math.max(1, editAvgWaitMin - 1))}
+                        className="w-7 h-7 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
                       >
-                        {num}m
+                        -
                       </button>
-                    ))}
+                      <span className="w-11 text-center font-bold text-xs text-[#176B65]">{editAvgWaitMin}m</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditAvgWaitMin(Math.min(300, editAvgWaitMin + 1))}
+                        className="w-7 h-7 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-1 flex-1">
+                      {[5, 8, 10, 12, 15, 20].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setEditAvgWaitMin(num)}
+                          className={`py-1 rounded-lg text-xs font-bold border transition-colors ${
+                            editAvgWaitMin === num
+                              ? 'bg-[#176B65] text-white border-[#176B65]'
+                              : 'bg-white hover:bg-slate-100 text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          {num}m
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

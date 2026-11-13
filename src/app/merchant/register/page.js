@@ -813,9 +813,17 @@ export default function MerchantRegisterPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-[#283B3D]">Average Service Time Per Customer</label>
-                <span className="text-xs font-black text-[#176B65] bg-[#DCE9E3] px-2.5 py-0.5 rounded-lg">
-                  {avgWaitMin} Minutes
-                </span>
+                <div className="flex items-center gap-1 bg-[#DCE9E3] px-2 py-0.5 rounded-lg border border-[#176B65]/20">
+                  <input
+                    type="number"
+                    min="1"
+                    max="300"
+                    value={avgWaitMin}
+                    onChange={(e) => setAvgWaitMin(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-12 text-xs font-black text-[#176B65] bg-transparent text-center focus:outline-none"
+                  />
+                  <span className="text-xs font-bold text-[#176B65]">Min</span>
+                </div>
               </div>
               <input
                 type="range"
