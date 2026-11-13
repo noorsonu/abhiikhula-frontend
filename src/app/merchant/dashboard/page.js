@@ -7,7 +7,8 @@ import {
   Power, ArrowRight, UserPlus, Phone, Volume2, VolumeX, QrCode, Printer, 
   Sparkles, RefreshCw, ChevronRight, X, UserCheck, ShieldCheck, Ticket, MessageCircle, MapPin,
   LogOut, PlusCircle, Lock, Megaphone, BarChart3, TrendingUp, Calendar, Download, Flame, Zap, Award, FileSpreadsheet,
-  Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus
+  Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus,
+  Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -58,6 +59,21 @@ export default function MerchantDashboardPage() {
   const [shopRecords, setShopRecords] = useState([]);
   const [customerTableSearch, setCustomerTableSearch] = useState('');
   const [customerStatusFilter, setCustomerStatusFilter] = useState('ALL'); // ALL, COMPLETED, SERVING, WAITING, NO_SHOW
+
+  // BRD FR-707: Quick Break / Pause Timer State
+  const [breakModalOpen, setBreakModalOpen] = useState(false);
+  const [breakType, setBreakType] = useState('CUSTOM'); // 'TEA' | 'LUNCH' | 'EXTENDED' | 'CUSTOM' | 'INDEFINITE'
+  const [breakTotalSeconds, setBreakTotalSeconds] = useState(0);
+  const [breakRemainingSeconds, setBreakRemainingSeconds] = useState(0);
+  const [breakReason, setBreakReason] = useState('');
+  const [customBreakMinutes, setCustomBreakMinutes] = useState(15);
+  const [breakResumeTimeDisplay, setBreakResumeTimeDisplay] = useState('');
+
+  // BRD FR-314: Daily Token Cap Limit State
+  const [capModalOpen, setCapModalOpen] = useState(false);
+  const [isCapEnabled, setIsCapEnabled] = useState(true);
+  const [dailyTokenCap, setDailyTokenCap] = useState(50); // Default 50 tokens
+  const [tempCapInput, setTempCapInput] = useState(50);
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -684,6 +700,45 @@ export default function MerchantDashboardPage() {
           syncCustomerQueueForShop(parsed);
           const recs = loadShopRecords(parsed);
           setShopRecords(recs);
+
+          // Load Daily Token Cap (BRD FR-314)
+          try {
+            const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
+            const savedCapStr = localStorage.getItem(capKey);
+            if (savedCapStr) {
+              const capObj = JSON.parse(savedCapStr);
+              if (capObj.cap !== undefined) setDailyTokenCap(Number(capObj.cap));
+              if (capObj.enabled !== undefined) setIsCapEnabled(Boolean(capObj.enabled));
+              setTempCapInput(Number(capObj.cap || 50));
+            }
+          } catch (e) {}
+
+          // Load Active Break if any (BRD FR-707)
+          try {
+            const breakKey = `ak_shop_break_${(parsed.slug || 'shop').toLowerCase()}`;
+            const savedBreakStr = localStorage.getItem(breakKey);
+            if (savedBreakStr) {
+              const breakObj = JSON.parse(savedBreakStr);
+              if (breakObj.active) {
+                const nowMs = Date.now();
+                if (breakObj.resumeTimestamp && breakObj.resumeTimestamp > nowMs) {
+                  const remSec = Math.round((breakObj.resumeTimestamp - nowMs) / 1000);
+                  setBreakRemainingSeconds(remSec);
+                  setBreakTotalSeconds(breakObj.totalSeconds || remSec);
+                  setBreakReason(breakObj.reason || 'Break in Progress');
+                  setBreakType(breakObj.type || 'CUSTOM');
+                  setBreakResumeTimeDisplay(breakObj.resumeTimeDisplay || '');
+                  setShopStatus('PAUSED');
+                } else if (!breakObj.resumeTimestamp && breakObj.type === 'INDEFINITE') {
+                  setBreakReason(breakObj.reason || 'Counter paused indefinitely');
+                  setBreakType('INDEFINITE');
+                  setShopStatus('PAUSED');
+                } else {
+                  localStorage.removeItem(breakKey);
+                }
+              }
+            }
+          } catch (e) {}
         } catch (e) {
           setIsAuthorized(false);
         }
@@ -722,6 +777,107 @@ export default function MerchantDashboardPage() {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Countdown Timer for Quick Break (BRD FR-707)
+  useEffect(() => {
+    if (breakRemainingSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setBreakRemainingSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShopStatus('OPEN');
+          if (activeShop) {
+            const breakKey = `ak_shop_break_${(activeShop.slug || 'shop').toLowerCase()}`;
+            try {
+              localStorage.removeItem(breakKey);
+              window.dispatchEvent(new Event('storage'));
+            } catch (e) {}
+          }
+          playChime();
+          setAnnouncementMsg('🔔 Break over! Counter is now OPEN for serving.');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [breakRemainingSeconds, activeShop]);
+
+  // Break Handlers (BRD FR-707)
+  const handleStartBreak = (type, minutes, reason) => {
+    const totalSec = minutes * 60;
+    const now = new Date();
+    const resumeDate = minutes > 0 ? new Date(now.getTime() + totalSec * 1000) : null;
+    const resumeDisplay = resumeDate ? resumeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Manual Resume';
+
+    setBreakType(type);
+    setBreakTotalSeconds(totalSec);
+    setBreakRemainingSeconds(totalSec);
+    setBreakReason(reason || (type === 'TEA' ? 'Tea Break' : type === 'LUNCH' ? 'Lunch Break' : 'Rest Break'));
+    setBreakResumeTimeDisplay(resumeDisplay);
+    setShopStatus('PAUSED');
+    setBreakModalOpen(false);
+
+    if (activeShop) {
+      const breakKey = `ak_shop_break_${(activeShop.slug || 'shop').toLowerCase()}`;
+      try {
+        localStorage.setItem(breakKey, JSON.stringify({
+          active: true,
+          type,
+          reason: reason || (type === 'TEA' ? 'Tea Break' : type === 'LUNCH' ? 'Lunch Break' : 'Rest Break'),
+          totalSeconds: totalSec,
+          resumeTimestamp: resumeDate ? resumeDate.getTime() : null,
+          resumeTimeDisplay: resumeDisplay,
+          startedAt: now.toISOString()
+        }));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+  };
+
+  const handleEndBreak = () => {
+    setBreakRemainingSeconds(0);
+    setBreakTotalSeconds(0);
+    setBreakReason('');
+    setBreakResumeTimeDisplay('');
+    setShopStatus('OPEN');
+
+    if (activeShop) {
+      const breakKey = `ak_shop_break_${(activeShop.slug || 'shop').toLowerCase()}`;
+      try {
+        localStorage.removeItem(breakKey);
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+    playChime();
+    setAnnouncementMsg('Counter resumed to OPEN status.');
+  };
+
+  // Daily Token Cap Limit Handlers (BRD FR-314)
+  const handleSaveCap = (newCap, enabled) => {
+    const validCap = Math.max(5, Number(newCap) || 50);
+    setDailyTokenCap(validCap);
+    setIsCapEnabled(enabled);
+    setCapModalOpen(false);
+
+    if (activeShop) {
+      const capKey = `ak_merchant_cap_${(activeShop.slug || 'shop').toLowerCase()}`;
+      try {
+        localStorage.setItem(capKey, JSON.stringify({
+          cap: validCap,
+          enabled: Boolean(enabled),
+          updatedAt: new Date().toISOString()
+        }));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+    setAnnouncementMsg(`Daily capacity cap updated to ${validCap} tokens (${enabled ? 'Active' : 'Disabled'}).`);
+  };
+
+  const handleQuickExpandCap = (addTokens = 10) => {
+    const nextCap = dailyTokenCap + addTokens;
+    handleSaveCap(nextCap, true);
   };
 
   // Play browser chime
@@ -1203,6 +1359,13 @@ export default function MerchantDashboardPage() {
     );
   }
 
+  // Calculate daily capacity numbers (BRD FR-314)
+  const todayCompletedCount = completedList.length + shopRecords.filter(r => r.date === new Date().toISOString().slice(0, 10) && r.status === 'COMPLETED').length;
+  const todayIssuedCount = todayCompletedCount + waitingQueue.length + (servingToken ? 1 : 0);
+  const capPercent = dailyTokenCap > 0 ? Math.round((todayIssuedCount / dailyTokenCap) * 100) : 0;
+  const isCapReached = isCapEnabled && todayIssuedCount >= dailyTokenCap;
+  const tokensRemainingToday = Math.max(0, dailyTokenCap - todayIssuedCount);
+
   return (
     <div className="min-h-screen pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 pt-4">
       
@@ -1275,11 +1438,17 @@ export default function MerchantDashboardPage() {
             <span>Counter QR Pass</span>
           </button>
 
-          {/* Shop Status Switch (OPEN / PAUSED / CLOSED) */}
+          {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
           <div className="flex items-center bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
             <button
               type="button"
-              onClick={() => setShopStatus('OPEN')}
+              onClick={() => {
+                if (breakRemainingSeconds > 0 || shopStatus === 'PAUSED') {
+                  handleEndBreak();
+                } else {
+                  setShopStatus('OPEN');
+                }
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 shopStatus === 'OPEN' ? 'bg-emerald-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
               }`}
@@ -1288,16 +1457,25 @@ export default function MerchantDashboardPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShopStatus('PAUSED')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                shopStatus === 'PAUSED' ? 'bg-amber-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
+              onClick={() => setBreakModalOpen(true)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                shopStatus === 'PAUSED' ? 'bg-amber-600 text-white shadow-xs animate-pulse' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
               }`}
             >
-              ⏸ Pause Queue
+              <Coffee className="w-3.5 h-3.5" />
+              <span>
+                {breakRemainingSeconds > 0 
+                  ? `Break: ${formatTimer(breakRemainingSeconds)}` 
+                  : shopStatus === 'PAUSED' ? 'Paused' : 'Break / Pause'
+                }
+              </span>
             </button>
             <button
               type="button"
-              onClick={() => setShopStatus('CLOSED')}
+              onClick={() => {
+                if (breakRemainingSeconds > 0) handleEndBreak();
+                setShopStatus('CLOSED');
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 shopStatus === 'CLOSED' ? 'bg-rose-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
               }`}
@@ -1345,6 +1523,62 @@ export default function MerchantDashboardPage() {
             <button onClick={() => setAnnouncementMsg('')} className="text-white/80 hover:text-white">
               <X className="w-4 h-4" />
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active Smart Break / Pause Banner (BRD FR-707) */}
+      <AnimatePresence>
+        {(shopStatus === 'PAUSED' || breakRemainingSeconds > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-2 border-amber-300"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                <Coffee className="w-5 h-5 text-white animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs uppercase tracking-wider font-black bg-white/20 px-2.5 py-0.5 rounded-md">
+                    Queue Paused • {breakReason || 'Break in Progress'}
+                  </span>
+                  {breakRemainingSeconds > 0 ? (
+                    <span className="text-xs font-mono font-black bg-black/40 px-2.5 py-0.5 rounded-md text-amber-200">
+                      ⏳ {formatTimer(breakRemainingSeconds)} remaining
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold bg-black/30 px-2 py-0.5 rounded-md text-amber-100">
+                      Indefinite Pause
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-amber-100 font-semibold mt-1">
+                  Customer pass screens are displaying: &ldquo;{breakReason || 'Counter paused'}&rdquo;.
+                  {breakResumeTimeDisplay ? ` Auto-resume set for ~${breakResumeTimeDisplay}.` : ' Ready to resume anytime.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setBreakModalOpen(true)}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all cursor-pointer border border-white/20 text-center"
+              >
+                Change Break
+              </button>
+              <button
+                type="button"
+                onClick={handleEndBreak}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white text-amber-900 hover:bg-amber-100 text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <PlayCircle className="w-4 h-4 text-emerald-700" />
+                <span>Resume Now</span>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1448,6 +1682,117 @@ export default function MerchantDashboardPage() {
               </div>
               <span className="text-[11px] text-[#283B3D]/70 font-semibold block">Recalled if returned</span>
             </div>
+          </div>
+
+          {/* DAILY QUEUE CAPACITY & TOKEN CAP BAR (BRD FR-314) */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#DCE9E3] shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                  isCapReached ? 'bg-rose-100 text-rose-700' : capPercent >= 80 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-[#176B65]'
+                }`}>
+                  <Gauge className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-[#283B3D]">Daily Token Capacity Limit</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#176B65]/10 text-[#176B65]">
+                      BRD FR-314
+                    </span>
+                    {isCapEnabled ? (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                        isCapReached 
+                          ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                        {isCapReached ? '● CAP FULL' : '● ACTIVE'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                        Unlimited (Disabled)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#283B3D]/70 font-semibold mt-0.5">
+                    {isCapEnabled ? (
+                      <>
+                        <span className="font-black text-[#283B3D]">{todayIssuedCount} tokens issued</span> out of <span className="font-black text-[#176B65]">{dailyTokenCap} daily limit</span> ({tokensRemainingToday} slots left today)
+                      </>
+                    ) : (
+                      'Daily token limit is currently disabled. Tokens can be issued without restriction.'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                {isCapEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => handleQuickExpandCap(10)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+                    title="Quickly add 10 more tokens for today"
+                  >
+                    <span>+10 Tokens</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempCapInput(dailyTokenCap);
+                    setCapModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#176B65]" />
+                  <span>Configure Cap</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Capacity Progress Bar */}
+            {isCapEnabled && (
+              <div className="space-y-1.5 pt-1">
+                <div className="h-2.5 w-full bg-[#F3F1E9] rounded-full overflow-hidden p-0.5 border border-[#DCE9E3]">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      capPercent >= 100 
+                        ? 'bg-rose-500' 
+                        : capPercent >= 80 
+                          ? 'bg-amber-500' 
+                          : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(capPercent, 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-[#283B3D]/60">
+                  <span>0 Issued</span>
+                  <span className={capPercent >= 80 ? 'text-amber-700 font-black' : ''}>
+                    {capPercent}% Utilized
+                  </span>
+                  <span>Cap: {dailyTokenCap} max</span>
+                </div>
+              </div>
+            )}
+
+            {/* Cap Reached Warning Alert */}
+            {isCapEnabled && isCapReached && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-3 text-rose-800">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span className="text-xs font-bold">
+                    Daily token limit reached! Online token generation is paused to protect queue service quality.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleQuickExpandCap(10)}
+                  className="px-3 py-1 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shrink-0 cursor-pointer shadow-xs active:scale-95"
+                >
+                  Expand +10
+                </button>
+              </div>
+            )}
           </div>
 
       {/* ========================================================= */}
@@ -2765,6 +3110,333 @@ export default function MerchantDashboardPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 4: SMART BREAK / PAUSE TIMER MODAL (BRD FR-707)     */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {breakModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-6 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-800">
+                    <Coffee className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-[#283B3D]">Counter Break / Pause Timer</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        FR-707
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Notify waiting customers on their mobile screen with an estimated return time.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBreakModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* If currently on break */}
+              {shopStatus === 'PAUSED' && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-900">Current Break Status</span>
+                    {breakRemainingSeconds > 0 && (
+                      <span className="text-xs font-mono font-black text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-md">
+                        {formatTimer(breakRemainingSeconds)} remaining
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-amber-800">
+                    Reason: <strong>{breakReason || 'Counter on break'}</strong>
+                    {breakResumeTimeDisplay ? ` • Auto-resumes ~${breakResumeTimeDisplay}` : ''}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleEndBreak();
+                      setBreakModalOpen(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    <span>End Break & Resume Counter Now</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Preset Buttons */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#283B3D] uppercase tracking-wider">
+                  Quick Break Presets
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleStartBreak('TEA', 15, 'Tea / Refreshment Break')}
+                    className="p-3.5 rounded-2xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 hover:border-amber-400 text-left transition-all cursor-pointer group active:scale-98"
+                  >
+                    <div className="flex items-center gap-2 text-amber-800 font-black text-sm">
+                      <Coffee className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span>15 Min</span>
+                    </div>
+                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Tea Break</span>
+                    <span className="text-[10px] text-[#283B3D]/60 block">Quick refreshment</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStartBreak('LUNCH', 30, 'Lunch / Meal Break')}
+                    className="p-3.5 rounded-2xl border-2 border-orange-200 bg-orange-50/50 hover:bg-orange-100/70 hover:border-orange-400 text-left transition-all cursor-pointer group active:scale-98"
+                  >
+                    <div className="flex items-center gap-2 text-orange-800 font-black text-sm">
+                      <Utensils className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span>30 Min</span>
+                    </div>
+                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Lunch Break</span>
+                    <span className="text-[10px] text-[#283B3D]/60 block">Afternoon / Dinner</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStartBreak('EXTENDED', 45, 'Extended Rest / Errand')}
+                    className="p-3.5 rounded-2xl border-2 border-teal-200 bg-teal-50/50 hover:bg-teal-100/70 hover:border-teal-400 text-left transition-all cursor-pointer group active:scale-98"
+                  >
+                    <div className="flex items-center gap-2 text-[#176B65] font-black text-sm">
+                      <Timer className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span>45 Min</span>
+                    </div>
+                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Rest / Restock</span>
+                    <span className="text-[10px] text-[#283B3D]/60 block">Stock & supplies run</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Minutes & Reason Section */}
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-3">
+                <label className="block text-xs font-bold text-[#283B3D]">
+                  Custom Break Duration & Note
+                </label>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-white rounded-xl border border-[#DCE9E3] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setCustomBreakMinutes(Math.max(5, customBreakMinutes - 5))}
+                      className="w-8 h-8 rounded-lg hover:bg-[#F3F1E9] text-base font-black text-[#283B3D] flex items-center justify-center cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="w-16 text-center text-sm font-black text-[#176B65]">
+                      {customBreakMinutes}m
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomBreakMinutes(Math.min(180, customBreakMinutes + 5))}
+                      className="w-8 h-8 rounded-lg hover:bg-[#F3F1E9] text-base font-black text-[#283B3D] flex items-center justify-center cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Break reason (e.g. Lunch, Prayers, Restock)"
+                    value={breakReason}
+                    onChange={(e) => setBreakReason(e.target.value)}
+                    className="flex-1 bg-white border border-[#DCE9E3] rounded-xl px-3.5 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleStartBreak('CUSTOM', customBreakMinutes, breakReason || `Quick break (${customBreakMinutes}m)`)}
+                  className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
+                >
+                  <Timer className="w-4 h-4" />
+                  <span>Start Custom {customBreakMinutes}-Minute Break</span>
+                </button>
+              </div>
+
+              {/* Indefinite Pause Option */}
+              <div className="pt-1 border-t border-[#DCE9E3] flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleStartBreak('INDEFINITE', 0, breakReason || 'Counter paused indefinitely')}
+                  className="px-4 py-2.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <PauseCircle className="w-4 h-4 text-amber-700" />
+                  <span>Pause Indefinitely (No Timer)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBreakModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#283B3D]/70 hover:text-[#283B3D] cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 5: DAILY TOKEN CAP LIMIT MODAL (BRD FR-314)         */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {capModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-6 shadow-2xl border border-[#DCE9E3] relative"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-[#176B65]">
+                    <Gauge className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-[#283B3D]">Daily Token Cap Limit</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-[#176B65]">
+                        FR-314
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Control maximum token capacity to prevent crowd congestion.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCapModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Cap Toggle Switch */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3]">
+                <div>
+                  <span className="text-xs font-black text-[#283B3D] block">Enable Daily Token Limit</span>
+                  <span className="text-[11px] text-[#283B3D]/60 font-semibold">
+                    {isCapEnabled ? 'Limit is enforced on online token generation' : 'Unlimited tokens allowed per day'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCapEnabled(!isCapEnabled)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    isCapEnabled ? 'bg-[#176B65]' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      isCapEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Stepper + Number */}
+              {isCapEnabled && (
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Maximum Tokens Allowed Per Day
+                  </label>
+                  <div className="flex items-center justify-center gap-4 bg-[#F3F1E9]/50 p-3 rounded-2xl border border-[#DCE9E3]">
+                    <button
+                      type="button"
+                      onClick={() => setTempCapInput(Math.max(5, tempCapInput - 5))}
+                      className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-lg font-black text-[#283B3D] shadow-xs flex items-center justify-center cursor-pointer active:scale-95 border border-[#DCE9E3]"
+                    >
+                      -5
+                    </button>
+                    <div className="text-center">
+                      <span className="text-3xl font-token font-bold text-[#176B65]">
+                        {tempCapInput}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 block">tokens / day</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTempCapInput(Math.min(500, tempCapInput + 5))}
+                      className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-lg font-black text-[#283B3D] shadow-xs flex items-center justify-center cursor-pointer active:scale-95 border border-[#DCE9E3]"
+                    >
+                      +5
+                    </button>
+                  </div>
+
+                  {/* Presets */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-[#283B3D]/60">Quick Presets</span>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[25, 40, 50, 75, 100].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTempCapInput(preset)}
+                          className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            tempCapInput === preset
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Real-time Math Preview */}
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Tokens Issued Today: <strong>{todayIssuedCount}</strong></span>
+                    <span>Remaining Slots: <strong className="text-emerald-700">{Math.max(0, tempCapInput - todayIssuedCount)}</strong></span>
+                  </div>
+                </div>
+              )}
+
+              {/* Save & Cancel */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSaveCap(tempCapInput, isCapEnabled)}
+                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span>Save Capacity Settings</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCapModalOpen(false)}
+                  className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
