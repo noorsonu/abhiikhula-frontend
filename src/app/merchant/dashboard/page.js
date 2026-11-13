@@ -9,7 +9,8 @@ import {
   LogOut, PlusCircle, Lock, Megaphone, BarChart3, TrendingUp, Calendar, Download, Flame, Zap, Award, FileSpreadsheet,
   Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus,
   Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle,
-  Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall
+  Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
+  Moon, RotateCcw, Archive, ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -92,6 +93,11 @@ export default function MerchantDashboardPage() {
   const [editTokenPrefix, setEditTokenPrefix] = useState('AK');
   const [editEnableWhatsapp, setEditEnableWhatsapp] = useState(true);
   const [profileSavedFeedback, setProfileSavedFeedback] = useState(false);
+
+  // BRD FR-708: Day-End Queue Close & Reset State
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [unservedResolution, setUnservedResolution] = useState('EXPIRE'); // 'EXPIRE' | 'NO_SHOW'
+  const [lastDayCloseTimestamp, setLastDayCloseTimestamp] = useState(null);
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -1011,6 +1017,114 @@ export default function MerchantDashboardPage() {
     playChime();
   };
 
+  // Nightly Auto-Reset Check (BRD FR-203 / FR-708)
+  // If the last active date was yesterday, auto-expire stale unserved tokens and reset counter to Token #1
+  useEffect(() => {
+    if (!activeShop || typeof window === 'undefined') return;
+    const sSlug = (activeShop.slug || 'shop').toLowerCase();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const lastActiveKey = `ak_last_active_date_${sSlug}`;
+    const lastActiveDate = localStorage.getItem(lastActiveKey);
+
+    if (lastActiveDate && lastActiveDate !== todayStr) {
+      try {
+        const allTokensStr = localStorage.getItem('ak_customer_tokens');
+        if (allTokensStr) {
+          const allTokens = JSON.parse(allTokensStr);
+          const hasStale = allTokens.some(t => {
+            const tSlug = (t.shopSlug || '').toLowerCase();
+            return tSlug === sSlug && (t.status === 'WAITING' || t.status === 'SERVING');
+          });
+          if (hasStale) {
+            const cleaned = allTokens.map(t => {
+              const tSlug = (t.shopSlug || '').toLowerCase();
+              if (tSlug === sSlug && (t.status === 'WAITING' || t.status === 'SERVING')) {
+                return { ...t, status: 'EXPIRED', expiredReason: 'Nightly rollover auto-reset' };
+              }
+              return t;
+            });
+            localStorage.setItem('ak_customer_tokens', JSON.stringify(cleaned));
+            setWaitingQueue([]);
+            setServingToken(null);
+          }
+        }
+      } catch (e) {}
+    }
+    localStorage.setItem(lastActiveKey, todayStr);
+  }, [activeShop]);
+
+  // Day-End Queue Close & Reset Handler (BRD FR-708)
+  const handleConfirmDayEndReset = () => {
+    if (!activeShop) return;
+    const now = new Date();
+    const sSlug = (activeShop.slug || 'shop').toLowerCase();
+    const sName = (activeShop.name || '').toLowerCase();
+
+    try {
+      // 1. Update waiting or serving tokens in localStorage to EXPIRED or NO_SHOW
+      const allTokensStr = localStorage.getItem('ak_customer_tokens');
+      if (allTokensStr) {
+        const allTokens = JSON.parse(allTokensStr);
+        const updatedTokens = allTokens.map(t => {
+          const tSlug = (t.shopSlug || '').toLowerCase();
+          const tName = (t.shopName || '').toLowerCase();
+          const isThisShop = (tSlug && tSlug === sSlug) || (tName && tName === sName);
+          if (isThisShop && (t.status === 'WAITING' || t.status === 'SERVING' || !t.status)) {
+            return {
+              ...t,
+              status: unservedResolution === 'NO_SHOW' ? 'NO_SHOW' : 'EXPIRED',
+              expiredAt: now.toISOString(),
+              expiredReason: 'Day closed by merchant (FR-708)'
+            };
+          }
+          return t;
+        });
+        localStorage.setItem('ak_customer_tokens', JSON.stringify(updatedTokens));
+      }
+
+      // 2. Clear break if active
+      if (breakRemainingSeconds > 0) {
+        handleEndBreak();
+      }
+
+      // 3. Reset live calling queue in memory
+      setServingToken(null);
+      setWaitingQueue([]);
+      setAbsentList([]);
+      setShopStatus('CLOSED');
+      setResetModalOpen(false);
+
+      // 4. Reset active shop's currentServing back to #1 and waiting count to 0
+      const prefix = activeShop.tokenPrefix || 'AK';
+      const updatedShop = {
+        ...activeShop,
+        status: 'CLOSED',
+        currentServing: `${prefix}-001`,
+        waitingCount: 0,
+        lastDayClose: now.toISOString()
+      };
+      setActiveShop(updatedShop);
+      setLastDayCloseTimestamp(now.toISOString());
+
+      // Save to localStorage
+      localStorage.setItem('ak_active_merchant_shop', JSON.stringify(updatedShop));
+      localStorage.setItem(`ak_last_day_close_${sSlug}`, now.toISOString());
+
+      const allShopsStr = localStorage.getItem('ak_merchant_shops');
+      if (allShopsStr) {
+        const allShops = JSON.parse(allShopsStr);
+        const updatedShops = allShops.map(s => (s.slug === updatedShop.slug || s.id === updatedShop.id ? updatedShop : s));
+        localStorage.setItem('ak_merchant_shops', JSON.stringify(updatedShops));
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      playChime();
+      setAnnouncementMsg(`🌙 Day closed! Queue reset to ${prefix}-001 for tomorrow morning.`);
+    } catch (e) {
+      console.error('Failed to reset day queue:', e);
+    }
+  };
+
   // Play browser chime
   const playChime = () => {
     if (!soundEnabled || typeof window === 'undefined') return;
@@ -1616,8 +1730,12 @@ export default function MerchantDashboardPage() {
             <button
               type="button"
               onClick={() => {
-                if (breakRemainingSeconds > 0) handleEndBreak();
-                setShopStatus('CLOSED');
+                if (waitingQueue.length > 0 || servingToken) {
+                  setResetModalOpen(true);
+                } else {
+                  if (breakRemainingSeconds > 0) handleEndBreak();
+                  setShopStatus('CLOSED');
+                }
               }}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 shopStatus === 'CLOSED' ? 'bg-rose-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
@@ -1626,6 +1744,18 @@ export default function MerchantDashboardPage() {
               Closed
             </button>
           </div>
+
+          {/* Day-End Close & Reset Queue Button (BRD FR-708) */}
+          <button
+            type="button"
+            onClick={() => setResetModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-[#283B3D] hover:bg-[#1f2e30] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Review final hisaab, expire remaining queue, and reset to Token #1 for tomorrow (FR-708)"
+          >
+            <Moon className="w-4 h-4 text-[#F2A15A]" />
+            <span className="hidden sm:inline">Day-End Close</span>
+            <span className="sm:hidden">Reset</span>
+          </button>
 
           {/* Shop Switch / Add Shop / Logout Menu */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-[#DCE9E3]">
@@ -2093,6 +2223,33 @@ export default function MerchantDashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Day-End Settlement Card (BRD FR-708) */}
+          <div className="bg-gradient-to-r from-slate-900 to-[#283B3D] text-[#F3F1E9] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md border border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <Moon className="w-5 h-5 text-[#F2A15A]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black">Day-End Queue Settlement</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#F2A15A]">
+                    FR-708
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 font-medium mt-0.5">
+                  Pack up for tonight: expire remaining queue, finalize hisaab, and reset to fresh Token #1 for tomorrow.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setResetModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shrink-0 cursor-pointer shadow-xs active:scale-95 w-full sm:w-auto text-center"
+            >
+              Close Day & Reset
+            </button>
+          </div>
 
         </div>
 
@@ -4278,6 +4435,222 @@ export default function MerchantDashboardPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 7: DAY-END QUEUE CLOSE & RESET MODAL (BRD FR-708)   */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {resetModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[92vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#283B3D] text-[#F2A15A] flex items-center justify-center shadow-xs">
+                    <Moon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-[#283B3D]">Day-End Close & Queue Reset</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-[#F2A15A]">
+                        FR-708
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Review today&apos;s summary, conclude unserved passes & prepare for tomorrow.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setResetModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Today's Closing Numbers Summary */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F3F1E9] to-[#DCE9E3]/50 border border-[#DCE9E3] space-y-3">
+                <div className="flex items-center justify-between text-xs font-black text-[#283B3D]">
+                  <span>Today&apos;s Final Performance</span>
+                  <span className="text-[10px] text-slate-500 font-bold">{new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-3 bg-white rounded-xl border border-[#DCE9E3]">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Served</span>
+                    <span className="text-xl font-token font-bold text-emerald-700">
+                      {todayCompletedCount}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block font-medium">completed visits</span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-[#DCE9E3]">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Collection</span>
+                    <span className="text-xl font-token font-bold text-[#176B65]">
+                      ₹{(
+                        completedList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) +
+                        shopRecords.filter(r => (r.date === new Date().toISOString().slice(0, 10)) && r.status === 'COMPLETED').reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+                      ).toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block font-medium">today&apos;s hisaab</span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-[#DCE9E3]">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">In Line</span>
+                    <span className={`text-xl font-token font-bold ${waitingQueue.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                      {waitingQueue.length}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block font-medium">unserved queue</span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-[#DCE9E3]">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">At Counter</span>
+                    <span className="text-sm font-token font-bold text-[#283B3D] truncate block mt-1">
+                      {servingToken ? servingToken.tokenNumber : 'None'}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block font-medium">serving desk</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Unserved Queue Handling Resolution */}
+              {waitingQueue.length > 0 ? (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-black text-amber-900">
+                        {waitingQueue.length} Customer(s) Still In Waiting Queue
+                      </h4>
+                      <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                        Closing now will automatically expire active waiting passes so customers aren&apos;t left hanging.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <label className="text-[11px] font-bold text-[#283B3D] block">
+                      Choose How Unserved Passes are Marked:
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => setUnservedResolution('EXPIRE')}
+                      className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-start gap-2.5 cursor-pointer ${
+                        unservedResolution === 'EXPIRE'
+                          ? 'bg-white border-[#176B65] shadow-2xs'
+                          : 'bg-white/60 border-amber-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        checked={unservedResolution === 'EXPIRE'}
+                        onChange={() => setUnservedResolution('EXPIRE')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-[#283B3D] block">
+                          Gracefully Expire With Day-End Notice (Recommended)
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          Pass screen will display: &ldquo;Counter closed for the day. Opens tomorrow at {activeShop?.openingHours?.split('-')[0] || '10:00 AM'}&rdquo;.
+                        </span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setUnservedResolution('NO_SHOW')}
+                      className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-start gap-2.5 cursor-pointer ${
+                        unservedResolution === 'NO_SHOW'
+                          ? 'bg-white border-[#176B65] shadow-2xs'
+                          : 'bg-white/60 border-amber-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        checked={unservedResolution === 'NO_SHOW'}
+                        onChange={() => setUnservedResolution('NO_SHOW')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-[#283B3D] block">
+                          Mark as No-Show / Absent
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          Recorded as unserved no-show in your daily footfall analytics report.
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span className="text-xs font-bold">
+                    Queue is completely empty! No customers waiting. Perfect time to close the counter.
+                  </span>
+                </div>
+              )}
+
+              {/* Tomorrow Morning Reset Details */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs text-slate-700">
+                <div className="flex items-center justify-between">
+                  <span>Tomorrow Morning Starting Token:</span>
+                  <strong className="text-[#176B65] font-token text-sm font-bold">
+                    {activeShop?.tokenPrefix || 'AK'}-001
+                  </strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Counter Status After Reset:</span>
+                  <span className="font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded text-[10px]">
+                    CLOSED
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Today&apos;s Hisaab Saved To:</span>
+                  <span className="font-semibold text-slate-700">Historical Analytics</span>
+                </div>
+              </div>
+
+              {/* Actions: Download CSV, Confirm Reset, Cancel */}
+              <div className="space-y-2 pt-2 border-t border-[#DCE9E3]">
+                <button
+                  type="button"
+                  onClick={handleDownloadCsv}
+                  className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                >
+                  <Download className="w-4 h-4 text-[#176B65]" />
+                  <span>Download Today&apos;s Final Hisaab (Excel / CSV)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDayEndReset}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-[#283B3D] to-slate-900 hover:from-black hover:to-slate-800 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Moon className="w-4 h-4 text-[#F2A15A]" />
+                  <span>Confirm Day Close & Reset Queue for Tomorrow</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setResetModalOpen(false)}
+                  className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                >
+                  Keep Counter Open (Cancel)
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
