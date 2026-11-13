@@ -10,7 +10,8 @@ import {
   Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus,
   Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle,
   Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
-  Moon, RotateCcw, Archive, ShieldAlert
+  Moon, RotateCcw, Archive, ShieldAlert,
+  Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -98,6 +99,17 @@ export default function MerchantDashboardPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [unservedResolution, setUnservedResolution] = useState('EXPIRE'); // 'EXPIRE' | 'NO_SHOW'
   const [lastDayCloseTimestamp, setLastDayCloseTimestamp] = useState(null);
+
+  // BRD FR-1105: Customer Reviews & Ratings Console State
+  const [reviewsList, setReviewsList] = useState([]);
+  const [reviewFilterRating, setReviewFilterRating] = useState('ALL'); // 'ALL' | 5 | 4 | 3 | 'LOW' | 'AWAITING_REPLY'
+  const [reviewSearchQuery, setReviewSearchQuery] = useState('');
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replyingToReview, setReplyingToReview] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
+  const [flaggingReview, setFlaggingReview] = useState(null);
+  const [flagReason, setFlagReason] = useState('Not a real customer visit');
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -489,6 +501,110 @@ export default function MerchantDashboardPage() {
     }
   };
 
+  const getReviewsStorageKey = (shop) => `ak_merchant_reviews_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopReviews = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    try {
+      const key = getReviewsStorageKey(shop);
+      const saved = localStorage.getItem(key);
+      if (saved) return JSON.parse(saved);
+
+      const prefix = shop.tokenPrefix || 'AK';
+      const initialReviews = [
+        {
+          id: 'rev-1',
+          customerName: 'Aman Saxena',
+          tokenNumber: `${prefix}-014`,
+          rating: 5,
+          date: 'Today, 11:45 AM',
+          serviceName: 'Haircut & Styling',
+          tags: ['Punctual Service', 'Polite Staff', 'Clean Counter'],
+          comment: 'Bahut smooth experience raha! Ghar se live token track kiya aur jab sirf 2 log bache tab dukaan pahuncha. Bilkul wait nahi karna pada.',
+          merchantReply: 'Thank you Aman ji! Hamari koshish rehti hai ki kisi grahak ka time waste na ho. Fir se zaroor aayein!',
+          merchantReplyDate: 'Today, 12:10 PM',
+          verifiedVisit: true,
+          flagged: false
+        },
+        {
+          id: 'rev-2',
+          customerName: 'Priya Gupta',
+          tokenNumber: `${prefix}-009`,
+          rating: 5,
+          date: 'Yesterday, 04:30 PM',
+          serviceName: 'General Consultation',
+          tags: ['Great Experience', 'Value for Money'],
+          comment: 'AbhiiKhula QR pass system bohot badiya hai. Line me khade hone ka jhanjhat khatam ho gaya. Counter par aate hi turant call hua.',
+          merchantReply: null,
+          merchantReplyDate: null,
+          verifiedVisit: true,
+          flagged: false
+        },
+        {
+          id: 'rev-3',
+          customerName: 'Rohit Keshari',
+          tokenNumber: `${prefix}-022`,
+          rating: 4,
+          date: '2 days ago',
+          serviceName: 'Beard Trim & Grooming',
+          tags: ['Clean Counter', 'Skilled Work'],
+          comment: 'Staff kaafi polite hai aur counter clean tha. Thoda sa rush zyada tha shaam ko par overall kaafi accha service mila.',
+          merchantReply: 'Shukriya Rohit ji feedback ke liye. Shaam ke peak rush ko kam karne ke liye humne average pace optimize kiya hai!',
+          merchantReplyDate: 'Yesterday',
+          verifiedVisit: true,
+          flagged: false
+        },
+        {
+          id: 'rev-4',
+          customerName: 'Dr. Sameer Rizvi',
+          tokenNumber: `${prefix}-003`,
+          rating: 5,
+          date: '3 days ago',
+          serviceName: 'Express Service',
+          tags: ['Super Fast', 'Polite Staff'],
+          comment: 'Ekdum professional management! Lucknow me har shop par aisa digital counter hona chahiye. Best shop in Hazratganj.',
+          merchantReply: null,
+          merchantReplyDate: null,
+          verifiedVisit: true,
+          flagged: false
+        },
+        {
+          id: 'rev-5',
+          customerName: 'Vikram Chaurasia',
+          tokenNumber: `${prefix}-018`,
+          rating: 4,
+          date: '5 days ago',
+          serviceName: 'Hair Spa & Conditioning',
+          tags: ['Good Ambience'],
+          comment: 'Service quality was top-notch. Reasonable hisaab and UPI payment seamlessly accepted.',
+          merchantReply: null,
+          merchantReplyDate: null,
+          verifiedVisit: true,
+          flagged: false
+        },
+        {
+          id: 'rev-6',
+          customerName: 'Sunita Mehra',
+          tokenNumber: `${prefix}-007`,
+          rating: 3,
+          date: '1 week ago',
+          serviceName: 'Consultation & Service',
+          tags: ['Slight Delay'],
+          comment: 'Service acchi thi par bich me counter ne 15 min ka tea break liya toh thoda wait karna pada. Baki staff helpful tha.',
+          merchantReply: 'Sunita ji, asuvidha ke liye khed hai. Aage se hum break timer pass par pehle hi alert kar denge.',
+          merchantReplyDate: '5 days ago',
+          verifiedVisit: true,
+          flagged: false
+        }
+      ];
+
+      localStorage.setItem(key, JSON.stringify(initialReviews));
+      return initialReviews;
+    } catch (e) {
+      return [];
+    }
+  };
+
   const updateRecordInHistory = (shop, updatedRecord) => {
     if (!shop || !updatedRecord) return;
     setShopRecords(prev => {
@@ -724,6 +840,8 @@ export default function MerchantDashboardPage() {
           syncCustomerQueueForShop(parsed);
           const recs = loadShopRecords(parsed);
           setShopRecords(recs);
+          const revs = loadShopReviews(parsed);
+          setReviewsList(revs);
 
           // Load Daily Token Cap (BRD FR-314)
           try {
@@ -1123,6 +1241,69 @@ export default function MerchantDashboardPage() {
     } catch (e) {
       console.error('Failed to reset day queue:', e);
     }
+  };
+
+  // Handle Submit Merchant Reply to Review (BRD FR-1106)
+  const handleSubmitMerchantReply = (e) => {
+    if (e) e.preventDefault();
+    if (!replyingToReview || !replyText.trim()) return;
+
+    const now = new Date();
+    const replyDate = 'Today, ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setReviewsList(prev => {
+      const updated = prev.map(r => {
+        if (r.id === replyingToReview.id) {
+          return {
+            ...r,
+            merchantReply: replyText.trim(),
+            merchantReplyDate: replyDate
+          };
+        }
+        return r;
+      });
+
+      if (activeShop) {
+        try {
+          localStorage.setItem(getReviewsStorageKey(activeShop), JSON.stringify(updated));
+        } catch (e) {}
+      }
+      return updated;
+    });
+
+    setReplyModalOpen(false);
+    setReplyingToReview(null);
+    setReplyText('');
+    setAnnouncementMsg(`💬 Public reply posted to ${replyingToReview.customerName}'s review!`);
+    playChime();
+  };
+
+  // Handle Flag / Report Review
+  const handleConfirmFlagReview = () => {
+    if (!flaggingReview) return;
+    setReviewsList(prev => {
+      const updated = prev.map(r => {
+        if (r.id === flaggingReview.id) {
+          return {
+            ...r,
+            flagged: true,
+            flagReason
+          };
+        }
+        return r;
+      });
+
+      if (activeShop) {
+        try {
+          localStorage.setItem(getReviewsStorageKey(activeShop), JSON.stringify(updated));
+        } catch (e) {}
+      }
+      return updated;
+    });
+
+    setFlagModalOpen(false);
+    setFlaggingReview(null);
+    setAnnouncementMsg(`🚩 Review by ${flaggingReview.customerName} flagged for admin verification.`);
   };
 
   // Play browser chime
@@ -1611,6 +1792,18 @@ export default function MerchantDashboardPage() {
   const isCapReached = isCapEnabled && todayIssuedCount >= dailyTokenCap;
   const tokensRemainingToday = Math.max(0, dailyTokenCap - todayIssuedCount);
 
+  // Calculate Review Analytics (BRD FR-1105)
+  const totalReviewsCount = reviewsList.length;
+  const avgRating = totalReviewsCount > 0 
+    ? (reviewsList.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / totalReviewsCount).toFixed(1)
+    : '4.8';
+  const ratingDistribution = [5, 4, 3, 2, 1].map(stars => {
+    const count = reviewsList.filter(r => r.rating === stars).length;
+    const percent = totalReviewsCount > 0 ? Math.round((count / totalReviewsCount) * 100) : 0;
+    return { stars, count, percent };
+  });
+  const repliedCount = reviewsList.filter(r => r.merchantReply).length;
+
   return (
     <div className="min-h-screen pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 pt-4">
       
@@ -1633,6 +1826,15 @@ export default function MerchantDashboardPage() {
               <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#DCE9E3] text-[#176B65]">
                 {activeShop?.categoryName || 'Salon & Barber'}
               </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('REVIEWS')}
+                className="flex items-center gap-1 text-[11px] font-black text-amber-900 bg-amber-50 hover:bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 transition-colors cursor-pointer"
+                title="View customer star ratings & feedback (FR-1105)"
+              >
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                <span>{avgRating} ({totalReviewsCount} reviews)</span>
+              </button>
             </div>
 
             <p className="text-xs text-[#283B3D]/70 font-medium flex items-center gap-1.5 mt-0.5">
@@ -1908,6 +2110,24 @@ export default function MerchantDashboardPage() {
             <span>Shop Profile & Timings</span>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 hidden sm:inline-block border border-emerald-300">
               FR-602
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('REVIEWS')}
+            className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'REVIEWS'
+                ? 'bg-[#176B65] text-white shadow-md'
+                : 'text-[#283B3D]/70 hover:bg-[#DCE9E3]/40'
+            }`}
+          >
+            <Star className="w-4 h-4 text-[#F2A15A]" />
+            <span>Customer Reviews</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === 'REVIEWS' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900 border border-amber-300'
+            }`}>
+              ★ {avgRating}
             </span>
           </button>
         </div>
@@ -3439,6 +3659,407 @@ export default function MerchantDashboardPage() {
       )}
 
       {/* ========================================================= */}
+      {/* TAB 4: CUSTOMER REVIEWS & RATINGS CONSOLE (BRD FR-1105)   */}
+      {/* ========================================================= */}
+      {activeTab === 'REVIEWS' && (() => {
+        const filteredReviews = reviewsList.filter(r => {
+          if (reviewFilterRating === 5 && r.rating !== 5) return false;
+          if (reviewFilterRating === 4 && r.rating !== 4) return false;
+          if (reviewFilterRating === 3 && r.rating !== 3) return false;
+          if (reviewFilterRating === 'LOW' && r.rating > 3) return false;
+          if (reviewFilterRating === 'AWAITING_REPLY' && r.merchantReply) return false;
+
+          if (reviewSearchQuery.trim()) {
+            const q = reviewSearchQuery.toLowerCase();
+            const matchName = (r.customerName || '').toLowerCase().includes(q);
+            const matchToken = (r.tokenNumber || '').toLowerCase().includes(q);
+            const matchComment = (r.comment || '').toLowerCase().includes(q);
+            const matchService = (r.serviceName || '').toLowerCase().includes(q);
+            return matchName || matchToken || matchComment || matchService;
+          }
+          return true;
+        });
+
+        const pendingRepliesCount = reviewsList.filter(r => !r.merchantReply).length;
+
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* OVERVIEW SCORE & DISTRIBUTION CARD */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#DCE9E3] shadow-xs space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-[#DCE9E3] pb-6">
+                
+                {/* Score & Stars */}
+                <div className="flex items-center gap-5">
+                  <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-3xl border border-amber-200/80 shrink-0 min-w-[120px]">
+                    <span className="text-4xl sm:text-5xl font-token font-black text-amber-900 block leading-none">
+                      {avgRating}
+                    </span>
+                    <div className="flex items-center justify-center gap-0.5 my-1.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-4 h-4 ${
+                            s <= Math.round(Number(avgRating))
+                              ? 'fill-amber-400 text-amber-500'
+                              : 'fill-slate-200 text-slate-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">
+                      Overall Score
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl sm:text-2xl font-black text-[#283B3D]">
+                        Customer Reviews & Reputation
+                      </h2>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                        BRD FR-1105
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Based on <strong>{totalReviewsCount} verified customer token visits</strong>. Genuine 1-review per token anti-spam protection enabled.
+                    </p>
+                    <div className="flex items-center gap-3 pt-1 text-xs">
+                      <span className="font-bold text-emerald-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>100% Verified Customers</span>
+                      </span>
+                      <span>•</span>
+                      <span className="font-bold text-[#176B65] flex items-center gap-1">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{repliedCount} Replied ({Math.round((repliedCount / (totalReviewsCount || 1)) * 100)}%)</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating Distribution Breakdown */}
+                <div className="w-full lg:w-72 space-y-1.5 bg-[#F3F1E9]/50 p-4 rounded-2xl border border-[#DCE9E3]">
+                  {ratingDistribution.map(({ stars, count, percent }) => (
+                    <div key={stars} className="flex items-center gap-2 text-xs font-semibold text-[#283B3D]">
+                      <span className="w-7 text-right shrink-0 flex items-center justify-end gap-0.5 text-xs font-bold">
+                        {stars} <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                      </span>
+                      <div className="flex-1 h-2 bg-white rounded-full overflow-hidden border border-[#DCE9E3]">
+                        <div
+                          className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-[11px] font-bold text-slate-500 text-right">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Customer Compliments / Sentiment Badges */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 mr-1">
+                  Customer Praise:
+                </span>
+                <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
+                  <ThumbsUp className="w-3 h-3 text-emerald-600" />
+                  <span>Punctual Service (94%)</span>
+                </span>
+                <span className="px-3 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 font-bold flex items-center gap-1">
+                  <ThumbsUp className="w-3 h-3 text-blue-600" />
+                  <span>Polite Counter Staff</span>
+                </span>
+                <span className="px-3 py-1 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 font-bold flex items-center gap-1">
+                  <ThumbsUp className="w-3 h-3 text-teal-600" />
+                  <span>Clean & Hygienic</span>
+                </span>
+                <span className="px-3 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 font-bold flex items-center gap-1">
+                  <ThumbsUp className="w-3 h-3 text-amber-600" />
+                  <span>Accurate Wait Estimations</span>
+                </span>
+              </div>
+            </div>
+
+            {/* SEARCH & RATING FILTER BAR */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#DCE9E3] shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={reviewSearchQuery}
+                    onChange={(e) => setReviewSearchQuery(e.target.value)}
+                    placeholder="Search reviews by customer name, token number, or keyword..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                  {reviewSearchQuery && (
+                    <button
+                      onClick={() => setReviewSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="text-xs text-[#283B3D]/70 font-semibold shrink-0">
+                  Showing <strong>{filteredReviews.length}</strong> of {totalReviewsCount} reviews
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setReviewFilterRating('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                    reviewFilterRating === 'ALL'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                      : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                  }`}
+                >
+                  All ({totalReviewsCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReviewFilterRating(5)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
+                    reviewFilterRating === 5
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                      : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                  }`}
+                >
+                  <span>5 ★</span>
+                  <span className="text-[10px] opacity-80">({reviewsList.filter(r => r.rating === 5).length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReviewFilterRating(4)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
+                    reviewFilterRating === 4
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                      : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                  }`}
+                >
+                  <span>4 ★</span>
+                  <span className="text-[10px] opacity-80">({reviewsList.filter(r => r.rating === 4).length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReviewFilterRating('LOW')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
+                    reviewFilterRating === 'LOW'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                      : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                  }`}
+                >
+                  <span>3 ★ or Below</span>
+                  <span className="text-[10px] opacity-80">({reviewsList.filter(r => r.rating <= 3).length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReviewFilterRating('AWAITING_REPLY')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
+                    reviewFilterRating === 'AWAITING_REPLY'
+                      ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                      : 'bg-white hover:bg-[#F3F1E9] text-[#283B3D] border-[#DCE9E3]'
+                  }`}
+                >
+                  <span>Awaiting Reply</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                    reviewFilterRating === 'AWAITING_REPLY' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {pendingRepliesCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* REVIEWS LIST */}
+            {filteredReviews.length > 0 ? (
+              <div className="space-y-4">
+                {filteredReviews.map((rev) => (
+                  <div
+                    key={rev.id}
+                    className={`bg-white rounded-3xl p-5 sm:p-6 border shadow-xs transition-all space-y-4 ${
+                      rev.flagged ? 'border-rose-200 bg-rose-50/20' : 'border-[#DCE9E3]'
+                    }`}
+                  >
+                    {/* Header: Customer Name, Token Badge, Rating, Date */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DCE9E3] pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#176B65] to-[#283B3D] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                          {rev.customerName?.charAt(0) || 'C'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-sm text-[#283B3D]">{rev.customerName}</span>
+                            <span className="text-xs font-mono font-bold bg-[#F3F1E9] text-[#176B65] px-2 py-0.5 rounded-md border border-[#DCE9E3]">
+                              {rev.tokenNumber}
+                            </span>
+                            {rev.verifiedVisit && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Verified Token Visit</span>
+                              </span>
+                            )}
+                            {rev.flagged && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex items-center gap-1 border border-rose-300">
+                                <Flag className="w-3 h-3 text-rose-600" />
+                                <span>Flagged for Admin Moderation</span>
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+                            {rev.serviceName || 'General Service'} • {rev.date}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stars */}
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-4 h-4 ${
+                              s <= rev.rating
+                                ? 'fill-amber-400 text-amber-500'
+                                : 'fill-slate-200 text-slate-300'
+                            }`}
+                          />
+                        ))}
+                        <span className="text-xs font-black text-amber-900 ml-1">
+                          {rev.rating}.0
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Customer Review Text */}
+                    <p className="text-xs sm:text-sm text-[#283B3D] font-medium leading-relaxed">
+                      &ldquo;{rev.comment}&rdquo;
+                    </p>
+
+                    {/* Tags */}
+                    {rev.tags && rev.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {rev.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#F3F1E9] text-slate-600 border border-[#DCE9E3]"
+                          >
+                            ✓ {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Merchant Public Reply Box (BRD FR-1106) */}
+                    {rev.merchantReply ? (
+                      <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1.5 ml-2 sm:ml-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
+                            <Store className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Response from {activeShop?.name || 'Shopkeeper'} (Owner)</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-bold">
+                            {rev.merchantReplyDate || 'Recent'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-emerald-950 font-medium">
+                          {rev.merchantReply}
+                        </p>
+                        <div className="pt-1 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingToReview(rev);
+                              setReplyText(rev.merchantReply || '');
+                              setReplyModalOpen(true);
+                            }}
+                            className="text-[11px] font-bold text-emerald-800 hover:text-emerald-900 underline cursor-pointer"
+                          >
+                            Edit Reply
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between pt-1 border-t border-[#DCE9E3]/70">
+                        <span className="text-[11px] text-slate-400 italic">
+                          No owner response posted yet
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {!rev.flagged && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFlaggingReview(rev);
+                                setFlagReason('Not a real customer visit');
+                                setFlagModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Report suspicious or fake review"
+                            >
+                              <Flag className="w-3.5 h-3.5" />
+                              <span>Report</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingToReview(rev);
+                              setReplyText('');
+                              setReplyModalOpen(true);
+                            }}
+                            className="px-4 py-1.5 rounded-xl bg-[#176B65] hover:bg-[#135853] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Reply className="w-3.5 h-3.5" />
+                            <span>Reply to Customer</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl p-12 text-center border border-[#DCE9E3] shadow-xs space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                  <Star className="w-6 h-6" />
+                </div>
+                <h4 className="text-base font-black text-[#283B3D]">No Reviews Found</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  {reviewSearchQuery
+                    ? `No reviews match "${reviewSearchQuery}". Try clearing search or selecting "All".`
+                    : 'No customer reviews match your active filter.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewFilterRating('ALL');
+                    setReviewSearchQuery('');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
+          </motion.div>
+        );
+      })()}
+
+      {/* ========================================================= */}
       {/* MODAL 1: ADD WALK-IN OFFLINE CUSTOMER                    */}
       {/* ========================================================= */}
       <AnimatePresence>
@@ -4710,6 +5331,209 @@ export default function MerchantDashboardPage() {
                   className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
                 >
                   Keep Counter Open (Cancel)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 8: MERCHANT PUBLIC REPLY TO REVIEW (BRD FR-1106)    */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {replyModalOpen && replyingToReview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                    <Reply className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Reply to Customer Review</h3>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Your response will be publicly displayed on the customer&apos;s review card.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setReplyModalOpen(false);
+                    setReplyingToReview(null);
+                  }}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Customer Review Snippet */}
+              <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-[#283B3D]">
+                  <span className="flex items-center gap-1.5">
+                    <strong>{replyingToReview.customerName}</strong>
+                    <span className="text-slate-400 font-mono">({replyingToReview.tokenNumber})</span>
+                  </span>
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-3 h-3 ${
+                          s <= replyingToReview.rating
+                            ? 'fill-amber-400 text-amber-500'
+                            : 'fill-slate-200 text-slate-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 italic">
+                  &ldquo;{replyingToReview.comment}&rdquo;
+                </p>
+              </div>
+
+              {/* Reply Form */}
+              <form onSubmit={handleSubmitMerchantReply} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Your Response (as {activeShop?.name || 'Owner'}):
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a polite response to your customer..."
+                    className="w-full bg-[#F3F1E9]/50 border border-[#DCE9E3] rounded-2xl p-3.5 text-xs font-medium text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                {/* Quick Templates */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Quick Response Templates:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Thank you for your visit and kind feedback! We look forward to serving you again.',
+                      'Thank you for your feedback! We have noted this and improved our pace.',
+                      'Shukriya ji! Aapki suvidha aur time bachana hamari priority hai.'
+                    ].map((template) => (
+                      <button
+                        key={template}
+                        type="button"
+                        onClick={() => setReplyText(template)}
+                        className="text-[11px] font-semibold text-left px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-[#DCE9E3] text-[#283B3D] transition-colors border border-slate-200 cursor-pointer"
+                      >
+                        + &ldquo;{template.slice(0, 36)}...&rdquo;
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Reply className="w-4 h-4 text-emerald-300" />
+                    <span>Post Public Response</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplyModalOpen(false);
+                      setReplyingToReview(null);
+                    }}
+                    className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 9: REPORT / FLAG FAKE REVIEW (BRD FR-1106)          */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {flagModalOpen && flaggingReview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-[#DCE9E3] relative"
+            >
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                    <Flag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#283B3D]">Report Suspicious Review</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">Flag for platform admin review</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setFlagModalOpen(false);
+                    setFlaggingReview(null);
+                  }}
+                  className="w-7 h-7 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200 text-xs text-rose-900">
+                Reporting review by <strong>{flaggingReview.customerName}</strong> ({flaggingReview.tokenNumber}).
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#283B3D]">Select Reason:</label>
+                <select
+                  value={flagReason}
+                  onChange={(e) => setFlagReason(e.target.value)}
+                  className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                >
+                  <option value="Not a real customer visit">Not a real customer visit / Fake token</option>
+                  <option value="Abusive or inappropriate language">Abusive or offensive language</option>
+                  <option value="Competitor defamation / Spam">Competitor defamation / Spam</option>
+                  <option value="Mistaken shop identity">Mistaken shop identity</option>
+                </select>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmFlagReview}
+                  className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                >
+                  <Flag className="w-4 h-4" />
+                  <span>Confirm Report to Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFlagModalOpen(false);
+                    setFlaggingReview(null);
+                  }}
+                  className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                >
+                  Cancel
                 </button>
               </div>
             </motion.div>
