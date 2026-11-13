@@ -12,7 +12,8 @@ import {
   Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall,
   Moon, RotateCcw, Archive, ShieldAlert,
   Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
-  Radio, Siren, Send, Copy, ExternalLink, Trash2
+  Radio, Siren, Send, Copy, ExternalLink, Trash2,
+  BookOpen, Wallet, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -66,8 +67,28 @@ export default function MerchantDashboardPage() {
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [billServices, setBillServices] = useState('');
   const [billAmount, setBillAmount] = useState('');
-  const [billPaymentMode, setBillPaymentMode] = useState('CASH'); // 'CASH' | 'UPI' | 'PENDING'
+  const [billPaymentMode, setBillPaymentMode] = useState('CASH'); // 'CASH' | 'UPI' | 'PENDING' | 'PARTIAL'
+  const [billPaidAmount, setBillPaidAmount] = useState('');
   const [billNotes, setBillNotes] = useState('');
+
+  // BRD FR-712: Customer Khata / Udhaar & Balance Ledger State
+  const [khataList, setKhataList] = useState([]);
+  const [khataSearch, setKhataSearch] = useState('');
+  const [khataFilter, setKhataFilter] = useState('ALL'); // 'ALL' | 'DUE' | 'SETTLED'
+  const [khataModalOpen, setKhataModalOpen] = useState(false);
+  const [selectedKhataCustomer, setSelectedKhataCustomer] = useState(null);
+  const [khataEntryType, setKhataEntryType] = useState('PAYMENT'); // 'PAYMENT' | 'CREDIT'
+  const [khataEntryAmount, setKhataEntryAmount] = useState('');
+  const [khataEntryMode, setKhataEntryMode] = useState('CASH'); // 'CASH' | 'UPI'
+  const [khataEntryNotes, setKhataEntryNotes] = useState('');
+  const [khataFeedbackMsg, setKhataFeedbackMsg] = useState('');
+  const [statementCustomer, setStatementCustomer] = useState(null);
+  const [statementModalOpen, setStatementModalOpen] = useState(false);
+  const [newCustomerKhataModalOpen, setNewCustomerKhataModalOpen] = useState(false);
+  const [newKhataName, setNewKhataName] = useState('');
+  const [newKhataPhone, setNewKhataPhone] = useState('');
+  const [newKhataInitialDue, setNewKhataInitialDue] = useState('');
+  const [newKhataNotes, setNewKhataNotes] = useState('');
 
   // Persistent Real Records for Analytics & Customer Logs
   const [shopRecords, setShopRecords] = useState([]);
@@ -207,6 +228,87 @@ export default function MerchantDashboardPage() {
       localStorage.setItem(key, JSON.stringify(defaults));
     } catch (e) {}
     return defaults;
+  };
+
+  // BRD FR-712: Khata / Udhaar Storage Key & Loader
+  const getKhataStorageKey = (shop) => `ak_shop_khata_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopKhata = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getKhataStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+
+    // Seed realistic initial Khata demo accounts for shopkeeper
+    const initialKhata = [
+      {
+        id: 'kh-1',
+        customerName: 'Rohit Sharma',
+        customerPhone: '9876543210',
+        totalPending: 250,
+        lastUpdated: new Date(Date.now() - 2 * 86400000).toISOString(),
+        transactions: [
+          {
+            id: 'tx-1',
+            date: new Date(Date.now() - 2 * 86400000).toISOString(),
+            type: 'CREDIT',
+            amount: 250,
+            balanceAfter: 250,
+            serviceOrReason: 'Service bill partial balance (Will pay next visit)',
+            paymentMode: 'PENDING',
+            tokenNumber: '14'
+          }
+        ]
+      },
+      {
+        id: 'kh-2',
+        customerName: 'Amit Verma Ji',
+        customerPhone: '9123456789',
+        totalPending: 180,
+        lastUpdated: new Date(Date.now() - 86400000).toISOString(),
+        transactions: [
+          {
+            id: 'tx-2',
+            date: new Date(Date.now() - 86400000).toISOString(),
+            type: 'CREDIT',
+            amount: 180,
+            balanceAfter: 180,
+            serviceOrReason: 'Medicine / Grooming purchase',
+            paymentMode: 'PENDING',
+            tokenNumber: '08'
+          }
+        ]
+      },
+      {
+        id: 'kh-3',
+        customerName: 'Sunil Gupta (Indira Nagar)',
+        customerPhone: '9988776655',
+        totalPending: 420,
+        lastUpdated: new Date(Date.now() - 4 * 86400000).toISOString(),
+        transactions: [
+          {
+            id: 'tx-3',
+            date: new Date(Date.now() - 4 * 86400000).toISOString(),
+            type: 'CREDIT',
+            amount: 420,
+            balanceAfter: 420,
+            serviceOrReason: 'Emergency service credit',
+            paymentMode: 'PENDING',
+            tokenNumber: '03'
+          }
+        ]
+      }
+    ];
+
+    try {
+      localStorage.setItem(key, JSON.stringify(initialKhata));
+    } catch (e) {}
+    return initialKhata;
   };
 
   // Universal Industry Category Default Catalogs (BRD FR-604 / FR-1201)
@@ -1064,6 +1166,10 @@ export default function MerchantDashboardPage() {
           const stns = loadShopStations(parsed);
           setStationsList(stns);
 
+          // Load Customer Khata / Udhaar Ledger (BRD FR-712)
+          const kList = loadShopKhata(parsed);
+          setKhataList(kList);
+
           // Load Daily Token Cap (BRD FR-314)
           try {
             const capKey = `ak_merchant_cap_${(parsed.slug || 'shop').toLowerCase()}`;
@@ -1128,6 +1234,8 @@ export default function MerchantDashboardPage() {
         setShopServicesList(servs);
         const stns = loadShopStations(activeShop);
         setStationsList(stns);
+        const kList = loadShopKhata(activeShop);
+        setKhataList(kList);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -1979,6 +2087,7 @@ export default function MerchantDashboardPage() {
     setBillingStationId(stationId);
     setBillServices(station.currentToken.service || 'General Service');
     setBillAmount('');
+    setBillPaidAmount('');
     setBillPaymentMode('CASH');
     setBillNotes('');
     setBillingModalOpen(true);
@@ -2047,6 +2156,215 @@ export default function MerchantDashboardPage() {
 
     setAnnouncementMsg(`Skipped & Marked Absent: ${absToken.customerName} (${absToken.tokenNumber}) from ${station.name}`);
     setTimeout(() => setAnnouncementMsg(''), 4500);
+  };
+
+  // BRD FR-712: Customer Khata / Udhaar Operations Handlers
+  const saveKhataList = (updated) => {
+    setKhataList(updated);
+    if (!activeShop || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getKhataStorageKey(activeShop), JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  };
+
+  const recordKhataEntry = ({ customerName, customerPhone, amount, type, serviceOrReason, paymentMode, tokenNumber }) => {
+    if (!amount || amount <= 0) return;
+    const cleanPhone = (customerPhone || '').replace(/\D/g, '').slice(-10);
+    const displayName = (customerName || 'Customer').trim();
+    const todayIso = new Date().toISOString();
+
+    setKhataList(prev => {
+      let existingIdx = -1;
+      if (cleanPhone) {
+        existingIdx = prev.findIndex(c => c.customerPhone && c.customerPhone.replace(/\D/g, '').slice(-10) === cleanPhone);
+      }
+      if (existingIdx === -1 && displayName && displayName !== 'Customer') {
+        existingIdx = prev.findIndex(c => c.customerName && c.customerName.toLowerCase() === displayName.toLowerCase());
+      }
+
+      let updatedList;
+      if (existingIdx >= 0) {
+        const existing = prev[existingIdx];
+        const newBalance = type === 'CREDIT' 
+          ? (existing.totalPending || 0) + Number(amount)
+          : Math.max(0, (existing.totalPending || 0) - Number(amount));
+
+        const newTx = {
+          id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          date: todayIso,
+          type,
+          amount: Number(amount),
+          balanceAfter: newBalance,
+          serviceOrReason: serviceOrReason || (type === 'CREDIT' ? 'Store service/product credit' : 'Payment received'),
+          paymentMode: paymentMode || (type === 'CREDIT' ? 'UDHAAR' : 'CASH'),
+          tokenNumber: tokenNumber || '-'
+        };
+
+        const updatedCustomer = {
+          ...existing,
+          customerName: displayName !== 'Customer' ? displayName : existing.customerName,
+          customerPhone: cleanPhone || existing.customerPhone,
+          totalPending: newBalance,
+          lastUpdated: todayIso,
+          transactions: [newTx, ...(existing.transactions || [])]
+        };
+
+        updatedList = [...prev];
+        updatedList[existingIdx] = updatedCustomer;
+      } else {
+        const initialBalance = type === 'CREDIT' ? Number(amount) : 0;
+        const newTx = {
+          id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          date: todayIso,
+          type,
+          amount: Number(amount),
+          balanceAfter: initialBalance,
+          serviceOrReason: serviceOrReason || (type === 'CREDIT' ? 'Initial credit entry' : 'Payment received'),
+          paymentMode: paymentMode || (type === 'CREDIT' ? 'UDHAAR' : 'CASH'),
+          tokenNumber: tokenNumber || '-'
+        };
+
+        const newCustomer = {
+          id: `kh-${Date.now()}`,
+          customerName: displayName,
+          customerPhone: cleanPhone || 'Offline',
+          totalPending: initialBalance,
+          lastUpdated: todayIso,
+          transactions: [newTx]
+        };
+
+        updatedList = [newCustomer, ...prev];
+      }
+
+      if (activeShop && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(getKhataStorageKey(activeShop), JSON.stringify(updatedList));
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
+      }
+      return updatedList;
+    });
+  };
+
+  const handleOpenKhataEntryModal = (customer, actionType = 'PAYMENT') => {
+    setSelectedKhataCustomer(customer);
+    setKhataEntryType(actionType);
+    setKhataEntryAmount(actionType === 'PAYMENT' ? String(customer.totalPending || '') : '');
+    setKhataEntryMode('CASH');
+    setKhataEntryNotes('');
+    setKhataModalOpen(true);
+  };
+
+  const handleSaveKhataTransaction = (e) => {
+    e.preventDefault();
+    if (!selectedKhataCustomer) return;
+    const numAmt = Number(khataEntryAmount);
+    if (!numAmt || numAmt <= 0) {
+      alert('Please enter a valid amount greater than ₹0.');
+      return;
+    }
+
+    recordKhataEntry({
+      customerName: selectedKhataCustomer.customerName,
+      customerPhone: selectedKhataCustomer.customerPhone,
+      amount: numAmt,
+      type: khataEntryType,
+      serviceOrReason: khataEntryNotes.trim() || (khataEntryType === 'PAYMENT' ? `Payment received via ${khataEntryMode}` : 'Manual credit entry added'),
+      paymentMode: khataEntryMode,
+      tokenNumber: '-'
+    });
+
+    setKhataModalOpen(false);
+    playChime();
+    setKhataFeedbackMsg(
+      khataEntryType === 'PAYMENT'
+        ? `✅ Jama Recorded: ₹${numAmt} received from ${selectedKhataCustomer.customerName} [${khataEntryMode}]`
+        : `✅ Credit Recorded: ₹${numAmt} added to ${selectedKhataCustomer.customerName}'s Khata`
+    );
+    setTimeout(() => setKhataFeedbackMsg(''), 4000);
+  };
+
+  const handleCreateNewKhataCustomer = (e) => {
+    e.preventDefault();
+    if (!newKhataName.trim()) {
+      alert('Please enter customer name.');
+      return;
+    }
+    const due = Math.max(0, Number(newKhataInitialDue) || 0);
+    const cleanPhone = newKhataPhone.replace(/\D/g, '').slice(-10);
+
+    recordKhataEntry({
+      customerName: newKhataName.trim(),
+      customerPhone: cleanPhone,
+      amount: due > 0 ? due : 0.001,
+      type: 'CREDIT',
+      serviceOrReason: newKhataNotes.trim() || 'Account opened in Khata ledger',
+      paymentMode: 'OPENING_BALANCE'
+    });
+
+    if (due === 0) {
+      setKhataList(prev => {
+        const updated = prev.map(c => (c.customerName === newKhataName.trim()) ? { ...c, totalPending: 0 } : c);
+        saveKhataList(updated);
+        return updated;
+      });
+    }
+
+    setNewKhataName('');
+    setNewKhataPhone('');
+    setNewKhataInitialDue('');
+    setNewKhataNotes('');
+    setNewCustomerKhataModalOpen(false);
+    playChime();
+    setKhataFeedbackMsg(`✅ Customer account registered in Khata successfully!`);
+    setTimeout(() => setKhataFeedbackMsg(''), 4000);
+  };
+
+  const handleSendWhatsAppKhataReminder = (customer) => {
+    if (!customer) return;
+    const cleanPhone = (customer.customerPhone || '').replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length < 10) {
+      alert('Customer does not have a valid 10-digit mobile number saved.');
+      return;
+    }
+
+    const shopName = activeShop?.name || 'Hamari Dukan';
+    const custName = customer.customerName || 'Customer';
+    const pendingAmt = customer.totalPending || 0;
+
+    const message = `Namaste ${custName} ji! 🙏\n\n${shopName} se aapka kul baqaya hisaab ₹${pendingAmt.toLocaleString('en-IN')} pending hai.\n\nKripya suvidha-anusar samay par UPI ya cash se clear kar dein. Kisi bhi sawaal ke liye sampark karein.\n\nDhanyawad! ✨\n— ${shopName}`;
+
+    const encoded = encodeURIComponent(message);
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encoded}`;
+    window.open(waUrl, '_blank');
+    setKhataFeedbackMsg(`📲 WhatsApp reminder prepared for ${custName} (+91 ${cleanPhone})`);
+    setTimeout(() => setKhataFeedbackMsg(''), 4000);
+  };
+
+  const handleDownloadKhataCsv = () => {
+    const rows = [
+      ['Customer Name', 'Phone Number', 'Total Pending Due (INR)', 'Last Transaction Date', 'Last Transaction Details', 'Total Transactions'],
+      ...khataList.map(c => [
+        `"${(c.customerName || 'Customer').replace(/"/g, '""')}"`,
+        c.customerPhone || 'Offline',
+        c.totalPending !== undefined ? c.totalPending : 0,
+        c.lastUpdated ? new Date(c.lastUpdated).toLocaleDateString('en-IN') : 'Recent',
+        `"${((c.transactions && c.transactions[0]?.serviceOrReason) || 'Account opened').replace(/"/g, '""')}"`,
+        c.transactions ? c.transactions.length : 0
+      ])
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${activeShop?.slug || 'shop'}-customer-khata-ledger-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setKhataFeedbackMsg(`📥 Exported ${khataList.length} customer Khata ledger accounts to CSV.`);
+    setTimeout(() => setKhataFeedbackMsg(''), 4000);
   };
 
   // Sync token state changes with customer localStorage
@@ -2183,6 +2501,7 @@ export default function MerchantDashboardPage() {
     setBillingStationId(null);
     setBillServices(servingToken.service || 'General Service');
     setBillAmount('');
+    setBillPaidAmount('');
     setBillPaymentMode('CASH');
     setBillNotes('');
     setBillingModalOpen(true);
@@ -2203,6 +2522,29 @@ export default function MerchantDashboardPage() {
     const finalPayment = skipBilling ? '-' : (finalAmount > 0 ? billPaymentMode : '-');
     const finalServices = billServices.trim() || tokenToFinalize.service || 'General Service';
     const finalNotes = billNotes.trim();
+
+    // BRD FR-712: Check if there is Udhaar / Pending Balance to record in Khata Ledger
+    let pendingUdhaar = 0;
+    let actualPaid = finalAmount;
+    if (billPaymentMode === 'PENDING') {
+      pendingUdhaar = finalAmount;
+      actualPaid = 0;
+    } else if (billPaymentMode === 'PARTIAL') {
+      actualPaid = Math.min(finalAmount, Math.max(0, Number(billPaidAmount) || 0));
+      pendingUdhaar = Math.max(0, finalAmount - actualPaid);
+    }
+
+    if (pendingUdhaar > 0) {
+      recordKhataEntry({
+        customerName: tokenToFinalize.customerName || 'Customer',
+        customerPhone: tokenToFinalize.customerPhone || '',
+        amount: pendingUdhaar,
+        type: 'CREDIT',
+        serviceOrReason: `${finalServices}${actualPaid > 0 ? ` (₹${actualPaid} paid, ₹${pendingUdhaar} pending)` : ''}`,
+        paymentMode: billPaymentMode,
+        tokenNumber: tokenToFinalize.tokenNumber
+      });
+    }
 
     // Sync with customer storage
     syncWithCustomerStorage(null, tokenToFinalize, null, {
@@ -2641,6 +2983,21 @@ export default function MerchantDashboardPage() {
             </span>
           </button>
 
+          {/* Customer Khata & Udhaar Button (BRD FR-712) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('KHATA')}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Customer Khata, Udhaar & Pending Balances (FR-712)"
+          >
+            <BookOpen className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">Khata Ledger</span>
+            <span className="sm:hidden">Khata</span>
+            <span className="ml-0.5 text-[10px] font-black bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full border border-rose-200">
+              ₹{khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
+            </span>
+          </button>
+
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
           <div className="flex items-center bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
             <button
@@ -2918,6 +3275,24 @@ export default function MerchantDashboardPage() {
             <span>Daily Analytics & Reports</span>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#F2A15A]/20 text-[#D97706] hidden sm:inline-block">
               BRD FR-710
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('KHATA')}
+            className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'KHATA'
+                ? 'bg-[#176B65] text-white shadow-md'
+                : 'text-[#283B3D]/70 hover:bg-[#DCE9E3]/40'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Khata & Udhaar</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === 'KHATA' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'
+            }`}>
+              ₹{khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')} Due
             </span>
           </button>
 
@@ -4196,6 +4571,320 @@ export default function MerchantDashboardPage() {
                   <p className="text-[11px] text-slate-400">
                     {customerTableSearch ? "No customers match your search criteria." : "No customer visits recorded for this selected time filter."}
                   </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        );
+      })()}
+
+      {/* ========================================================= */}
+      {/* TAB: CUSTOMER KHATA / UDHAAR & BALANCE LEDGER (BRD FR-712) */}
+      {/* ========================================================= */}
+      {activeTab === 'KHATA' && (() => {
+        const totalPendingDue = khataList.reduce((sum, c) => sum + (c.totalPending || 0), 0);
+        const customersWithDue = khataList.filter(c => (c.totalPending || 0) > 0);
+        const settledCustomers = khataList.filter(c => (c.totalPending || 0) === 0);
+
+        // Filter and search
+        let filteredKhata = khataList.filter(c => {
+          const matchSearch = (c.customerName || '').toLowerCase().includes(khataSearch.toLowerCase()) ||
+                              (c.customerPhone || '').includes(khataSearch);
+          if (!matchSearch) return false;
+          if (khataFilter === 'DUE') return (c.totalPending || 0) > 0;
+          if (khataFilter === 'SETTLED') return (c.totalPending || 0) === 0;
+          return true;
+        });
+
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Feedback Alert */}
+            {khataFeedbackMsg && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-xs">
+                <span>{khataFeedbackMsg}</span>
+              </div>
+            )}
+
+            {/* KEY METRICS SUMMARY */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="urban-card rounded-2xl p-4 space-y-1 bg-gradient-to-br from-rose-50 to-white border-rose-200">
+                <span className="text-[10px] uppercase font-bold text-rose-700 tracking-wider">Total Market Udhaar</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-rose-700">
+                  ₹{totalPendingDue.toLocaleString('en-IN')}
+                </div>
+                <span className="text-[11px] text-rose-600/80 font-semibold block">Pending to be collected</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider">Khata Customers</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-[#176B65]">
+                  {khataList.length}
+                </div>
+                <span className="text-[11px] text-[#283B3D]/70 font-semibold block">Total Registered Accounts</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider">Accounts Due</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-amber-700">
+                  {customersWithDue.length}
+                </div>
+                <span className="text-[11px] text-[#283B3D]/70 font-semibold block">Customers with balance</span>
+              </div>
+
+              <div className="urban-card rounded-2xl p-4 space-y-1 bg-gradient-to-br from-emerald-50 to-white border-emerald-200">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Zero Balance</span>
+                <div className="text-2xl sm:text-3xl font-token font-bold text-emerald-700">
+                  {settledCustomers.length}
+                </div>
+                <span className="text-[11px] text-emerald-700/80 font-semibold block">Fully Cleared / Settled</span>
+              </div>
+            </div>
+
+            {/* Khata Ledger Main Table Card */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs space-y-5">
+              {/* Card Header with Search & CTAs */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#DCE9E3] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-black text-base text-[#283B3D]">
+                        Customer Khata & Udhaar Ledger
+                      </h3>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#176B65] text-white">
+                        BRD FR-712
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#283B3D]/70 font-semibold mt-0.5">
+                      Track pending balances, record partial payments (Jama), and send 1-tap WhatsApp reminders.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewCustomerKhataModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add Customer Khata</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadKhataCsv}
+                    className="px-3.5 py-2 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    title="Export customer balances to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#176B65]" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F3F1E9]/50 p-3 rounded-2xl border border-[#DCE9E3]">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by customer name or phone number..."
+                    value={khataSearch}
+                    onChange={(e) => setKhataSearch(e.target.value)}
+                    className="w-full bg-white border border-[#DCE9E3] rounded-xl pl-9 pr-3 py-1.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                  {khataSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setKhataSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] font-bold text-slate-500 mr-1 hidden sm:inline">Filter:</span>
+                  {[
+                    { id: 'ALL', label: `All (${khataList.length})` },
+                    { id: 'DUE', label: `Pending Due (${customersWithDue.length})` },
+                    { id: 'SETTLED', label: `Cleared (${settledCustomers.length})` }
+                  ].map((flt) => (
+                    <button
+                      key={flt.id}
+                      type="button"
+                      onClick={() => setKhataFilter(flt.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        khataFilter === flt.id
+                          ? 'bg-[#176B65] text-white shadow-xs'
+                          : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
+                      }`}
+                    >
+                      {flt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Khata Customers Table */}
+              {filteredKhata.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#DCE9E3] text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                        <th className="py-3 px-3">Customer</th>
+                        <th className="py-3 px-3">Contact</th>
+                        <th className="py-3 px-3">Pending Udhaar</th>
+                        <th className="py-3 px-3">Last Activity</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DCE9E3]/70 text-xs">
+                      {filteredKhata.map((customer) => {
+                        const isDue = (customer.totalPending || 0) > 0;
+                        const lastTx = customer.transactions && customer.transactions[0];
+                        return (
+                          <tr key={customer.id} className="hover:bg-[#F3F1E9]/40 transition-colors">
+                            {/* Customer Name */}
+                            <td className="py-3.5 px-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                                  isDue ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                }`}>
+                                  {customer.customerName?.charAt(0) || 'C'}
+                                </div>
+                                <div>
+                                  <span className="font-black text-[#283B3D] block">{customer.customerName}</span>
+                                  <span className="text-[10px] text-slate-400 font-semibold">
+                                    {customer.transactions?.length || 1} transactions
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Contact */}
+                            <td className="py-3.5 px-3">
+                              <span className="font-semibold text-slate-600 block">
+                                {customer.customerPhone && customer.customerPhone !== 'Offline' 
+                                  ? `+91 ${customer.customerPhone}` 
+                                  : 'Walk-in / No Phone'
+                                }
+                              </span>
+                            </td>
+
+                            {/* Pending Udhaar */}
+                            <td className="py-3.5 px-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`font-token font-bold text-sm ${isDue ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                  ₹{(customer.totalPending || 0).toLocaleString('en-IN')}
+                                </span>
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md ${
+                                  isDue ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                                }`}>
+                                  {isDue ? 'Baqaya Due' : 'Cleared'}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Last Activity */}
+                            <td className="py-3.5 px-3">
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] font-bold text-[#283B3D] block line-clamp-1">
+                                  {lastTx?.serviceOrReason || 'Account opened'}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-semibold block">
+                                  {customer.lastUpdated ? new Date(customer.lastUpdated).toLocaleDateString('en-IN') : 'Recent'}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Jama (Receive Payment) */}
+                                {isDue && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenKhataEntryModal(customer, 'PAYMENT')}
+                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95"
+                                    title="Receive payment from customer (Jama)"
+                                  >
+                                    Jama Karein
+                                  </button>
+                                )}
+
+                                {/* Add Udhaar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenKhataEntryModal(customer, 'CREDIT')}
+                                  className="px-2.5 py-1 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-all cursor-pointer active:scale-95"
+                                  title="Add manual credit / udhaar entry"
+                                >
+                                  + Udhaar
+                                </button>
+
+                                {/* WhatsApp Reminder */}
+                                {isDue && customer.customerPhone && customer.customerPhone !== 'Offline' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendWhatsAppKhataReminder(customer)}
+                                    className="p-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                    title="Send polite WhatsApp payment reminder"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                  </button>
+                                )}
+
+                                {/* Statement / Passbook */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStatementCustomer(customer);
+                                    setStatementModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-xl text-slate-400 hover:text-[#176B65] hover:bg-[#DCE9E3]/50 transition-colors cursor-pointer"
+                                  title="View complete Khata statement passbook"
+                                >
+                                  <History className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-12 text-center space-y-3">
+                  <BookOpen className="w-10 h-10 text-slate-400 mx-auto" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#283B3D]">No Customer Khata Accounts Found</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      {khataSearch 
+                        ? `No customers match "${khataSearch}". Try searching with another name or phone number.`
+                        : "Start recording customer udhaar and payments to maintain your digital Khata."
+                      }
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewCustomerKhataModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#176B65] text-white text-xs font-bold hover:bg-[#125550] transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Register First Khata Customer</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -5697,257 +6386,312 @@ export default function MerchantDashboardPage() {
       {/* MODAL 3: SERVICE BILLING / HISAAB (OPTIONAL ON SERVICE DONE)*/}
       {/* ========================================================= */}
       <AnimatePresence>
-        {billingModalOpen && servingToken && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => setBillingModalOpen(false)} 
-              className="fixed inset-0"
-            />
+        {billingModalOpen && (billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken) && (() => {
+          const activeBillingToken = billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => setBillingModalOpen(false)} 
+                className="fixed inset-0"
+              />
 
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-5 z-10 max-h-[92vh] overflow-y-auto"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 shadow-2xs">
-                    <Receipt className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      Service Complete • Hisaab Khata
-                    </span>
-                    <h3 className="font-black text-base text-[#283B3D] mt-0.5">
-                      Record Service Billing (Optional)
-                    </h3>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setBillingModalOpen(false)} 
-                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Customer Pass Summary Banner */}
-              <div className="p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-[#283B3D] text-[#F3F1E9] flex flex-col items-center justify-center font-token font-bold text-sm shadow-xs shrink-0">
-                    <span className="text-[8px] text-[#F2A15A] uppercase tracking-wider">Pass</span>
-                    <span>{servingToken.tokenNumber}</span>
-                  </div>
-                  <div>
-                    <span className="font-black text-sm text-[#283B3D] block">{servingToken.customerName}</span>
-                    <span className="text-xs text-slate-500 font-medium block">
-                      {servingToken.customerPhone ? `+91 ${servingToken.customerPhone}` : 'Walk-in Guest'} • Party of {servingToken.groupSize || 1}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-xl shrink-0">
-                  {servingToken.service || 'General Service'}
-                </span>
-              </div>
-
-              {/* Billing Form */}
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleFinalizeService({ skipBilling: false });
-                }} 
-                className="space-y-4"
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-5 z-10 max-h-[92vh] overflow-y-auto"
               >
-                {/* 1. Services Availed Note */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#283B3D]">
-                    Customer Ne Kya-Kya Karaya? (Services Breakdown)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Haircut + Beard Grooming + Head Massage"
-                    value={billServices}
-                    onChange={(e) => setBillServices(e.target.value)}
-                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                  />
-                  
-                  {/* Dynamic Rate Card Service Chips with 1-Tap Auto-Amount Calculation */}
-                  <div className="space-y-1.5 pt-1">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 shadow-2xs">
+                      <Receipt className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Service Complete • Hisaab & Khata
+                      </span>
+                      <h3 className="font-black text-base text-[#283B3D] mt-0.5">
+                        Record Service Billing (Optional)
+                      </h3>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setBillingModalOpen(false)} 
+                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Customer Pass Summary Banner */}
+                <div className="p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[#283B3D] text-[#F3F1E9] flex flex-col items-center justify-center font-token font-bold text-sm shadow-xs shrink-0">
+                      <span className="text-[8px] text-[#F2A15A] uppercase tracking-wider">Pass</span>
+                      <span>{activeBillingToken.tokenNumber}</span>
+                    </div>
+                    <div>
+                      <span className="font-black text-sm text-[#283B3D] block">{activeBillingToken.customerName}</span>
+                      <span className="text-xs text-slate-500 font-medium block">
+                        {activeBillingToken.customerPhone ? `+91 ${activeBillingToken.customerPhone}` : 'Walk-in Guest'} • Party of {activeBillingToken.groupSize || 1}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-xl shrink-0">
+                    {activeBillingToken.service || 'General Service'}
+                  </span>
+                </div>
+
+                {/* Billing Form */}
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleFinalizeService({ skipBilling: false });
+                  }} 
+                  className="space-y-4"
+                >
+                  {/* 1. Services Availed Note */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Customer Ne Kya-Kya Karaya? (Services Breakdown)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Haircut + Beard Grooming + Head Massage"
+                      value={billServices}
+                      onChange={(e) => setBillServices(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                    
+                    {/* Dynamic Rate Card Service Chips with 1-Tap Auto-Amount Calculation */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 font-bold">1-Tap Services (Auto-calculates total amount):</span>
+                        <button
+                          type="button"
+                          onClick={() => setServicesModalOpen(true)}
+                          className="text-[10px] text-[#176B65] hover:underline font-bold cursor-pointer"
+                        >
+                          Edit Rate Card
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {shopServicesList.filter(s => s.active).map((srv) => (
+                          <button
+                            key={srv.id}
+                            type="button"
+                            onClick={() => {
+                              if (!billServices) {
+                                setBillServices(srv.name);
+                              } else if (!billServices.includes(srv.name)) {
+                                setBillServices(`${billServices} + ${srv.name}`);
+                              }
+                              // Auto-add price to total bill amount
+                              if (srv.price > 0) {
+                                setBillAmount(prev => {
+                                  const current = parseInt(prev, 10) || 0;
+                                  return String(current + srv.price);
+                                });
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                          >
+                            <span>+ {srv.name}</span>
+                            {srv.price > 0 && (
+                              <span className="text-[10px] font-black text-[#176B65] bg-[#DCE9E3]/70 px-1.5 py-0.2 rounded-md">
+                                ₹{srv.price}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Total Amount Input */}
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 font-bold">1-Tap Services (Auto-calculates total amount):</span>
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Total Bill Amount (Kitna Paisa Hua?)
+                      </label>
+                      <span className="text-[11px] font-bold text-emerald-700">
+                        {billAmount ? `Total: ₹${Number(billAmount).toLocaleString('en-IN')}` : 'Optional / Can skip'}
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                        ₹
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        max={500000}
+                        placeholder="0"
+                        value={billAmount}
+                        onChange={(e) => setBillAmount(e.target.value)}
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl pl-8 pr-4 py-3 text-lg font-token font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+
+                    {/* Quick Preset Amount Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold mr-1">Presets:</span>
+                      {[100, 150, 200, 250, 350, 500, 750, 1000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setBillAmount(String(amt))}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-token font-bold transition-all cursor-pointer ${
+                            billAmount === String(amt)
+                              ? 'bg-[#176B65] text-white shadow-xs'
+                              : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
+                          }`}
+                        >
+                          ₹{amt}
+                        </button>
+                      ))}
                       <button
                         type="button"
-                        onClick={() => setServicesModalOpen(true)}
-                        className="text-[10px] text-[#176B65] hover:underline font-bold cursor-pointer"
+                        onClick={() => setBillAmount('')}
+                        className="px-2 py-1 rounded-xl text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                       >
-                        Edit Rate Card
+                        Clear
                       </button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {shopServicesList.filter(s => s.active).map((srv) => (
+                  </div>
+
+                  {/* 3. Payment Mode Selector with Udhaar / Khata Support (BRD FR-712) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Payment Mode (Paisa Kaise Diya?)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'CASH', label: 'Cash (Naqad)', icon: '💵', desc: 'Direct cash handed' },
+                        { id: 'UPI', label: 'UPI / QR', icon: '📱', desc: 'GPay / PhonePe / Paytm' },
+                        { id: 'PENDING', label: 'Full Udhaar', icon: '⏳', desc: '100% Khata (Pay Later)' },
+                        { id: 'PARTIAL', label: 'Partial + Udhaar', icon: '⚖️', desc: 'Kuch diya, baaki udhaar' }
+                      ].map((mode) => (
                         <button
-                          key={srv.id}
+                          key={mode.id}
                           type="button"
                           onClick={() => {
-                            if (!billServices) {
-                              setBillServices(srv.name);
-                            } else if (!billServices.includes(srv.name)) {
-                              setBillServices(`${billServices} + ${srv.name}`);
-                            }
-                            // Auto-add price to total bill amount
-                            if (srv.price > 0) {
-                              setBillAmount(prev => {
-                                const current = parseInt(prev, 10) || 0;
-                                return String(current + srv.price);
-                              });
-                            }
+                            setBillPaymentMode(mode.id);
+                            if (mode.id === 'PENDING') setBillPaidAmount('0');
                           }}
-                          className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                          className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                            billPaymentMode === mode.id
+                              ? 'bg-emerald-50/70 border-emerald-600 ring-1 ring-emerald-500 shadow-xs'
+                              : 'bg-white border-[#DCE9E3] hover:bg-slate-50'
+                          }`}
                         >
-                          <span>+ {srv.name}</span>
-                          {srv.price > 0 && (
-                            <span className="text-[10px] font-black text-[#176B65] bg-[#DCE9E3]/70 px-1.5 py-0.2 rounded-md">
-                              ₹{srv.price}
-                            </span>
-                          )}
+                          <span className="text-base block mb-0.5">{mode.icon}</span>
+                          <span className={`text-xs font-black block ${billPaymentMode === mode.id ? 'text-emerald-800' : 'text-[#283B3D]'}`}>
+                            {mode.label}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block leading-tight mt-0.5">
+                            {mode.desc}
+                          </span>
                         </button>
                       ))}
                     </div>
-                  </div>
-                </div>
 
-                {/* 2. Total Amount Input */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+                    {/* Partial Payment Calculation Breakdown */}
+                    {billPaymentMode === 'PARTIAL' && (
+                      <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-900">Partial Payment Breakdown:</span>
+                          <span className="text-[10px] font-bold text-amber-700 bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                            Auto-adds to Khata Ledger
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                              Amount Paid Now (₹ Abhi Diya) *
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={Number(billAmount) || 0}
+                              placeholder="0"
+                              value={billPaidAmount}
+                              onChange={(e) => setBillPaidAmount(e.target.value)}
+                              className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                              Pending Baqaya (Khata Due)
+                            </label>
+                            <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-xs font-black text-rose-700 flex items-center justify-between">
+                              <span>₹{Math.max(0, (Number(billAmount) || 0) - (Number(billPaidAmount) || 0)).toLocaleString('en-IN')}</span>
+                              <span className="text-[9px] uppercase font-bold text-rose-500">Khata Due</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full Udhaar Alert */}
+                    {billPaymentMode === 'PENDING' && (
+                      <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>
+                          Full bill amount of <strong>₹{Number(billAmount || 0).toLocaleString('en-IN')}</strong> will be added to <strong>{activeBillingToken.customerName}</strong>&apos;s Khata ledger.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. Optional Remark / Bill Note */}
+                  <div className="space-y-1">
                     <label className="block text-xs font-bold text-[#283B3D]">
-                      Total Bill Amount (Kitna Paisa Hua?)
+                      Customer / Hisaab Note (Optional)
                     </label>
-                    <span className="text-[11px] font-bold text-emerald-700">
-                      {billAmount ? `Total: ₹${Number(billAmount).toLocaleString('en-IN')}` : 'Optional / Can skip'}
-                    </span>
-                  </div>
-
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                      ₹
-                    </div>
                     <input
-                      type="number"
-                      min={0}
-                      max={500000}
-                      placeholder="0"
-                      value={billAmount}
-                      onChange={(e) => setBillAmount(e.target.value)}
-                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl pl-8 pr-4 py-3 text-lg font-token font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      type="text"
+                      placeholder="e.g. Paid online, ₹50 balance remaining next time"
+                      value={billNotes}
+                      onChange={(e) => setBillNotes(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                     />
                   </div>
 
-                  {/* Quick Preset Amount Pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] text-slate-400 font-bold mr-1">Presets:</span>
-                    {[100, 150, 200, 250, 350, 500, 750, 1000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setBillAmount(String(amt))}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-token font-bold transition-all cursor-pointer ${
-                          billAmount === String(amt)
-                            ? 'bg-[#176B65] text-white shadow-xs'
-                            : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
-                        }`}
-                      >
-                        ₹{amt}
-                      </button>
-                    ))}
+                  {/* Actions: Save & Complete vs Skip (₹0) */}
+                  <div className="pt-2 space-y-2">
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                      <span>
+                        {billAmount && Number(billAmount) > 0 
+                          ? `Save Hisaab (₹${Number(billAmount).toLocaleString('en-IN')}) & Mark Complete`
+                          : "Save & Mark Complete"
+                        }
+                      </span>
+                    </button>
+
                     <button
                       type="button"
-                      onClick={() => setBillAmount('')}
-                      className="px-2 py-1 rounded-xl text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      onClick={() => handleFinalizeService({ skipBilling: true })}
+                      className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
                     >
-                      Clear
+                      Skip Billing (Bina Bill / ₹0 Me Complete Karo)
                     </button>
                   </div>
-                </div>
-
-                {/* 3. Payment Mode Selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#283B3D]">
-                    Payment Mode (Paisa Kaise Diya?)
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'CASH', label: 'Cash (Naqad)', icon: '💵', desc: 'Direct cash handed' },
-                      { id: 'UPI', label: 'UPI / QR', icon: '📱', desc: 'GPay / PhonePe / Paytm' },
-                      { id: 'PENDING', label: 'Pending / Udhaar', icon: '⏳', desc: 'Will pay next time' }
-                    ].map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        onClick={() => setBillPaymentMode(mode.id)}
-                        className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                          billPaymentMode === mode.id
-                            ? 'bg-emerald-50/70 border-emerald-600 ring-1 ring-emerald-500 shadow-xs'
-                            : 'bg-white border-[#DCE9E3] hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="text-base block mb-0.5">{mode.icon}</span>
-                        <span className={`text-xs font-black block ${billPaymentMode === mode.id ? 'text-emerald-800' : 'text-[#283B3D]'}`}>
-                          {mode.label}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block leading-tight mt-0.5">
-                          {mode.desc}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4. Optional Remark / Bill Note */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-[#283B3D]">
-                    Customer / Hisaab Note (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Paid online, ₹50 balance remaining next time"
-                    value={billNotes}
-                    onChange={(e) => setBillNotes(e.target.value)}
-                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                  />
-                </div>
-
-                {/* Actions: Save & Complete vs Skip (₹0) */}
-                <div className="pt-2 space-y-2">
-                  <button
-                    type="submit"
-                    className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                    <span>
-                      {billAmount && Number(billAmount) > 0 
-                        ? `Save Hisaab (₹${Number(billAmount).toLocaleString('en-IN')}) & Mark Complete`
-                        : "Save & Mark Complete"
-                      }
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleFinalizeService({ skipBilling: true })}
-                    className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
-                  >
-                    Skip Billing (Bina Bill / ₹0 Me Complete Karo)
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
+                </form>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ========================================================= */}
@@ -7732,6 +8476,444 @@ export default function MerchantDashboardPage() {
                   Done & Save Stations
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 14: QUICK KHATA SETTLEMENT / CREDIT (BRD FR-712)     */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {khataModalOpen && selectedKhataCustomer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-[#DCE9E3] shadow-2xl space-y-5 my-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                    khataEntryType === 'PAYMENT' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                  }`}>
+                    {khataEntryType === 'PAYMENT' ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#283B3D]">
+                      {khataEntryType === 'PAYMENT' ? 'Receive Payment (Jama)' : 'Add Udhaar (Credit)'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      {selectedKhataCustomer.customerName} • {selectedKhataCustomer.customerPhone ? `+91 ${selectedKhataCustomer.customerPhone}` : 'Offline'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setKhataModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F3F1E9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Current Outstanding Banner */}
+              <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] flex items-center justify-between">
+                <span className="text-xs font-bold text-[#283B3D]/70">Current Pending Baqaya:</span>
+                <span className="font-token font-bold text-base text-rose-700">
+                  ₹{(selectedKhataCustomer.totalPending || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* Type Switcher */}
+              <div className="grid grid-cols-2 gap-2 bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
+                <button
+                  type="button"
+                  onClick={() => setKhataEntryType('PAYMENT')}
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    khataEntryType === 'PAYMENT'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🟢 Jama (Payment Received)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKhataEntryType('CREDIT')}
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    khataEntryType === 'CREDIT'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🔴 Udhaar (Add Balance)
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSaveKhataTransaction} className="space-y-4">
+                {/* Amount Input */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    {khataEntryType === 'PAYMENT' ? 'Kitna Paisa Jama Hua? (Amount Received) *' : 'Kitna Udhaar Jodna Hai? (Credit Amount) *'}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500000}
+                      placeholder="0"
+                      value={khataEntryAmount}
+                      onChange={(e) => setKhataEntryAmount(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl pl-8 pr-4 py-2.5 text-base font-token font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      required
+                    />
+                  </div>
+
+                  {/* Preset Pills */}
+                  {khataEntryType === 'PAYMENT' && (selectedKhataCustomer.totalPending || 0) > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold mr-1">Quick:</span>
+                      <button
+                        type="button"
+                        onClick={() => setKhataEntryAmount(String(selectedKhataCustomer.totalPending))}
+                        className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-bold cursor-pointer"
+                      >
+                        Poora Hisaab (₹{selectedKhataCustomer.totalPending})
+                      </button>
+                      {[50, 100, 200, 500].map(amt => (
+                        amt < (selectedKhataCustomer.totalPending || 0) && (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setKhataEntryAmount(String(amt))}
+                            className="px-2 py-1 rounded-xl bg-white border border-[#DCE9E3] text-[10px] font-bold text-[#283B3D] hover:bg-slate-50 cursor-pointer"
+                          >
+                            ₹{amt}
+                          </button>
+                        )
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mode Selector for Payment */}
+                {khataEntryType === 'PAYMENT' && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Payment Mode (Kisme Diya?)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'CASH', label: 'Cash (Naqad)', icon: '💵' },
+                        { id: 'UPI', label: 'UPI (GPay/PhonePe)', icon: '📱' }
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setKhataEntryMode(m.id)}
+                          className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                            khataEntryMode === m.id
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-1 ring-emerald-500'
+                              : 'bg-white border-[#DCE9E3] text-[#283B3D]'
+                          }`}
+                        >
+                          <span>{m.icon}</span>
+                          <span>{m.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes Input */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Remark / Service Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={khataEntryType === 'PAYMENT' ? "e.g. Paid in cash at counter" : "e.g. Medicine purchase / Shaving bill"}
+                    value={khataEntryNotes}
+                    onChange={(e) => setKhataEntryNotes(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3.5 py-2 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                {/* Submit CTA */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className={`w-full py-3.5 rounded-2xl text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 ${
+                      khataEntryType === 'PAYMENT' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-rose-700 hover:bg-rose-800'
+                    }`}
+                  >
+                    <span>{khataEntryType === 'PAYMENT' ? 'Confirm & Record Jama' : 'Confirm & Add Udhaar'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 15: CUSTOMER KHATA STATEMENT / PASSBOOK (BRD FR-712) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {statementModalOpen && statementCustomer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full border border-[#DCE9E3] shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#283B3D]">
+                      Khata Passbook Statement
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      {statementCustomer.customerName} • {statementCustomer.customerPhone ? `+91 ${statementCustomer.customerPhone}` : 'Walk-in'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStatementModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F3F1E9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Net Balance Pill */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-[#DCE9E3]/70 to-[#F3F1E9] border border-[#176B65]/30 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                    Current Net Balance Due
+                  </span>
+                  <span className="font-token font-bold text-2xl text-rose-700">
+                    ₹{(statementCustomer.totalPending || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                {statementCustomer.customerPhone && statementCustomer.customerPhone !== 'Offline' && (
+                  <button
+                    type="button"
+                    onClick={() => handleSendWhatsAppKhataReminder(statementCustomer)}
+                    className="px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-current" />
+                    <span>Send Reminder</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Transaction Passbook List */}
+              <div className="space-y-2">
+                <span className="text-xs font-black text-[#283B3D] block">
+                  Complete Transaction History ({statementCustomer.transactions?.length || 0})
+                </span>
+
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  {statementCustomer.transactions && statementCustomer.transactions.length > 0 ? (
+                    statementCustomer.transactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                          tx.type === 'PAYMENT' ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                            tx.type === 'PAYMENT' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                          }`}>
+                            {tx.type === 'PAYMENT' ? '↓' : '↑'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-black ${tx.type === 'PAYMENT' ? 'text-emerald-800' : 'text-rose-800'}`}>
+                                {tx.type === 'PAYMENT' ? 'Jama (Payment)' : 'Udhaar (Credit)'}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : 'Recent'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-600 font-semibold block line-clamp-1">
+                              {tx.serviceOrReason || (tx.type === 'PAYMENT' ? 'Cash/UPI Payment' : 'Service Udhaar')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className={`font-token font-bold text-sm block ${tx.type === 'PAYMENT' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {tx.type === 'PAYMENT' ? `-₹${tx.amount}` : `+₹${tx.amount}`}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold block">
+                            Bal: ₹{tx.balanceAfter !== undefined ? tx.balanceAfter : statementCustomer.totalPending}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-6 text-center text-xs text-slate-400">
+                      No past transactions found for this customer.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStatementModalOpen(false)}
+                  className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all cursor-pointer text-center"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 16: ADD NEW CUSTOMER KHATA ACCOUNT (BRD FR-712)       */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {newCustomerKhataModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-[#DCE9E3] shadow-2xl space-y-5 my-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#283B3D]">
+                      Register Customer Khata
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Add a customer to your digital Udhaar ledger (FR-712)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNewCustomerKhataModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-[#F3F1E9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleCreateNewKhataCustomer} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1">
+                    Customer Name *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ramesh Verma, Gupta Ji"
+                    value={newKhataName}
+                    onChange={(e) => setNewKhataName(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1">
+                    Mobile Number (10 Digits) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={newKhataPhone}
+                      onChange={(e) => setNewKhataPhone(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl pl-12 pr-3.5 py-2.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium block mt-1">
+                    Used to send WhatsApp payment reminders.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1">
+                    Initial Udhaar / Opening Due (Optional)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={newKhataInitialDue}
+                      onChange={(e) => setNewKhataInitialDue(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1">
+                    Opening Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Purana hisaab baaki hai"
+                    value={newKhataNotes}
+                    onChange={(e) => setNewKhataNotes(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Khata Account</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewCustomerKhataModalOpen(false)}
+                    className="w-full py-2 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

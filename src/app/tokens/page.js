@@ -54,6 +54,25 @@ const getActiveShopBroadcast = (shopSlug, shopName) => {
   }
 };
 
+// Read customer pending Khata balance if any (BRD FR-712)
+const getCustomerKhataDue = (token) => {
+  if (typeof window === 'undefined' || !token) return 0;
+  const slug = (token.shopSlug || (token.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).toLowerCase();
+  const phone = (token.customerPhone || '').replace(/\D/g, '').slice(-10);
+  if (!slug || !phone) return 0;
+  try {
+    const saved = localStorage.getItem(`ak_shop_khata_${slug}`);
+    if (saved) {
+      const list = JSON.parse(saved);
+      if (Array.isArray(list)) {
+        const match = list.find(c => c.customerPhone && c.customerPhone.replace(/\D/g, '').slice(-10) === phone);
+        if (match && match.totalPending > 0) return match.totalPending;
+      }
+    }
+  } catch (e) {}
+  return 0;
+};
+
 const REVIEW_TAGS = [
   { id: 'ON_TIME', label: '⏱️ On-Time Turn' },
   { id: 'BEHAVIOUR', label: '🤝 Polite Staff' },
@@ -1309,6 +1328,26 @@ export default function MyTokensPage() {
                                 Step Up Now
                               </span>
                             )}
+                          </div>
+                        )}
+
+                        {/* Store Khata Pending Balance Notice (BRD FR-712) */}
+                        {getCustomerKhataDue(token) > 0 && (
+                          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">📒</span>
+                              <div>
+                                <span className="font-bold block">
+                                  Store Khata: ₹{getCustomerKhataDue(token).toLocaleString('en-IN')} pending balance
+                                </span>
+                                <span className="text-[10px] text-rose-700 block">
+                                  Can be settled at the counter via Cash or UPI
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-white text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                              Khata Due
+                            </span>
                           </div>
                         )}
 
