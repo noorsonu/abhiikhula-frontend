@@ -8,7 +8,8 @@ import {
   Sparkles, RefreshCw, ChevronRight, X, UserCheck, ShieldCheck, Ticket, MessageCircle, MapPin,
   LogOut, PlusCircle, Lock, Megaphone, BarChart3, TrendingUp, Calendar, Download, Flame, Zap, Award, FileSpreadsheet,
   Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus,
-  Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle
+  Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle,
+  Settings, Building, Edit3, Save, Info, Bell, ToggleLeft, ToggleRight, CalendarDays, PhoneCall
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -74,6 +75,23 @@ export default function MerchantDashboardPage() {
   const [isCapEnabled, setIsCapEnabled] = useState(true);
   const [dailyTokenCap, setDailyTokenCap] = useState(50); // Default 50 tokens
   const [tempCapInput, setTempCapInput] = useState(50);
+
+  // BRD FR-602: Shop Profile & Operating Hours Editor State
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [editShopName, setEditShopName] = useState('');
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editZone, setEditZone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editOpenTime, setEditOpenTime] = useState('09:30 AM');
+  const [editCloseTime, setEditCloseTime] = useState('08:30 PM');
+  const [editWeeklyOff, setEditWeeklyOff] = useState('None');
+  const [editLunchBreak, setEditLunchBreak] = useState('');
+  const [editAvgWaitMin, setEditAvgWaitMin] = useState(12);
+  const [editTokenPrefix, setEditTokenPrefix] = useState('AK');
+  const [editEnableWhatsapp, setEditEnableWhatsapp] = useState(true);
+  const [profileSavedFeedback, setProfileSavedFeedback] = useState(false);
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
 
@@ -880,6 +898,119 @@ export default function MerchantDashboardPage() {
     handleSaveCap(nextCap, true);
   };
 
+  // Sync Shop Profile form state whenever activeShop changes (BRD FR-602)
+  useEffect(() => {
+    if (activeShop) {
+      setEditShopName(activeShop.name || '');
+      setEditOwnerName(activeShop.ownerName || '');
+      setEditCategory(activeShop.categoryName || activeShop.categoryId || 'General Store');
+      setEditPhone(activeShop.phone || '');
+      setEditZone(activeShop.zone || 'Hazratganj Main Market');
+      setEditAddress(activeShop.address || '');
+
+      if (activeShop.openingHours && activeShop.openingHours.includes('-')) {
+        const parts = activeShop.openingHours.split('-').map(s => s.trim());
+        setEditOpenTime(parts[0] || '09:30 AM');
+        setEditCloseTime(parts[1] || '08:30 PM');
+      } else {
+        setEditOpenTime(activeShop.openTime || '09:30 AM');
+        setEditCloseTime(activeShop.closeTime || '08:30 PM');
+      }
+
+      setEditWeeklyOff(activeShop.weeklyOff || 'None');
+      setEditLunchBreak(activeShop.lunchBreak || '');
+      setEditAvgWaitMin(Number(activeShop.avgWaitMin) || 12);
+      setEditTokenPrefix(activeShop.tokenPrefix || 'AK');
+      setEditEnableWhatsapp(activeShop.enableWhatsapp !== false);
+    }
+  }, [activeShop]);
+
+  const handleOpenProfileModal = () => {
+    if (!activeShop) return;
+    setEditShopName(activeShop.name || '');
+    setEditOwnerName(activeShop.ownerName || '');
+    setEditCategory(activeShop.categoryName || activeShop.categoryId || 'General Store');
+    setEditPhone(activeShop.phone || '');
+    setEditZone(activeShop.zone || 'Hazratganj Main Market');
+    setEditAddress(activeShop.address || '');
+
+    if (activeShop.openingHours && activeShop.openingHours.includes('-')) {
+      const parts = activeShop.openingHours.split('-').map(s => s.trim());
+      setEditOpenTime(parts[0] || '09:30 AM');
+      setEditCloseTime(parts[1] || '08:30 PM');
+    } else {
+      setEditOpenTime(activeShop.openTime || '09:30 AM');
+      setEditCloseTime(activeShop.closeTime || '08:30 PM');
+    }
+
+    setEditWeeklyOff(activeShop.weeklyOff || 'None');
+    setEditLunchBreak(activeShop.lunchBreak || '');
+    setEditAvgWaitMin(Number(activeShop.avgWaitMin) || 12);
+    setEditTokenPrefix(activeShop.tokenPrefix || 'AK');
+    setEditEnableWhatsapp(activeShop.enableWhatsapp !== false);
+    setProfileModalOpen(true);
+  };
+
+  const handleSaveShopProfile = (e) => {
+    if (e) e.preventDefault();
+    if (!activeShop) return;
+
+    if (!editShopName.trim()) {
+      alert('Shop Name cannot be empty');
+      return;
+    }
+
+    const cleanOpeningHours = `${editOpenTime} - ${editCloseTime}`;
+    const updatedShop = {
+      ...activeShop,
+      name: editShopName.trim(),
+      ownerName: editOwnerName.trim(),
+      categoryName: editCategory,
+      phone: editPhone.replace(/\D/g, '').slice(-10),
+      zone: editZone,
+      address: editAddress.trim(),
+      openingHours: cleanOpeningHours,
+      openTime: editOpenTime,
+      closeTime: editCloseTime,
+      weeklyOff: editWeeklyOff,
+      lunchBreak: editLunchBreak.trim(),
+      avgWaitMin: Number(editAvgWaitMin) || 12,
+      tokenPrefix: (editTokenPrefix || 'AK').toUpperCase().slice(0, 4),
+      enableWhatsapp: Boolean(editEnableWhatsapp),
+      updatedAt: new Date().toISOString()
+    };
+
+    setActiveShop(updatedShop);
+
+    // Dynamically update wait times in current waiting queue with new pace
+    const pace = Number(editAvgWaitMin) || 12;
+    setWaitingQueue(prev => prev.map((t, idx) => ({
+      ...t,
+      estWaitMin: (idx + 1) * pace
+    })));
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ak_active_merchant_shop', JSON.stringify(updatedShop));
+
+        const allShopsStr = localStorage.getItem('ak_merchant_shops');
+        if (allShopsStr) {
+          const allShops = JSON.parse(allShopsStr);
+          const updatedShops = allShops.map(s => (s.slug === updatedShop.slug || s.id === updatedShop.id ? updatedShop : s));
+          localStorage.setItem('ak_merchant_shops', JSON.stringify(updatedShops));
+        }
+
+        window.dispatchEvent(new Event('storage'));
+      } catch (err) {}
+    }
+
+    setProfileModalOpen(false);
+    setProfileSavedFeedback(true);
+    setTimeout(() => setProfileSavedFeedback(false), 4000);
+    setAnnouncementMsg(`✅ Shop profile & operating timings updated! Hours: ${cleanOpeningHours}, Pace: ~${pace}m.`);
+    playChime();
+  };
+
   // Play browser chime
   const playChime = () => {
     if (!soundEnabled || typeof window === 'undefined') return;
@@ -1438,6 +1569,18 @@ export default function MerchantDashboardPage() {
             <span>Counter QR Pass</span>
           </button>
 
+          {/* Shop Profile & Timings Editor Button (BRD FR-602) */}
+          <button
+            type="button"
+            onClick={handleOpenProfileModal}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Edit Operating Hours, Service Pace, Contact & Weekly Off (FR-602)"
+          >
+            <Settings className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">Shop Profile & Timings</span>
+            <span className="sm:hidden">Settings</span>
+          </button>
+
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
           <div className="flex items-center bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
             <button
@@ -1619,6 +1762,22 @@ export default function MerchantDashboardPage() {
             <span>Daily Analytics & Reports</span>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#F2A15A]/20 text-[#D97706] hidden sm:inline-block">
               BRD FR-710
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('PROFILE')}
+            className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'PROFILE'
+                ? 'bg-[#176B65] text-white shadow-md'
+                : 'text-[#283B3D]/70 hover:bg-[#DCE9E3]/40'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Shop Profile & Timings</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 hidden sm:inline-block border border-emerald-300">
+              FR-602
             </span>
           </button>
         </div>
@@ -2617,6 +2776,486 @@ export default function MerchantDashboardPage() {
       })()}
 
       {/* ========================================================= */}
+      {/* TAB 3: SHOP PROFILE & OPERATING HOURS EDITOR (BRD FR-602) */}
+      {/* ========================================================= */}
+      {activeTab === 'PROFILE' && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {/* Hero Profile Summary Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#DCE9E3] shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCE9E3] pb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#176B65] to-[#283B3D] text-[#F3F1E9] flex items-center justify-center font-black text-2xl shadow-md border-2 border-[#176B65]">
+                  {activeShop?.name?.charAt(0) || 'A'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-black text-[#283B3D]">
+                      {activeShop?.name || 'Local Merchant Shop'}
+                    </h2>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Verified Shopkeeper
+                    </span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#176B65]/10 text-[#176B65]">
+                      BRD FR-602
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#283B3D]/70 font-semibold mt-1 flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#176B65]" />
+                    <span>{activeShop?.zone || 'Hazratganj Main Market'}</span>
+                    <span>•</span>
+                    <span className="font-bold text-[#176B65]">{activeShop?.categoryName || 'General Store'}</span>
+                    <span>•</span>
+                    <span>Owner: {activeShop?.ownerName || 'Merchant'}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 ${
+                  shopStatus === 'OPEN'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : shopStatus === 'PAUSED'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                      : 'bg-rose-100 text-rose-800 border border-rose-200'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    shopStatus === 'OPEN' ? 'bg-emerald-600' : shopStatus === 'PAUSED' ? 'bg-amber-600' : 'bg-rose-600'
+                  }`} />
+                  <span>Currently {shopStatus}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[#176B65]" />
+                  <span>Daily Timings</span>
+                </span>
+                <div className="text-sm sm:text-base font-black text-[#283B3D]">
+                  {activeShop?.openingHours || '10:00 AM - 08:30 PM'}
+                </div>
+                <span className="text-[10px] text-[#283B3D]/60 font-semibold block">Customer Open Window</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3 text-amber-700" />
+                  <span>Weekly Off</span>
+                </span>
+                <div className="text-sm sm:text-base font-black text-[#283B3D]">
+                  {activeShop?.weeklyOff && activeShop.weeklyOff !== 'None' ? `${activeShop.weeklyOff} Closed` : 'Open 7 Days'}
+                </div>
+                <span className="text-[10px] text-[#283B3D]/60 font-semibold block">Official Holiday</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-[#F2A15A]" />
+                  <span>Service Pace</span>
+                </span>
+                <div className="text-sm sm:text-base font-black text-[#176B65]">
+                  ~{activeShop?.avgWaitMin || 12}m / person
+                </div>
+                <span className="text-[10px] text-[#283B3D]/60 font-semibold block">Queue Wait Estimate</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 tracking-wider flex items-center gap-1">
+                  <PhoneCall className="w-3 h-3 text-emerald-700" />
+                  <span>Support Line</span>
+                </span>
+                <div className="text-sm sm:text-base font-black text-[#283B3D]">
+                  +91 {activeShop?.phone || '9876543210'}
+                </div>
+                <span className="text-[10px] text-[#283B3D]/60 font-semibold block">Customer WhatsApp</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Success Feedback Alert */}
+          {profileSavedFeedback && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-3 shadow-sm"
+            >
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div className="text-xs font-bold">
+                Shop profile, operating hours, and service pace updated successfully! All active customer pass screens are synced.
+              </div>
+            </motion.div>
+          )}
+
+          {/* Settings Editor Form */}
+          <form onSubmit={handleSaveShopProfile} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* PANEL 1: SHOP IDENTITY & CONTACTS */}
+              <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#DCE9E3] shadow-xs space-y-4">
+                <div className="flex items-center gap-2.5 border-b border-[#DCE9E3] pb-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
+                    <Building className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#283B3D]">Shop Identity & Details</h3>
+                    <p className="text-[11px] text-[#283B3D]/60 font-semibold">Basic business listing and customer contact</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Shop / Counter Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editShopName}
+                      onChange={(e) => setEditShopName(e.target.value)}
+                      placeholder="e.g. Royal Salon & Grooming"
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Owner / Manager Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editOwnerName}
+                        onChange={(e) => setEditOwnerName(e.target.value)}
+                        placeholder="e.g. Ramesh Verma"
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Business Category
+                      </label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      >
+                        <option value="Barber & Men's Salon">✂️ Barber & Men's Salon</option>
+                        <option value="Beauty Parlour & Women's Spa">💇‍♀️ Beauty Parlour & Spa</option>
+                        <option value="Doctor Clinic & Healthcare">🩺 Doctor Clinic & Healthcare</option>
+                        <option value="Food Stall & Chaat Corner">🍲 Food Stall & Chaat Corner</option>
+                        <option value="Mobile & Electronics Repair">📱 Mobile & Electronics Repair</option>
+                        <option value="Kirana & Daily Grocery">🛒 Kirana & Daily Grocery</option>
+                        <option value="Boutique & Custom Tailoring">🧵 Boutique & Custom Tailoring</option>
+                        <option value="CSC & Jan Seva Kendra">🏛️ CSC & Jan Seva Kendra</option>
+                        <option value="General Store">🏪 General Retail Store</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Primary WhatsApp / Phone <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="flex items-center bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2 text-xs font-bold text-[#283B3D] focus-within:border-[#176B65]">
+                        <span className="text-slate-400 mr-1.5">+91</span>
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          required
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ''))}
+                          placeholder="9876543210"
+                          className="w-full bg-transparent font-bold focus:outline-none text-[#283B3D]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Market / Zone
+                      </label>
+                      <select
+                        value={editZone}
+                        onChange={(e) => setEditZone(e.target.value)}
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      >
+                        <option value="Hazratganj Main Market">Hazratganj Main Market</option>
+                        <option value="Aminabad Bazaar">Aminabad Bazaar</option>
+                        <option value="Alambagh Market">Alambagh Market</option>
+                        <option value="Gomti Nagar Commercial">Gomti Nagar Commercial</option>
+                        <option value="Indira Nagar">Indira Nagar</option>
+                        <option value="Chowk Old City">Chowk Old City</option>
+                        <option value="Charbagh Station Road">Charbagh Station Road</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Shop Address & Landmark
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="e.g. Shop #12, Near Mayfair Cinema, Hazratganj, Lucknow"
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* PANEL 2: TIMINGS & OPERATING SCHEDULE (BRD FR-602) */}
+              <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#DCE9E3] shadow-xs space-y-4">
+                <div className="flex items-center gap-2.5 border-b border-[#DCE9E3] pb-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#283B3D]">Operating Hours & Schedule</h3>
+                    <p className="text-[11px] text-[#283B3D]/60 font-semibold">Opening hours, weekly off day and rest periods</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Daily Opening & Closing Hours */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Daily Opening Time
+                      </label>
+                      <select
+                        value={editOpenTime}
+                        onChange={(e) => setEditOpenTime(e.target.value)}
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      >
+                        <option value="08:00 AM">08:00 AM</option>
+                        <option value="08:30 AM">08:30 AM</option>
+                        <option value="09:00 AM">09:00 AM</option>
+                        <option value="09:30 AM">09:30 AM</option>
+                        <option value="10:00 AM">10:00 AM</option>
+                        <option value="10:30 AM">10:30 AM</option>
+                        <option value="11:00 AM">11:00 AM</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#283B3D]">
+                        Daily Closing Time
+                      </label>
+                      <select
+                        value={editCloseTime}
+                        onChange={(e) => setEditCloseTime(e.target.value)}
+                        className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                      >
+                        <option value="06:00 PM">06:00 PM</option>
+                        <option value="07:00 PM">07:00 PM</option>
+                        <option value="08:00 PM">08:00 PM</option>
+                        <option value="08:30 PM">08:30 PM</option>
+                        <option value="09:00 PM">09:00 PM</option>
+                        <option value="09:30 PM">09:30 PM</option>
+                        <option value="10:00 PM">10:00 PM</option>
+                        <option value="11:00 PM">11:00 PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Weekly Off Day Selector */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#283B3D] uppercase tracking-wider">
+                      Weekly Off Day (Closed Day)
+                    </label>
+                    <div className="grid grid-cols-4 sm:grid-cols-4 gap-1.5">
+                      {['None', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => setEditWeeklyOff(day)}
+                          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer text-center border ${
+                            editWeeklyOff === day
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-[#F3F1E9]/60 hover:bg-[#DCE9E3] text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          {day === 'None' ? 'Open 7 Days' : day.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Afternoon / Lunch Break Window */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Afternoon Break Window (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={editLunchBreak}
+                      onChange={(e) => setEditLunchBreak(e.target.value)}
+                      placeholder="e.g. 02:00 PM - 03:00 PM (or leave empty)"
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                    <span className="text-[10px] text-[#283B3D]/60 font-medium block">
+                      Shown on customer pass so they know not to visit during lunch
+                    </span>
+                  </div>
+
+                  {/* Summary Preview */}
+                  <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200 text-xs text-amber-900 font-semibold flex items-center justify-between">
+                    <span>Active Schedule:</span>
+                    <strong className="text-amber-800">
+                      {editOpenTime} – {editCloseTime} ({editWeeklyOff === 'None' ? '7 Days' : `${editWeeklyOff} Off`})
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PANEL 3: QUEUE SERVICE PACE & CUSTOMER CONTROLS */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#DCE9E3] shadow-xs space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[#DCE9E3] pb-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-100 text-[#176B65] flex items-center justify-center">
+                  <Timer className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#283B3D]">Queue Service Pace & Token Format</h3>
+                  <p className="text-[11px] text-[#283B3D]/60 font-semibold">Average handling time per client and prefix formatting</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {/* Service Pace Stepper & Presets */}
+                <div className="sm:col-span-2 space-y-3">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Average Service Time Per Customer (Minutes)
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] p-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditAvgWaitMin(Math.max(2, editAvgWaitMin - 1))}
+                        className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-base font-black text-[#283B3D] shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        -
+                      </button>
+                      <div className="w-24 text-center">
+                        <span className="text-2xl font-token font-bold text-[#176B65]">
+                          {editAvgWaitMin}
+                        </span>
+                        <span className="text-[10px] text-[#283B3D]/60 block font-bold">min / client</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditAvgWaitMin(Math.min(120, editAvgWaitMin + 1))}
+                        className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-base font-black text-[#283B3D] shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 flex-1">
+                      {[5, 8, 10, 12, 15, 20, 30].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setEditAvgWaitMin(preset)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            editAvgWaitMin === preset
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-[#F3F1E9]/70 hover:bg-[#DCE9E3] text-[#283B3D] border-[#DCE9E3]'
+                          }`}
+                        >
+                          {preset}m
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[#283B3D]/70 font-semibold">
+                    💡 If 5 customers are waiting, the 5th customer will see an estimated wait time of: <strong className="text-[#176B65]">~{5 * editAvgWaitMin} minutes</strong>.
+                  </p>
+                </div>
+
+                {/* Token Prefix & WhatsApp */}
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Token Serial Prefix
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={editTokenPrefix}
+                      onChange={(e) => setEditTokenPrefix(e.target.value.toUpperCase())}
+                      placeholder="e.g. AK, SAL, DR"
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2 text-xs font-black uppercase text-[#176B65] focus:outline-none focus:border-[#176B65]"
+                    />
+                    <span className="text-[10px] text-[#283B3D]/60 font-semibold block">
+                      Generated passes will look like: <strong>{editTokenPrefix || 'AK'}-001</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3]">
+                    <div>
+                      <span className="text-xs font-black text-[#283B3D] block">WhatsApp Alerts</span>
+                      <span className="text-[10px] text-[#283B3D]/60 font-semibold">Notify when 2 turns remain</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditEnableWhatsapp(!editEnableWhatsapp)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        editEnableWhatsapp ? 'bg-[#176B65]' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          editEnableWhatsapp ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Save & Reset Actions Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-[#DCE9E3] shadow-xs">
+              <div className="text-xs text-[#283B3D]/70 font-semibold text-center sm:text-left">
+                Changes will take effect instantly for all current and future queue tokens.
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('COUNTER')}
+                  className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
+                >
+                  Back to Live Station
+                </button>
+
+                <button
+                  type="submit"
+                  className="flex-1 sm:flex-none px-6 py-3 rounded-2xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Save className="w-4 h-4 text-emerald-300" />
+                  <span>Save Shop Profile & Timings</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </motion.div>
+      )}
+
+      {/* ========================================================= */}
       {/* MODAL 1: ADD WALK-IN OFFLINE CUSTOMER                    */}
       {/* ========================================================= */}
       <AnimatePresence>
@@ -3437,6 +4076,208 @@ export default function MerchantDashboardPage() {
                   Cancel
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 6: SHOP PROFILE & TIMINGS POPUP MODAL (BRD FR-602)  */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {profileModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-[#283B3D]">Edit Shop Profile & Timings</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        FR-602
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                      Update operating schedule, weekly off, and customer wait pace.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setProfileModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveShopProfile} className="space-y-4">
+                {/* 1. Shop Name & Owner */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Shop Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editShopName}
+                    onChange={(e) => setEditShopName(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Category
+                    </label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    >
+                      <option value="Barber & Men's Salon">✂️ Barber & Men's Salon</option>
+                      <option value="Beauty Parlour & Women's Spa">💇‍♀️ Beauty Parlour & Spa</option>
+                      <option value="Doctor Clinic & Healthcare">🩺 Doctor Clinic & Healthcare</option>
+                      <option value="Food Stall & Chaat Corner">🍲 Food Stall & Chaat Corner</option>
+                      <option value="Mobile & Electronics Repair">📱 Mobile & Electronics Repair</option>
+                      <option value="Kirana & Daily Grocery">🛒 Kirana & Daily Grocery</option>
+                      <option value="Boutique & Custom Tailoring">🧵 Boutique & Custom Tailoring</option>
+                      <option value="CSC & Jan Seva Kendra">🏛️ CSC & Jan Seva Kendra</option>
+                      <option value="General Store">🏪 General Retail Store</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      WhatsApp / Phone
+                    </label>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Opening & Closing Hours */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Daily Opening Time
+                    </label>
+                    <select
+                      value={editOpenTime}
+                      onChange={(e) => setEditOpenTime(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    >
+                      <option value="08:00 AM">08:00 AM</option>
+                      <option value="08:30 AM">08:30 AM</option>
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="09:30 AM">09:30 AM</option>
+                      <option value="10:00 AM">10:00 AM</option>
+                      <option value="10:30 AM">10:30 AM</option>
+                      <option value="11:00 AM">11:00 AM</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-[#283B3D]">
+                      Daily Closing Time
+                    </label>
+                    <select
+                      value={editCloseTime}
+                      onChange={(e) => setEditCloseTime(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    >
+                      <option value="06:00 PM">06:00 PM</option>
+                      <option value="07:00 PM">07:00 PM</option>
+                      <option value="08:00 PM">08:00 PM</option>
+                      <option value="08:30 PM">08:30 PM</option>
+                      <option value="09:00 PM">09:00 PM</option>
+                      <option value="09:30 PM">09:30 PM</option>
+                      <option value="10:00 PM">10:00 PM</option>
+                      <option value="11:00 PM">11:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. Weekly Off Day */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#283B3D]">
+                    Weekly Off Day
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {['None', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setEditWeeklyOff(day)}
+                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border text-center ${
+                          editWeeklyOff === day
+                            ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                            : 'bg-[#F3F1E9]/70 hover:bg-[#DCE9E3] text-[#283B3D] border-[#DCE9E3]'
+                        }`}
+                      >
+                        {day === 'None' ? '7 Days' : day.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Service Pace per client */}
+                <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#283B3D]">Service Pace Per Customer</span>
+                    <span className="text-sm font-token font-bold text-[#176B65]">~{editAvgWaitMin} min</span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {[5, 8, 10, 12, 15, 20].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setEditAvgWaitMin(num)}
+                        className={`py-1 rounded-lg text-xs font-bold border transition-colors ${
+                          editAvgWaitMin === num
+                            ? 'bg-[#176B65] text-white border-[#176B65]'
+                            : 'bg-white hover:bg-slate-100 text-[#283B3D] border-[#DCE9E3]'
+                        }`}
+                      >
+                        {num}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Submit button */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Save className="w-4 h-4 text-emerald-300" />
+                    <span>Save Shop Profile & Timings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(false)}
+                    className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
