@@ -815,18 +815,6 @@ export default function MerchantDashboardPage() {
           setShopStatus(parsed.status || 'OPEN');
           setIsAuthorized(true);
 
-          // Verify with cloud DB that shop was not deleted (only wipe on explicit 404, never on network error)
-          if (parsed.id) {
-            shopApi.getShopById(parsed.id).catch((err) => {
-              if (err?.response?.status === 404) {
-                localStorage.removeItem('ak_active_merchant_shop');
-                localStorage.removeItem('ak_role');
-                setActiveShop(null);
-                setIsAuthorized(false);
-              }
-            });
-          }
-
           syncCustomerQueueForShop(parsed);
           const recs = loadShopRecords(parsed);
           setShopRecords(recs);
@@ -899,8 +887,27 @@ export default function MerchantDashboardPage() {
           setIsAuthorized(false);
         }
       } else {
-        // Explicitly reject if no active merchant shop is found in session
-        setIsAuthorized(false);
+        // Fallback: If ak_active_merchant_shop was cleared but merchant phone exists, restore from cloud DB
+        const phone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
+        if (phone) {
+          shopApi.getShopsByPhone(phone).then(res => {
+            if (res?.data?.data && res.data.data.length > 0) {
+              const shop = res.data.data[0];
+              localStorage.setItem('ak_active_merchant_shop', JSON.stringify(shop));
+              localStorage.setItem('ak_role', 'MERCHANT');
+              setActiveShop(shop);
+              setShopStatus(shop.status || 'OPEN');
+              setIsAuthorized(true);
+              syncCustomerQueueForShop(shop);
+              return;
+            }
+            setIsAuthorized(false);
+          }).catch(() => {
+            setIsAuthorized(false);
+          });
+        } else {
+          setIsAuthorized(false);
+        }
       }
     }
 

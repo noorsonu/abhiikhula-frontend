@@ -273,7 +273,7 @@ export default function MerchantRegisterPage() {
       localStorage.setItem('ak_role', 'MERCHANT');
       localStorage.setItem('ak_phone', clean);
       window.dispatchEvent(new Event('storage'));
-      router.push('/merchant/dashboard');
+      window.location.href = '/merchant/dashboard';
       return;
     }
 
@@ -286,7 +286,7 @@ export default function MerchantRegisterPage() {
     localStorage.setItem('ak_active_merchant_shop', JSON.stringify(shop));
     localStorage.setItem('ak_role', 'MERCHANT');
     window.dispatchEvent(new Event('storage'));
-    router.push('/merchant/dashboard');
+    window.location.href = '/merchant/dashboard';
   };
 
   // Handle Verify OTP

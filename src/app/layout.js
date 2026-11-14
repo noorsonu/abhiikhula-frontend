@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import OfficialBrandLogo from "@/components/OfficialBrandLogo";
-import AutoPurgeLegacyData from "@/components/AutoPurgeLegacyData";
 
 export const metadata = {
   title: "AbhiiKhula | Skip the Wait. Own Your Time.",
@@ -13,8 +12,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#F3F1E9] text-[#283B3D] flex flex-col antialiased selection:bg-[#176B65] selection:text-white">
-        <AutoPurgeLegacyData />
-        
         {/* Soft Background Warm Tones */}
         <div className="fixed top-0 right-1/4 w-[600px] h-[600px] bg-[#DCE9E3]/50 rounded-full blur-[140px] pointer-events-none -z-10"></div>
         <div className="fixed bottom-10 left-1/4 w-[500px] h-[500px] bg-[#176B65]/10 rounded-full blur-[130px] pointer-events-none -z-10"></div>
