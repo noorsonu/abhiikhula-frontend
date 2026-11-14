@@ -181,20 +181,27 @@ export default function Navbar() {
     setLoginModalOpen(true);
   };
 
-  // Step 1: Send OTP
+  // Step 1: Send OTP (Mobile Number Only)
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setLoginError('');
 
-    const cleanPhone = loginPhone.trim();
+    const cleanPhone = loginPhone.trim().replace(/\D/g, '').slice(-10);
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       setLoginError("Please enter a valid 10-digit Indian mobile number (starting with 6-9)");
       return;
     }
 
-    if (!loginName.trim()) {
-      setLoginError("Please enter your name");
-      return;
+    // Auto-detect if customer name already exists for this phone
+    if (typeof window !== 'undefined') {
+      try {
+        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+        if (savedProfiles[cleanPhone]?.name && !loginName) {
+          setLoginName(savedProfiles[cleanPhone].name);
+        } else if (localStorage.getItem('ak_phone') === cleanPhone && localStorage.getItem('ak_customer_name') && !loginName) {
+          setLoginName(localStorage.getItem('ak_customer_name'));
+        }
+      } catch (e) {}
     }
 
     setLoginLoading(true);
@@ -205,7 +212,8 @@ export default function Navbar() {
         console.warn("Backend send-otp fallback:", backendErr?.message);
       }
       setOtpSent(true);
-      setLoginSuccessMsg(`6-digit OTP sent to +91 ${cleanPhone}`);
+      setLoginOtp('1234'); // Auto-fill pilot OTP for seamless testing
+      setLoginSuccessMsg(`Verification code sent to +91 ${cleanPhone}`);
     } catch (err) {
       setLoginError(err.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -220,22 +228,47 @@ export default function Navbar() {
 
     const cleanOtp = loginOtp.trim();
     if (cleanOtp.length < 4 || cleanOtp.length > 6) {
-      setLoginError("Please enter the 4 to 6-digit OTP");
+      setLoginError("Please enter the 4 to 6-digit OTP (e.g. 1234)");
       return;
     }
 
     setLoginLoading(true);
     try {
-      const cleanPhone = loginPhone.trim();
+      const cleanPhone = loginPhone.trim().replace(/\D/g, '').slice(-10);
       let token = 'mock-customer-jwt-' + Date.now();
+      let serverName = '';
 
       try {
         const res = await authApi.verifyOtp(cleanPhone, cleanOtp);
         if (res?.data?.data?.token) {
           token = res.data.data.token;
         }
+        if (res?.data?.data?.name) {
+          serverName = res.data.data.name;
+        }
       } catch (backendErr) {
         console.warn("Backend verify-otp fallback:", backendErr?.message);
+      }
+
+      // Resolve final name: user input > saved profile > server name > Customer (last 4 digits)
+      let resolvedName = loginName.trim();
+      let resolvedAge = loginAge.trim();
+
+      if (typeof window !== 'undefined') {
+        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+        if (!resolvedName && savedProfiles[cleanPhone]?.name) {
+          resolvedName = savedProfiles[cleanPhone].name;
+          resolvedAge = savedProfiles[cleanPhone].age || resolvedAge;
+        } else if (!resolvedName && localStorage.getItem('ak_phone') === cleanPhone && localStorage.getItem('ak_customer_name')) {
+          resolvedName = localStorage.getItem('ak_customer_name');
+        }
+      }
+
+      if (!resolvedName && serverName) {
+        resolvedName = serverName;
+      }
+      if (!resolvedName) {
+        resolvedName = `Customer (${cleanPhone.slice(-4)})`;
       }
 
       // Save user session in localStorage as CUSTOMER
@@ -243,8 +276,14 @@ export default function Navbar() {
         localStorage.setItem('ak_token', token);
         localStorage.setItem('ak_phone', cleanPhone);
         localStorage.setItem('ak_role', 'CUSTOMER');
-        if (loginName.trim()) localStorage.setItem('ak_customer_name', loginName.trim());
-        if (loginAge.trim()) localStorage.setItem('ak_customer_age', loginAge.trim());
+        localStorage.setItem('ak_customer_name', resolvedName);
+        if (resolvedAge) localStorage.setItem('ak_customer_age', resolvedAge);
+
+        // Update persistent phone -> profile map so user never has to re-enter
+        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+        savedProfiles[cleanPhone] = { name: resolvedName, age: resolvedAge };
+        localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
+
         window.dispatchEvent(new Event('storage'));
       }
 
@@ -764,66 +803,71 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* STEP 1: Enter Name, Age & Mobile Number */}
+              {/* STEP 1: Enter Mobile Number (Existing customers need ONLY mobile number) */}
               {!otpSent ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                        Your Full Name <span className="text-rose-500">*</span>
+                        Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
+                          +91
+                        </span>
                         <input
-                          type="text"
+                          type="tel"
                           required
-                          value={loginName}
-                          onChange={(e) => setLoginName(e.target.value)}
-                          placeholder="e.g. Abhishek Sharma"
-                          className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                          autoFocus
+                          maxLength={10}
+                          value={loginPhone}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setLoginPhone(val);
+                            // Auto-fetch name if already saved for this phone
+                            if (val.length === 10 && typeof window !== 'undefined') {
+                              try {
+                                const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+                                if (savedProfiles[val]?.name) {
+                                  setLoginName(savedProfiles[val].name);
+                                }
+                              } catch (err) {}
+                            }
+                          }}
+                          placeholder="9876543210"
+                          className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    {loginName ? (
+                      <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center justify-between">
+                        <span>Recognized Account: <strong>{loginName}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setLoginName('')}
+                          className="text-[10px] text-emerald-600 underline cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
                       <div>
-                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                          Age <span className="text-slate-400 font-normal">(yrs)</span>
+                        <label className="text-xs font-bold text-[#283B3D]/70 block mb-1">
+                          Your Name <span className="text-slate-400 font-normal">(Optional for new customers)</span>
                         </label>
                         <div className="relative">
-                          <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                           <input
-                            type="number"
-                            min="5"
-                            max="110"
-                            value={loginAge}
-                            onChange={(e) => setLoginAge(e.target.value)}
-                            placeholder="e.g. 26"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-9 pr-2 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                            type="text"
+                            value={loginName}
+                            onChange={(e) => setLoginName(e.target.value)}
+                            placeholder="e.g. Abhishek Sharma"
+                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                           />
                         </div>
                       </div>
-
-                      <div className="col-span-2">
-                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                          Mobile Number <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
-                            +91
-                          </span>
-                          <input
-                            type="tel"
-                            required
-                            maxLength={10}
-                            value={loginPhone}
-                            onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
-                            placeholder="9876543210"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-[#283B3D]/60 leading-relaxed font-medium">

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
+import { shopApi } from '@/lib/api';
 
 export default function MerchantRegisterPage() {
   const router = useRouter();
@@ -57,39 +58,53 @@ export default function MerchantRegisterPage() {
   // Step 4: Final Created Shop Data
   const [registeredShop, setRegisteredShop] = useState(null);
 
-  // On mount check if shop already registered in localStorage
+  // On mount check if shop already registered in localStorage or Database
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const activeStr = localStorage.getItem('ak_active_merchant_shop');
-        const role = localStorage.getItem('ak_role');
-        const params = new URLSearchParams(window.location.search);
+    async function checkExisting() {
+      if (typeof window !== 'undefined') {
+        try {
+          const activeStr = localStorage.getItem('ak_active_merchant_shop');
+          const role = localStorage.getItem('ak_role');
+          const phone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
+          const params = new URLSearchParams(window.location.search);
 
-        // If logged in as Merchant and not explicitly registering another branch, go directly to Dashboard
-        if (activeStr && role === 'MERCHANT' && params.get('new') !== 'true') {
-          router.replace('/merchant/dashboard');
-          return;
-        }
+          // If logged in as Merchant and not explicitly registering another branch, go directly to Dashboard
+          if (activeStr && role === 'MERCHANT' && params.get('new') !== 'true') {
+            router.replace('/merchant/dashboard');
+            return;
+          }
 
-        if (activeStr) {
-          const parsed = JSON.parse(activeStr);
-          setExistingShop(parsed);
-        }
+          if (activeStr) {
+            const parsed = JSON.parse(activeStr);
+            setExistingShop(parsed);
+          } else if (phone) {
+            // Also check database by phone
+            try {
+              const res = await shopApi.getShopsByPhone(phone);
+              if (res?.data?.data && res.data.data.length > 0) {
+                const found = res.data.data[0];
+                setExistingShop(found);
+                setExistingShopDetectedOnPhone(found);
+              }
+            } catch (err) {}
+          }
 
-        if (params.get('new') === 'true') {
-          setForceNewRegister(true);
-        }
-      } catch (e) {}
+          if (params.get('new') === 'true') {
+            setForceNewRegister(true);
+          }
+        } catch (e) {}
+      }
     }
+    checkExisting();
   }, [router]);
 
   const categoriesList = [
-    { id: 'salon', name: 'Salon & Barber', icon: Scissors, img: '/images/barber.jpg' },
-    { id: 'pharmacy', name: 'Medical & Pharmacy', icon: Pill, img: '/images/pharmacy.jpg' },
-    { id: 'clinic', name: 'Doctor & Clinic', icon: Stethoscope, img: '/images/clinic.jpg' },
-    { id: 'food', name: 'Food & Chaat', icon: UtensilsCrossed, img: '/images/food.jpg' },
-    { id: 'diagnostic', name: 'Diagnostic & Lab', icon: Activity, img: '/images/diagnostic.jpg' },
-    { id: 'auto', name: 'Auto & Repair Service', icon: Wrench, img: '/images/auto.jpg' },
+    { id: 'salon', name: 'Salon & Barber', icon: Scissors, img: '/images/barber.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000001' },
+    { id: 'pharmacy', name: 'Medical & Pharmacy', icon: Pill, img: '/images/pharmacy.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000002' },
+    { id: 'clinic', name: 'Doctor & Clinic', icon: Stethoscope, img: '/images/clinic.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000003' },
+    { id: 'food', name: 'Food & Chaat', icon: UtensilsCrossed, img: '/images/food.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000004' },
+    { id: 'diagnostic', name: 'Diagnostic & Lab', icon: Activity, img: '/images/diagnostic.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000005' },
+    { id: 'auto', name: 'Auto & Repair Service', icon: Wrench, img: '/images/auto.jpg', uuid: 'b1b2c3d4-0000-0000-0000-000000000006' },
   ];
 
   const zonesList = [
@@ -97,35 +112,44 @@ export default function MerchantRegisterPage() {
   ];
 
   // Handle Send OTP
-  const handleSendOtp = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
     const clean = ownerPhone.replace(/\D/g, '').slice(-10);
     if (clean.length !== 10) {
       setAuthError('Please enter a valid 10-digit mobile number.');
       return;
     }
-    if (!ownerName.trim()) {
-      setAuthError('Please enter your full name.');
-      return;
-    }
 
-    // Check if an existing shop is already registered with this phone
+    setAuthError('');
+
+    // Check if an existing shop is already registered with this phone in database OR localStorage
+    let match = null;
     try {
-      const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-      const match = allShops.find(s => (s.phone || '').slice(-10) === clean);
-      if (match) {
-        setExistingShopDetectedOnPhone(match);
-      } else {
-        const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-        if (active && (active.phone || '').slice(-10) === clean) {
-          setExistingShopDetectedOnPhone(active);
-        } else {
-          setExistingShopDetectedOnPhone(null);
-        }
+      const res = await shopApi.getShopsByPhone(clean);
+      if (res?.data?.data && res.data.data.length > 0) {
+        match = res.data.data[0];
       }
     } catch (e) {}
 
-    setAuthError('');
+    if (!match) {
+      try {
+        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
+        match = allShops.find(s => (s.phone || '').slice(-10) === clean);
+        if (!match) {
+          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
+          if (active && (active.phone || '').slice(-10) === clean) {
+            match = active;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (match) {
+      setExistingShopDetectedOnPhone(match);
+    } else {
+      setExistingShopDetectedOnPhone(null);
+    }
+
     setOtpSent(true);
     setOtpInput('123456'); // Auto-fill demo OTP
   };
@@ -144,9 +168,9 @@ export default function MerchantRegisterPage() {
   };
 
   // Handle Quick Login Verify & Direct Dashboard Access
-  const handleQuickLoginVerify = (e) => {
+  const handleQuickLoginVerify = async (e) => {
     e.preventDefault();
-    if (loginOtpInput.trim() !== '123456') {
+    if (loginOtpInput.trim() !== '123456' && loginOtpInput.trim() !== '1234') {
       setLoginError('Invalid verification code. Enter 123456.');
       return;
     }
@@ -154,20 +178,32 @@ export default function MerchantRegisterPage() {
     const clean = loginPhone.replace(/\D/g, '').slice(-10);
     let matchedShop = null;
 
+    // 1. Check Backend Database first
     try {
-      const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-      matchedShop = allShops.find(s => (s.phone || '').slice(-10) === clean);
-      if (!matchedShop) {
-        const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-        if (active && (active.phone || '').slice(-10) === clean) {
-          matchedShop = active;
-        }
+      const res = await shopApi.getShopsByPhone(clean);
+      if (res?.data?.data && res.data.data.length > 0) {
+        matchedShop = res.data.data[0];
       }
     } catch (e) {}
+
+    // 2. Check localStorage fallback
+    if (!matchedShop) {
+      try {
+        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
+        matchedShop = allShops.find(s => (s.phone || '').slice(-10) === clean);
+        if (!matchedShop) {
+          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
+          if (active && (active.phone || '').slice(-10) === clean) {
+            matchedShop = active;
+          }
+        }
+      } catch (e) {}
+    }
 
     if (matchedShop) {
       localStorage.setItem('ak_active_merchant_shop', JSON.stringify(matchedShop));
       localStorage.setItem('ak_role', 'MERCHANT');
+      localStorage.setItem('ak_phone', clean);
       window.dispatchEvent(new Event('storage'));
       router.push('/merchant/dashboard');
       return;
@@ -191,13 +227,24 @@ export default function MerchantRegisterPage() {
   // Handle Verify OTP
   const handleVerifyOtp = (e) => {
     e.preventDefault();
-    if (otpInput.trim() !== '123456') {
+    if (otpInput.trim() !== '123456' && otpInput.trim() !== '1234') {
       setAuthError('Invalid OTP code. Please enter 123456.');
       return;
     }
     setAuthError('');
     setIsPhoneVerified(true);
-    // Advance to Step 2
+
+    // If existing shop was already found for this phone, log in directly!
+    if (existingShopDetectedOnPhone) {
+      localStorage.setItem('ak_active_merchant_shop', JSON.stringify(existingShopDetectedOnPhone));
+      localStorage.setItem('ak_role', 'MERCHANT');
+      localStorage.setItem('ak_phone', ownerPhone.replace(/\D/g, '').slice(-10));
+      window.dispatchEvent(new Event('storage'));
+      router.push('/merchant/dashboard');
+      return;
+    }
+
+    // Advance to Step 2 to register new shop
     setStep(2);
   };
 
@@ -242,14 +289,40 @@ export default function MerchantRegisterPage() {
   };
 
   // Handle Final Submit
-  const handleFinalSubmit = (e) => {
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
 
     const selectedCategoryObj = categoriesList.find(c => c.id === category);
+    const cleanPhone = ownerPhone.replace(/\D/g, '').slice(-10);
+
+    // Save to real PostgreSQL Database via API
+    const backendPayload = {
+      name: shopName.trim(),
+      address: address.trim() || `${zone}, Lucknow`,
+      lat: Number(gpsCoords.lat) || 26.8861,
+      lng: Number(gpsCoords.lng) || 80.9951,
+      phone: cleanPhone,
+      tokenCap: Number(dailyTokenCap) || 100,
+      categoryId: selectedCategoryObj?.uuid || 'b1b2c3d4-0000-0000-0000-000000000001',
+      zoneId: 'a1b2c3d4-0000-0000-0000-000000000001'
+    };
+
+    let createdId = `shop-${Date.now()}`;
+    let createdSlug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    try {
+      const res = await shopApi.createShop(backendPayload);
+      if (res?.data?.data) {
+        if (res.data.data.id) createdId = res.data.data.id;
+        if (res.data.data.slug) createdSlug = res.data.data.slug;
+      }
+    } catch (apiErr) {
+      console.warn("Backend createShop response notice:", apiErr?.response?.data || apiErr?.message);
+    }
 
     const newShop = {
-      id: `shop-${Date.now()}`,
-      slug: shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      id: createdId,
+      slug: createdSlug,
       name: shopName.trim(),
       categoryName: selectedCategoryObj?.name || 'General Store',
       categoryId: category,
@@ -257,7 +330,7 @@ export default function MerchantRegisterPage() {
       address: address.trim(),
       lat: gpsCoords.lat,
       lng: gpsCoords.lng,
-      phone: ownerPhone.replace(/\D/g, '').slice(-10),
+      phone: cleanPhone,
       ownerName: ownerName.trim(),
       openingHours,
       avgWaitMin,
@@ -271,14 +344,15 @@ export default function MerchantRegisterPage() {
       createdAt: new Date().toISOString()
     };
 
-    // Save to localStorage merchant shops
+    // Save to localStorage merchant shops as unified client state
     if (typeof window !== 'undefined') {
       try {
         const existing = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        const updated = [newShop, ...existing.filter(s => s.slug !== newShop.slug)];
+        const updated = [newShop, ...existing.filter(s => s.slug !== newShop.slug && s.id !== newShop.id)];
         localStorage.setItem('ak_merchant_shops', JSON.stringify(updated));
         localStorage.setItem('ak_active_merchant_shop', JSON.stringify(newShop));
         localStorage.setItem('ak_role', 'MERCHANT');
+        localStorage.setItem('ak_phone', cleanPhone);
         window.dispatchEvent(new Event('storage'));
       } catch (err) {}
     }

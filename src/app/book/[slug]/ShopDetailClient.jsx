@@ -375,10 +375,8 @@ export default function ShopDetailClient() {
         memberEntries.push(cPurp ? `${cName} (${cPurp})` : cName);
       }
 
-      // Backend shop UUID (fallback to default real store if mock string id)
-      const validShopId = (shop.id && shop.id.includes('-')) 
-        ? shop.id 
-        : 'd1b2c3d4-0000-0000-0000-000000000001';
+      // Backend shop UUID
+      const validShopId = shop.id;
 
       const payload = {
         customerName: mainName,

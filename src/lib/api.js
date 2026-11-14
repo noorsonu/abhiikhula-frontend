@@ -28,11 +28,13 @@ export const authApi = {
   getMe: () => apiClient.get('/api/auth/me'),
 };
 
-// Shop Discovery APIs
+// Shop Discovery & Management APIs
 export const shopApi = {
   getShops: (params) => apiClient.get('/api/shops', { params }),
   getShopBySlug: (slug) => apiClient.get(`/api/shops/slug/${slug}`),
   getShopById: (id) => apiClient.get(`/api/shops/${id}`),
+  getShopsByPhone: (phone) => apiClient.get(`/api/shops/by-phone/${phone}`),
+  createShop: (payload) => apiClient.post('/api/shops', payload),
   getQueueStatus: (shopId) => apiClient.get(`/api/shops/${shopId}/queue/status`),
 };
 
