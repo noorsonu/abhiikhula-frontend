@@ -618,6 +618,30 @@ export default function MerchantDashboardPage() {
 
   // Tracks last known token count to detect newly arrived tokens and ring audio chime
   const lastKnownTokenCountRef = useRef(-1);
+  const servingTokenRef = useRef(null);
+  const completedListRef = useRef([]);
+  const absentListRef = useRef([]);
+
+  useEffect(() => {
+    servingTokenRef.current = servingToken;
+  }, [servingToken]);
+
+  useEffect(() => {
+    completedListRef.current = completedList;
+  }, [completedList]);
+
+  useEffect(() => {
+    absentListRef.current = absentList;
+  }, [absentList]);
+
+  // Token matching helper for consistent comparison across UUIDs and numbers
+  const isTokenMatch = (a, b) => {
+    if (!a || !b) return false;
+    if (a.id && b.id && String(a.id) === String(b.id)) return true;
+    const ca = String(a.displayToken || a.tokenNumber || '').replace(/\D/g, '');
+    const cb = String(b.displayToken || b.tokenNumber || '').replace(/\D/g, '');
+    return Boolean(ca && cb && ca === cb);
+  };
 
   // Sync real customer tokens booked for this specific shop from Cloud Backend & Local Fallback
   const syncCustomerQueueForShop = async (shop) => {
@@ -661,6 +685,22 @@ export default function MerchantDashboardPage() {
       // 2. Overlay backend cloud tokens (Ground Truth from Cloud DB)
       backendTokens.forEach(bt => {
         const key = String(bt.id || bt.displayToken || bt.tokenNumber);
+        const existing = tokenMap.get(key) || Array.from(tokenMap.values()).find(et => isTokenMatch(et, bt));
+
+        const isLocallyCompleted = completedListRef.current.some(c => isTokenMatch(c, bt));
+        const isLocallyAbsent = absentListRef.current.some(a => isTokenMatch(a, bt));
+        const isLocallyServing = isTokenMatch(servingTokenRef.current, bt);
+
+        // Maintain terminal state if locally completed/absent or if backend says completed
+        let effectiveStatus = bt.status || 'WAITING';
+        if (isLocallyCompleted || existing?.status === 'COMPLETED' || bt.status === 'COMPLETED') {
+          effectiveStatus = 'COMPLETED';
+        } else if (isLocallyAbsent || existing?.status === 'NO_SHOW' || bt.status === 'NO_SHOW' || bt.status === 'SKIPPED') {
+          effectiveStatus = 'NO_SHOW';
+        } else if (isLocallyServing || existing?.status === 'SERVING' || existing?.status === 'CALLED' || bt.status === 'CALLED' || bt.status === 'SERVING') {
+          effectiveStatus = 'SERVING';
+        }
+
         tokenMap.set(key, {
           id: bt.id,
           displayToken: bt.displayToken,
@@ -670,7 +710,7 @@ export default function MerchantDashboardPage() {
           groupSize: bt.groupSize || 1,
           service: bt.serviceName || bt.service || 'General Service',
           customerPurpose: bt.serviceName || bt.service || 'General Service',
-          status: bt.status || 'WAITING',
+          status: effectiveStatus,
           joinedAt: bt.joinedAt,
           completedAt: bt.completedAt
         });
@@ -678,8 +718,14 @@ export default function MerchantDashboardPage() {
 
       const shopTokens = Array.from(tokenMap.values());
 
-      // 1. Waiting tokens only (status is 'WAITING' or undefined)
-      const waitingOnly = shopTokens.filter(t => t.status === 'WAITING' || !t.status).map((t, index) => ({
+      // 1. Waiting tokens only (status is 'WAITING' or undefined, excluding serving, completed, and absent)
+      const waitingOnly = shopTokens.filter(t => {
+        if (t.status && t.status !== 'WAITING') return false;
+        if (isTokenMatch(servingTokenRef.current, t)) return false;
+        if (completedListRef.current.some(c => isTokenMatch(c, t))) return false;
+        if (absentListRef.current.some(a => isTokenMatch(a, t))) return false;
+        return true;
+      }).map((t, index) => ({
         id: t.id || `token-${index}`,
         tokenNumber: t.displayToken || t.tokenNumber || `${shop.tokenPrefix || 'AK'}-${String(index + 1).padStart(3, '0')}`,
         customerName: t.customerName || 'Customer',
@@ -703,8 +749,8 @@ export default function MerchantDashboardPage() {
 
       setWaitingQueue(waitingOnly);
 
-      // 2. Currently Serving Token (only if currently marked SERVING or CALLED)
-      const servingItem = shopTokens.find(t => t.status === 'SERVING' || t.status === 'CALLED');
+      // 2. Currently Serving Token
+      const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !completedListRef.current.some(c => isTokenMatch(c, t)));
       if (servingItem) {
         setServingToken({
           id: servingItem.id,
@@ -718,6 +764,7 @@ export default function MerchantDashboardPage() {
 
       // 3. Completed Tokens
       const completedOnly = shopTokens.filter(t => t.status === 'COMPLETED').map(t => ({
+        id: t.id,
         tokenNumber: t.displayToken || t.tokenNumber,
         customerName: t.customerName,
         customerPhone: t.customerPhone,
@@ -727,7 +774,12 @@ export default function MerchantDashboardPage() {
         duration: t.duration || `${shop.avgWaitMin || 12} min`
       }));
       if (completedOnly.length > 0) {
-        setCompletedList(completedOnly);
+        setCompletedList(prev => {
+          const map = new Map();
+          prev.forEach(item => map.set(String(item.tokenNumber), item));
+          completedOnly.forEach(item => map.set(String(item.tokenNumber), item));
+          return Array.from(map.values());
+        });
       }
 
       // 4. Absent / Skipped Tokens
@@ -2222,9 +2274,16 @@ export default function MerchantDashboardPage() {
       if (storedStr) {
         const list = JSON.parse(storedStr);
         if (Array.isArray(list)) {
+          const matchTarget = (t, target) => {
+            if (!target) return false;
+            if (t.id && target.id && String(t.id) === String(target.id)) return true;
+            const cleanT = String(t.displayToken || t.tokenNumber || '').replace(/\D/g, '');
+            const cleanTarget = String(target.displayToken || target.tokenNumber || '').replace(/\D/g, '');
+            return Boolean(cleanT && cleanTarget && cleanT === cleanTarget);
+          };
+
           const updated = list.map(t => {
-            const tokenIdentifier = t.displayToken || t.tokenNumber;
-            if (nextServing && (tokenIdentifier === nextServing.tokenNumber)) {
+            if (nextServing && matchTarget(t, nextServing)) {
               return { 
                 ...t, 
                 status: 'SERVING', 
@@ -2233,7 +2292,7 @@ export default function MerchantDashboardPage() {
                 assignedStation: nextServing.assignedStation || t.assignedStation || null
               };
             }
-            if (prevCompleted && (tokenIdentifier === prevCompleted.tokenNumber)) {
+            if (prevCompleted && matchTarget(t, prevCompleted)) {
               return { 
                 ...t, 
                 status: 'COMPLETED',
@@ -2245,7 +2304,7 @@ export default function MerchantDashboardPage() {
                 assignedStation: prevCompleted.assignedStation || t.assignedStation || null
               };
             }
-            if (nextAbsent && (tokenIdentifier === nextAbsent.tokenNumber)) {
+            if (nextAbsent && matchTarget(t, nextAbsent)) {
               return { 
                 ...t, 
                 status: 'NO_SHOW',
@@ -2277,8 +2336,13 @@ export default function MerchantDashboardPage() {
     const durationMins = Math.max(1, Math.floor(counterSeconds / 60));
 
     if (servingToken) {
+      if (activeShop?.id && servingToken.id) {
+        queueApi.completeToken(activeShop.id, servingToken.id).catch(() => {});
+      }
+
       setCompletedList(prev => [
         {
+          id: servingToken.id,
           tokenNumber: servingToken.tokenNumber,
           customerName: servingToken.customerName,
           completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -2318,6 +2382,11 @@ export default function MerchantDashboardPage() {
     setServingToken(nextToken);
     setWaitingQueue(remaining);
     setCounterSeconds(0);
+
+    // Advance backend queue status
+    if (activeShop?.id) {
+      queueApi.callNext(activeShop.id).catch(() => {});
+    }
 
     updateRecordInHistory(activeShop, {
       id: nextToken.id || `token-${nextToken.tokenNumber}`,
@@ -2399,6 +2468,10 @@ export default function MerchantDashboardPage() {
       paymentMode: finalPayment,
       serviceDetails: finalServices
     });
+
+    if (activeShop?.id && tokenToFinalize.id) {
+      queueApi.completeToken(activeShop.id, tokenToFinalize.id).catch(() => {});
+    }
 
     const completedRecord = {
       tokenNumber: tokenToFinalize.tokenNumber,
@@ -2493,6 +2566,10 @@ export default function MerchantDashboardPage() {
   const handleMarkAbsent = () => {
     if (!servingToken) return;
     const todayDate = new Date().toISOString().slice(0, 10);
+
+    if (activeShop?.id && servingToken.id) {
+      queueApi.markNoShow(activeShop.id, servingToken.id).catch(() => {});
+    }
 
     setAbsentList(prev => [
       {

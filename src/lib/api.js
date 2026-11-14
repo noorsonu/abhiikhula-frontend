@@ -42,6 +42,10 @@ export const shopApi = {
 export const queueApi = {
   joinQueue: (shopId, payload) => apiClient.post(`/api/shops/${shopId}/queue/tokens/join`, payload),
   getShopTokens: (shopId) => apiClient.get(`/api/shops/${shopId}/queue/tokens`),
+  callNext: (shopId) => apiClient.post(`/api/shops/${shopId}/queue/next`),
+  completeToken: (shopId, tokenId) => apiClient.post(`/api/shops/${shopId}/queue/tokens/${tokenId}/complete`),
+  markNoShow: (shopId, tokenId) => apiClient.post(`/api/shops/${shopId}/queue/tokens/${tokenId}/no-show`),
+  skipToken: (shopId, tokenId) => apiClient.post(`/api/shops/${shopId}/queue/tokens/${tokenId}/skip`),
   getMyActiveTokens: () => apiClient.get('/api/queue/tokens/my'),
   getTokenById: (tokenId) => apiClient.get(`/api/tokens/${tokenId}`),
   cancelToken: (tokenId, reason = 'Cancelled by customer') =>
