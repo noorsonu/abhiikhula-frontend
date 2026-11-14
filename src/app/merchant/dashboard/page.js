@@ -604,12 +604,16 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setAnnouncementMsg(''), 4000);
   };
 
-  // Logout from merchant account
+  // Logout from merchant account -> returns 100% to GUEST state
   const handleMerchantLogout = () => {
     if (confirm('Are you sure you want to log out from this shop? You can log back in anytime using your registered mobile number.')) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_token');
+        localStorage.removeItem('ak_customer_name');
+        localStorage.removeItem('ak_customer_age');
         window.dispatchEvent(new Event('storage'));
         window.location.href = '/';
       }

@@ -127,25 +127,29 @@ export default function Navbar() {
         setUserRole('MERCHANT');
         setIsShopkeeperLoggedIn(true);
         setIsCustomerLoggedIn(false);
-      } else if (role === 'CUSTOMER' || ((token || phone) && role !== 'MERCHANT')) {
+        setCustomerName('Guest');
+        setCustomerPhone('');
+        setCustomerAge('');
+      } else if (role === 'CUSTOMER' && (token || phone)) {
         setUserRole('CUSTOMER');
         setIsCustomerLoggedIn(true);
         setIsShopkeeperLoggedIn(false);
+        setCustomerPhone(phone);
+        setCustomerAge(age);
+        if (name && name !== 'Customer') {
+          setCustomerName(name);
+        } else if (phone) {
+          setCustomerName(`Customer (${phone.slice(-4)})`);
+        } else {
+          setCustomerName('Guest');
+        }
       } else {
         setUserRole('GUEST');
         setIsCustomerLoggedIn(false);
         setIsShopkeeperLoggedIn(false);
-      }
-
-      setCustomerPhone(phone);
-      setCustomerAge(age);
-
-      if (name && name !== 'Customer') {
-        setCustomerName(name);
-      } else if (phone) {
-        setCustomerName(`Customer (${phone.slice(-4)})`);
-      } else {
         setCustomerName('Guest');
+        setCustomerPhone('');
+        setCustomerAge('');
       }
 
       // Read active tokens count scoped strictly to current logged-in user's phone
@@ -427,10 +431,13 @@ export default function Navbar() {
         localStorage.removeItem('ak_customer_name');
         localStorage.removeItem('ak_customer_age');
         localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_active_merchant_shop');
         window.dispatchEvent(new Event('storage'));
         window.location.href = '/';
       }
       setIsCustomerLoggedIn(false);
+      setIsShopkeeperLoggedIn(false);
+      setRegisteredMerchantShop(null);
       setUserRole('GUEST');
       setCustomerName('Guest');
       setCustomerPhone('');
@@ -447,12 +454,20 @@ export default function Navbar() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_token');
+        localStorage.removeItem('ak_customer_name');
+        localStorage.removeItem('ak_customer_age');
         window.dispatchEvent(new Event('storage'));
         window.location.href = '/';
       }
       setIsShopkeeperLoggedIn(false);
       setRegisteredMerchantShop(null);
+      setIsCustomerLoggedIn(false);
       setUserRole('GUEST');
+      setCustomerName('Guest');
+      setCustomerPhone('');
+      setCustomerAge('');
       setMerchantDropdownOpen(false);
     }
   };
@@ -528,7 +543,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2.5">
               {/* Shopkeeper Button (Guest Mode - Identical Customer Styling) */}
               <Link
-                href="/merchant/register"
+                href="/merchant/register?tab=login"
                 className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]"
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#DCE9E3] text-[#176B65]">
