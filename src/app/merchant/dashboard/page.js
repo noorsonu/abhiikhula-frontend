@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Store, Users, Clock, CheckCircle2, AlertCircle, Play, Pause, 
@@ -19,6 +19,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import QRCode from 'qrcode';
+import { queueApi } from '@/lib/api';
+import { playChime } from '@/lib/audioChime';
 
 export default function MerchantDashboardPage() {
   // Authorization Gate State
@@ -614,9 +616,25 @@ export default function MerchantDashboardPage() {
     }
   };
 
-  // Sync real customer tokens booked for this specific shop
-  const syncCustomerQueueForShop = (shop) => {
+  // Tracks last known token count to detect newly arrived tokens and ring audio chime
+  const lastKnownTokenCountRef = useRef(-1);
+
+  // Sync real customer tokens booked for this specific shop from Cloud Backend & Local Fallback
+  const syncCustomerQueueForShop = async (shop) => {
     if (!shop || typeof window === 'undefined') return;
+
+    let backendTokens = [];
+    if (shop.id) {
+      try {
+        const res = await queueApi.getShopTokens(shop.id);
+        if (res?.data?.data && Array.isArray(res.data.data)) {
+          backendTokens = res.data.data;
+        }
+      } catch (e) {
+        // Fallback gracefully if network glitch
+      }
+    }
+
     try {
       const allTokensStr = localStorage.getItem('ak_customer_tokens');
       const allTokens = allTokensStr ? JSON.parse(allTokensStr) : [];
@@ -624,12 +642,41 @@ export default function MerchantDashboardPage() {
       const sSlug = (shop.slug || '').toLowerCase();
       const sName = (shop.name || '').toLowerCase();
 
-      // Find real tokens for this shop
-      const shopTokens = allTokens.filter(t => {
+      // Find local tokens for this shop
+      const shopLocalTokens = allTokens.filter(t => {
         const tSlug = (t.shopSlug || '').toLowerCase();
         const tName = (t.shopName || '').toLowerCase();
         return (tSlug && tSlug === sSlug) || (tName && tName === sName);
       });
+
+      // Unified map of tokens: backend cloud tokens + local walk-ins
+      const tokenMap = new Map();
+
+      // 1. Local tokens first
+      shopLocalTokens.forEach(t => {
+        const key = String(t.id || t.displayToken || t.tokenNumber);
+        tokenMap.set(key, t);
+      });
+
+      // 2. Overlay backend cloud tokens (Ground Truth from Cloud DB)
+      backendTokens.forEach(bt => {
+        const key = String(bt.id || bt.displayToken || bt.tokenNumber);
+        tokenMap.set(key, {
+          id: bt.id,
+          displayToken: bt.displayToken,
+          tokenNumber: bt.displayToken || bt.tokenNumber,
+          customerName: bt.customerName || (bt.user?.name) || 'Customer',
+          customerPhone: bt.customerPhone || (bt.user?.phone) || 'Online',
+          groupSize: bt.groupSize || 1,
+          service: bt.serviceName || bt.service || 'General Service',
+          customerPurpose: bt.serviceName || bt.service || 'General Service',
+          status: bt.status || 'WAITING',
+          joinedAt: bt.joinedAt,
+          completedAt: bt.completedAt
+        });
+      });
+
+      const shopTokens = Array.from(tokenMap.values());
 
       // 1. Waiting tokens only (status is 'WAITING' or undefined)
       const waitingOnly = shopTokens.filter(t => t.status === 'WAITING' || !t.status).map((t, index) => ({
@@ -642,10 +689,22 @@ export default function MerchantDashboardPage() {
         estWaitMin: (index + 1) * (shop.avgWaitMin || 12),
         waitAhead: index
       }));
+
+      // Play chime / ring alert when a new customer token arrives!
+      if (lastKnownTokenCountRef.current !== -1 && waitingOnly.length > lastKnownTokenCountRef.current) {
+        if (soundEnabled) {
+          playChime('turn');
+        }
+        const newest = waitingOnly[waitingOnly.length - 1];
+        setAnnouncementMsg(`🔔 Naya Token Aaya! Token #${newest?.tokenNumber || ''} (${newest?.customerName || 'Customer'}) queue me shamil hua!`);
+        setTimeout(() => setAnnouncementMsg(''), 6000);
+      }
+      lastKnownTokenCountRef.current = waitingOnly.length;
+
       setWaitingQueue(waitingOnly);
 
-      // 2. Currently Serving Token (only if currently marked SERVING)
-      const servingItem = shopTokens.find(t => t.status === 'SERVING');
+      // 2. Currently Serving Token (only if currently marked SERVING or CALLED)
+      const servingItem = shopTokens.find(t => t.status === 'SERVING' || t.status === 'CALLED');
       if (servingItem) {
         setServingToken({
           id: servingItem.id,
@@ -672,7 +731,7 @@ export default function MerchantDashboardPage() {
       }
 
       // 4. Absent / Skipped Tokens
-      const absentOnly = shopTokens.filter(t => t.status === 'NO_SHOW').map(t => ({
+      const absentOnly = shopTokens.filter(t => t.status === 'NO_SHOW' || t.status === 'SKIPPED').map(t => ({
         tokenNumber: t.displayToken || t.tokenNumber,
         customerName: t.customerName,
         customerPhone: t.customerPhone,
@@ -808,6 +867,15 @@ export default function MerchantDashboardPage() {
     window.addEventListener('storage', handleStorageUpdate);
     return () => window.removeEventListener('storage', handleStorageUpdate);
   }, [activeShop]);
+
+  // Live Cloud Queue Polling: syncs tokens from Render Cloud Database every 3 seconds
+  useEffect(() => {
+    if (!activeShop) return;
+    const pollTimer = setInterval(() => {
+      syncCustomerQueueForShop(activeShop);
+    }, 3000);
+    return () => clearInterval(pollTimer);
+  }, [activeShop, soundEnabled]);
 
   // Counter Timer
   useEffect(() => {

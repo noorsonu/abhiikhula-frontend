@@ -378,12 +378,15 @@ export default function ShopDetailClient() {
         memberEntries.push(cPurp ? `${cName} (${cPurp})` : cName);
       }
 
+      // Clean 10-digit Indian mobile number
+      const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
+
       // Backend shop UUID
-      const validShopId = shop.id;
+      const validShopId = shop?.id;
 
       const payload = {
         customerName: mainName,
-        customerPhone: phone,
+        customerPhone: cleanPhone,
         groupSize: Math.min(effectiveGroupSize, 4), // Cap at 4 for legacy backend DTO limit
         memberNames: memberEntries,
         source: 'APP',

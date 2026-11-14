@@ -41,6 +41,7 @@ export const shopApi = {
 // Queue & Token Lifecycle APIs
 export const queueApi = {
   joinQueue: (shopId, payload) => apiClient.post(`/api/shops/${shopId}/queue/tokens/join`, payload),
+  getShopTokens: (shopId) => apiClient.get(`/api/shops/${shopId}/queue/tokens`),
   getMyActiveTokens: () => apiClient.get('/api/queue/tokens/my'),
   getTokenById: (tokenId) => apiClient.get(`/api/tokens/${tokenId}`),
   cancelToken: (tokenId, reason = 'Cancelled by customer') =>
