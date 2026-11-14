@@ -244,17 +244,6 @@ const AnimatedRatingFace = ({ rating }) => {
 export default function MyTokensPage() {
   const router = useRouter();
 
-  // If Shopkeeper is logged in, immediately redirect to Merchant Dashboard
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('ak_role');
-      const shop = localStorage.getItem('ak_active_merchant_shop');
-      if (role === 'MERCHANT' && shop) {
-        router.replace('/merchant/dashboard');
-      }
-    }
-  }, [router]);
-
   const [tokens, setTokens] = useState([]);
   const [historyTokens, setHistoryTokens] = useState([]);
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history'

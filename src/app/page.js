@@ -46,19 +46,6 @@ function resolveShopImage(shop) {
 
 export default function HomePage() {
   const router = useRouter();
-  const [isMerchantUser, setIsMerchantUser] = useState(false);
-
-  // If Shopkeeper is logged in, immediately redirect to Merchant Dashboard
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('ak_role');
-      const shop = localStorage.getItem('ak_active_merchant_shop');
-      if (role === 'MERCHANT' && shop) {
-        setIsMerchantUser(true);
-        router.replace('/merchant/dashboard');
-      }
-    }
-  }, [router]);
 
   const loadRegisteredLocalShops = () => {
     if (typeof window === 'undefined') return [];
@@ -214,16 +201,6 @@ export default function HomePage() {
     }
     return shopCat.includes(catKey) || shopName.includes(catKey);
   });
-
-  // If Shopkeeper is logged in, DO NOT render Customer Explore / Category views
-  if (isMerchantUser) {
-    return (
-      <div className="min-h-[75vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-[#176B65] border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-bold text-[#283B3D]/70">Opening your Merchant Operations Dashboard...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-10 sm:space-y-14">

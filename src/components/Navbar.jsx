@@ -77,8 +77,10 @@ export default function Navbar() {
 
       setRegisteredMerchantShop(merchantShop);
 
-      // Determine strict role separation
-      if (role === 'MERCHANT' && merchantShop) {
+      const isMerchantRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
+
+      // Determine role: if on merchant route with a registered shop, prioritize merchant view
+      if ((role === 'MERCHANT' || isMerchantRoute) && merchantShop) {
         setUserRole('MERCHANT');
         setIsShopkeeperLoggedIn(true);
         setIsCustomerLoggedIn(false);
@@ -333,9 +335,9 @@ export default function Navbar() {
       setUserRole('GUEST');
       setMerchantDropdownOpen(false);
       
-      // If currently on merchant dashboard, redirect to home
+      // If currently on merchant dashboard, redirect to merchant register / login portal
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant')) {
-        window.location.href = '/';
+        window.location.href = '/merchant/register';
       }
     }
   };

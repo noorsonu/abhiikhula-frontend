@@ -697,7 +697,7 @@ export default function MerchantDashboardPage() {
       }
       setCurrentUserRole(role || 'GUEST');
 
-      if (role === 'MERCHANT' && savedShopStr) {
+      if (savedShopStr) {
         try {
           const parsed = JSON.parse(savedShopStr);
           setActiveShop(parsed);
@@ -775,7 +775,7 @@ export default function MerchantDashboardPage() {
           setIsAuthorized(false);
         }
       } else {
-        // Explicitly reject if role is not MERCHANT
+        // Explicitly reject if no active merchant shop is found in session
         setIsAuthorized(false);
       }
     }

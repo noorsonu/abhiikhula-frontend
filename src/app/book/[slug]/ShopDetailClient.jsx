@@ -89,7 +89,9 @@ export default function ShopDetailClient() {
     return null;
   };
 
-  const [shop, setShop] = useState(() => loadShopBySlug(slug));
+  const initialShop = loadShopBySlug(slug);
+  const [shop, setShop] = useState(() => initialShop);
+  const [loadingShop, setLoadingShop] = useState(() => !initialShop);
 
   // Group Token State (1, 2, or Custom Count)
   const [selectedGroupMode, setSelectedGroupMode] = useState('1'); // '1', '2', 'custom'
@@ -217,11 +219,6 @@ export default function ShopDetailClient() {
       const role = localStorage.getItem('ak_role');
       setUserRole(role || 'GUEST');
 
-      if (role === 'MERCHANT') {
-        router.replace('/merchant/dashboard');
-        return;
-      }
-
       const savedMerchant = localStorage.getItem('ak_active_merchant_shop');
       if (savedMerchant) {
         try {
@@ -242,6 +239,7 @@ export default function ShopDetailClient() {
       const local = loadShopBySlug(slug);
       if (local) {
         setShop(local);
+        setLoadingShop(false);
       }
       shopApi.getShopBySlug(slug)
         .then((res) => {
@@ -257,7 +255,12 @@ export default function ShopDetailClient() {
             });
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          setLoadingShop(false);
+        });
+    } else {
+      setLoadingShop(false);
     }
   }, [slug]);
 
@@ -277,21 +280,21 @@ export default function ShopDetailClient() {
 
   const serviceSuggestions = customServices.length > 0 
     ? customServices.map(s => s.price > 0 ? `${s.name} (₹${s.price})` : s.name)
-    : getCategoryServices(shop.categoryName);
+    : getCategoryServices(shop?.categoryName);
 
   // Initiate Booking
   const handleInitiateBooking = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
-    // Disallow shopkeeper from generating tokens for themselves
-    if (userRole === 'MERCHANT') {
-      setErrorMsg("Shopkeepers cannot book tokens for themselves. Please log in with a customer account to take a token.");
+    // Validate 10-digit Indian Mobile Number
+    const cleanPhone = customerPhone.replace(/\D/g, '').slice(-10);
+    const cleanShopPhone = (shop?.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone && cleanShopPhone && cleanPhone === cleanShopPhone) {
+      setErrorMsg("Aap apni hi dukan ke mobile number se token nahi le sakte. Kripya customer ka mobile number dalein.");
       return;
     }
 
-    // Validate 10-digit Indian Mobile Number
-    const cleanPhone = customerPhone.trim();
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       setErrorMsg("Please enter a valid 10-digit Indian mobile number (starting with 6-9)");
       return;
@@ -458,6 +461,16 @@ export default function ShopDetailClient() {
       setBooking(false);
     }
   };
+
+  // LOADING SKELETON (While fetching shop from cloud database)
+  if (loadingShop && !shop) {
+    return (
+      <div className="min-h-[75vh] flex flex-col items-center justify-center p-4 gap-3">
+        <div className="w-10 h-10 border-3 border-[#176B65] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-bold text-[#283B3D]/70">Dukan ki jankari load ho rahi hai...</span>
+      </div>
+    );
+  }
 
   // SHOP NOT REGISTERED YET VIEW (Zero Dummy Fallback)
   if (!shop) {
