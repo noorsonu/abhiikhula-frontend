@@ -32,6 +32,22 @@ export default function AutoPurgeLegacyData() {
     try {
       let changed = false;
 
+      // 0. Full Clean Slate Trigger (Runs once per client device for fresh real-time testing)
+      if (!localStorage.getItem('ak_fresh_start_v3')) {
+        localStorage.removeItem('ak_active_merchant_shop');
+        localStorage.removeItem('ak_merchant_shops');
+        localStorage.removeItem('ak_customer_tokens');
+        localStorage.removeItem('ak_customer_history');
+        localStorage.removeItem('ak_token');
+        localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_customer_name');
+        localStorage.removeItem('ak_customer_age');
+        localStorage.removeItem('ak_customer_profiles');
+        localStorage.setItem('ak_fresh_start_v3', 'true');
+        changed = true;
+      }
+
       // 1. Purge legacy customer tokens from phone/client localStorage
       const rawTokens = localStorage.getItem('ak_customer_tokens');
       if (rawTokens) {
