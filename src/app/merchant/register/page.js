@@ -30,6 +30,7 @@ export default function MerchantRegisterPage() {
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [loginOtpInput, setLoginOtpInput] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // Step 1: Owner Auth
   const [ownerName, setOwnerName] = useState('');
@@ -68,15 +69,31 @@ export default function MerchantRegisterPage() {
           const phone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
           const params = new URLSearchParams(window.location.search);
 
-          // If logged in as Merchant and not explicitly registering another branch, go directly to Dashboard
-          if (activeStr && role === 'MERCHANT' && params.get('new') !== 'true') {
-            router.replace('/merchant/dashboard');
-            return;
-          }
-
           if (activeStr) {
             const parsed = JSON.parse(activeStr);
-            setExistingShop(parsed);
+            let shopStillExistsInDb = false;
+
+            // Verify with cloud database that shop wasn't deleted
+            if (parsed.id) {
+              try {
+                const res = await shopApi.getShopById(parsed.id);
+                if (res?.data?.data) {
+                  shopStillExistsInDb = true;
+                  setExistingShop(res.data.data);
+                }
+              } catch (err) {
+                // Shop deleted from DB -> purge stale local storage
+                localStorage.removeItem('ak_active_merchant_shop');
+                localStorage.removeItem('ak_role');
+                setExistingShop(null);
+              }
+            }
+
+            // Only redirect to dashboard if shop is valid in cloud DB
+            if (shopStillExistsInDb && role === 'MERCHANT' && params.get('new') !== 'true') {
+              router.replace('/merchant/dashboard');
+              return;
+            }
           } else if (phone) {
             // Also check database by phone
             try {
@@ -155,7 +172,7 @@ export default function MerchantRegisterPage() {
   };
 
   // Handle Quick Login Send OTP
-  const handleQuickLoginSendOtp = (e) => {
+  const handleQuickLoginSendOtp = async (e) => {
     e.preventDefault();
     const clean = loginPhone.replace(/\D/g, '').slice(-10);
     if (clean.length !== 10) {
@@ -163,6 +180,43 @@ export default function MerchantRegisterPage() {
       return;
     }
     setLoginError('');
+    setLoginLoading(true);
+
+    // Strictly check if a shop is registered with this phone number
+    let shopExists = null;
+    let backendChecked = false;
+    try {
+      const res = await shopApi.getShopsByPhone(clean);
+      backendChecked = true;
+      if (res?.data?.data && res.data.data.length > 0) {
+        shopExists = res.data.data[0];
+      }
+    } catch (err) {
+      console.warn("Backend phone lookup error:", err?.message);
+    }
+
+    // Only fallback to localStorage if backend check failed (offline),
+    // NEVER if backend successfully verified that 0 shops exist in DB!
+    if (!shopExists && !backendChecked) {
+      try {
+        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
+        shopExists = allShops.find(s => (s.phone || '').slice(-10) === clean);
+        if (!shopExists) {
+          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
+          if (active && (active.phone || '').slice(-10) === clean) {
+            shopExists = active;
+          }
+        }
+      } catch (err) {}
+    }
+
+    setLoginLoading(false);
+
+    if (!shopExists) {
+      setLoginError('❌ Your number is not registered! Is mobile number par koi dukan registered nahi mili. Kripya pehle "New Registration" tab me jakar dukan register karein.');
+      return;
+    }
+
     setLoginOtpSent(true);
     setLoginOtpInput('123456');
   };
@@ -176,18 +230,24 @@ export default function MerchantRegisterPage() {
     }
 
     const clean = loginPhone.replace(/\D/g, '').slice(-10);
+    setLoginLoading(true);
+    setLoginError('');
     let matchedShop = null;
+    let backendChecked = false;
 
     // 1. Check Backend Database first
     try {
       const res = await shopApi.getShopsByPhone(clean);
+      backendChecked = true;
       if (res?.data?.data && res.data.data.length > 0) {
         matchedShop = res.data.data[0];
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Backend verify lookup error:", e?.message);
+    }
 
-    // 2. Check localStorage fallback
-    if (!matchedShop) {
+    // 2. Check localStorage fallback only if backend was unreachable
+    if (!matchedShop && !backendChecked) {
       try {
         const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
         matchedShop = allShops.find(s => (s.phone || '').slice(-10) === clean);
@@ -200,6 +260,8 @@ export default function MerchantRegisterPage() {
       } catch (e) {}
     }
 
+    setLoginLoading(false);
+
     if (matchedShop) {
       localStorage.setItem('ak_active_merchant_shop', JSON.stringify(matchedShop));
       localStorage.setItem('ak_role', 'MERCHANT');
@@ -209,11 +271,8 @@ export default function MerchantRegisterPage() {
       return;
     }
 
-    // No registered shop found for this phone - guide merchant to fill their real shop details
-    setLoginError('Is mobile number par koi dukan registered nahi mili. Kripya pehle apni dukan ki details bharein.');
-    setOwnerPhone(clean);
-    setIsPhoneVerified(true);
-    setStep(2);
+    // Strictly block access if shop does not exist - DO NOT advance to Step 2
+    setLoginError('❌ Your number is not registered! Is mobile number par koi dukan registered nahi mili. Kripya pehle "New Registration" tab me jakar dukan register karein.');
   };
 
   // Direct login with already detected shop
@@ -563,10 +622,11 @@ export default function MerchantRegisterPage() {
                 <button
                   type="button"
                   onClick={handleQuickLoginSendOtp}
-                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  disabled={loginLoading}
+                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
                 >
                   <LogIn className="w-4 h-4 text-[#F2A15A]" />
-                  <span>Send Login OTP</span>
+                  <span>{loginLoading ? 'Checking Number in Database...' : 'Send Login OTP'}</span>
                 </button>
               ) : (
                 <div className="space-y-3 pt-2">
@@ -595,10 +655,11 @@ export default function MerchantRegisterPage() {
                   <button
                     type="button"
                     onClick={handleQuickLoginVerify}
-                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    disabled={loginLoading}
+                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
                   >
                     <ShieldCheck className="w-4 h-4 text-[#F2A15A]" />
-                    <span>Verify & Enter Dashboard</span>
+                    <span>{loginLoading ? 'Verifying with Database...' : 'Verify & Enter Dashboard'}</span>
                   </button>
                 </div>
               )}

@@ -814,6 +814,17 @@ export default function MerchantDashboardPage() {
           setActiveShop(parsed);
           setShopStatus(parsed.status || 'OPEN');
           setIsAuthorized(true);
+
+          // Verify with cloud DB that shop was not deleted
+          if (parsed.id) {
+            shopApi.getShopById(parsed.id).catch(() => {
+              localStorage.removeItem('ak_active_merchant_shop');
+              localStorage.removeItem('ak_role');
+              setActiveShop(null);
+              setIsAuthorized(false);
+            });
+          }
+
           syncCustomerQueueForShop(parsed);
           const recs = loadShopRecords(parsed);
           setShopRecords(recs);
