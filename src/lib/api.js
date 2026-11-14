@@ -24,7 +24,7 @@ apiClient.interceptors.request.use((config) => {
 // Auth APIs (Passwordless OTP)
 export const authApi = {
   sendOtp: (phone) => apiClient.post('/api/auth/send-otp', { phone }),
-  verifyOtp: (phone, otp) => apiClient.post('/api/auth/verify-otp', { phone, otp }),
+  verifyOtp: (phone, otp, name) => apiClient.post('/api/auth/verify-otp', { phone, otp, name }),
   getMe: () => apiClient.get('/api/auth/me'),
 };
 

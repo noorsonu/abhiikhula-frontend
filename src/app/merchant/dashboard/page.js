@@ -611,7 +611,7 @@ export default function MerchantDashboardPage() {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_role');
         window.dispatchEvent(new Event('storage'));
-        window.location.href = '/merchant/register';
+        window.location.href = '/';
       }
     }
   };

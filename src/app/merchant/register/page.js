@@ -353,6 +353,9 @@ export default function MerchantRegisterPage() {
         localStorage.setItem('ak_active_merchant_shop', JSON.stringify(newShop));
         localStorage.setItem('ak_role', 'MERCHANT');
         localStorage.setItem('ak_phone', cleanPhone);
+        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+        savedProfiles[cleanPhone] = { name: ownerName.trim() || 'Shop Owner', age: '' };
+        localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
         window.dispatchEvent(new Event('storage'));
       } catch (err) {}
     }

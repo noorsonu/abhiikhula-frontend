@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
-  Navigation, ArrowUpRight, Share2, Star, Heart, Radio
+  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -98,6 +98,7 @@ export default function ShopDetailClient() {
   const [customCount, setCustomCount] = useState(3);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAge, setCustomerAge] = useState('');
   const [customerPurpose, setCustomerPurpose] = useState('');
   const [companionDetails, setCompanionDetails] = useState([]); // [{ name: '', purpose: '' }]
 
@@ -230,6 +231,8 @@ export default function ShopDetailClient() {
       if (savedPhone) setCustomerPhone(savedPhone);
       const savedName = localStorage.getItem('ak_customer_name');
       if (savedName) setCustomerName(savedName);
+      const savedAge = localStorage.getItem('ak_customer_age');
+      if (savedAge) setCustomerAge(savedAge);
     }
   }, []);
 
@@ -289,14 +292,25 @@ export default function ShopDetailClient() {
 
     // Validate 10-digit Indian Mobile Number
     const cleanPhone = customerPhone.replace(/\D/g, '').slice(-10);
-    const cleanShopPhone = (shop?.phone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone && cleanShopPhone && cleanPhone === cleanShopPhone) {
-      setErrorMsg("Aap apni hi dukan ke mobile number se token nahi le sakte. Kripya customer ka mobile number dalein.");
-      return;
-    }
 
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       setErrorMsg("Please enter a valid 10-digit Indian mobile number (starting with 6-9)");
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setErrorMsg("Kripya apna Pura Naam bharein.");
+      return;
+    }
+
+    if (!customerAge || isNaN(parseInt(customerAge, 10))) {
+      setErrorMsg("Kripya apni Age (Umar) bharein.");
+      return;
+    }
+
+    const ageNum = parseInt(customerAge, 10);
+    if (ageNum < 5 || ageNum > 115) {
+      setErrorMsg("Kripya sahi age (umar) darj karein (5 se 115 saal).");
       return;
     }
 
@@ -450,9 +464,17 @@ export default function ShopDetailClient() {
         if (mainName && mainName !== 'Customer') {
           localStorage.setItem('ak_customer_name', mainName);
         }
+        if (customerAge) {
+          localStorage.setItem('ak_customer_age', customerAge);
+        }
         const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
-        if (cleanPhone && !localStorage.getItem('ak_phone')) {
+        if (cleanPhone) {
           localStorage.setItem('ak_phone', cleanPhone);
+          try {
+            const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+            savedProfiles[cleanPhone] = { name: mainName, age: customerAge };
+            localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
+          } catch (e) {}
         }
         window.dispatchEvent(new Event('storage'));
       }
@@ -865,7 +887,7 @@ export default function ShopDetailClient() {
                 </p>
               </div>
 
-              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
                 <Link
                   href="/merchant/dashboard"
                   className="w-full py-3.5 px-6 rounded-2xl bg-[#176B65] hover:bg-[#135954] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
@@ -874,6 +896,19 @@ export default function ShopDetailClient() {
                   <span>Go to Merchant Dashboard</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('ak_role', 'CUSTOMER');
+                    setUserRole('CUSTOMER');
+                    window.dispatchEvent(new Event('storage'));
+                  }}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-slate-50 text-[#176B65] border border-[#176B65] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Ticket className="w-4 h-4 text-[#176B65]" />
+                  <span>Book as Customer</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -1027,7 +1062,7 @@ export default function ShopDetailClient() {
 
               <div>
                 <label className="block text-xs font-bold text-[#283B3D] mb-1.5">
-                  10-Digit Mobile Number (For SMS & Live Alerts)
+                  10-Digit Mobile Number (For SMS & Live Alerts) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-3.5 text-xs font-bold text-[#283B3D]/60">+91</span>
@@ -1036,8 +1071,39 @@ export default function ShopDetailClient() {
                     maxLength={10}
                     placeholder="9876543210"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setCustomerPhone(val);
+                      if (val.length === 10 && typeof window !== 'undefined') {
+                        try {
+                          const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+                          if (savedProfiles[val]) {
+                            if (savedProfiles[val].name && !customerName) setCustomerName(savedProfiles[val].name);
+                            if (savedProfiles[val].age && !customerAge) setCustomerAge(savedProfiles[val].age);
+                          }
+                        } catch (err) {}
+                      }
+                    }}
                     className="w-full pl-13 pr-4 py-3 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-sm font-semibold text-[#283B3D] bg-[#F3F1E9]/40 tracking-wider"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">
+                  Your Age (in years) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                  <input
+                    type="number"
+                    min={5}
+                    max={115}
+                    placeholder="e.g. 25"
+                    value={customerAge}
+                    onChange={(e) => setCustomerAge(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-sm text-[#283B3D] bg-[#F3F1E9]/40"
                     required
                   />
                 </div>

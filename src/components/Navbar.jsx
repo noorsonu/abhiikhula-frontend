@@ -50,6 +50,49 @@ export default function Navbar() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loginSuccessMsg, setLoginSuccessMsg] = useState('');
+  const [existingUserDetected, setExistingUserDetected] = useState(null);
+
+  // Helper: Detect if phone is already registered as customer or shopkeeper
+  const detectExistingUser = (phone) => {
+    if (typeof window === 'undefined' || !phone) return null;
+    const clean = phone.replace(/\D/g, '').slice(-10);
+    if (clean.length !== 10) return null;
+    try {
+      const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+      if (savedProfiles[clean]?.name) {
+        return {
+          name: savedProfiles[clean].name,
+          age: savedProfiles[clean].age || '',
+          source: 'CUSTOMER'
+        };
+      }
+      if (localStorage.getItem('ak_phone') === clean && localStorage.getItem('ak_customer_name')) {
+        return {
+          name: localStorage.getItem('ak_customer_name'),
+          age: localStorage.getItem('ak_customer_age') || '',
+          source: 'CUSTOMER'
+        };
+      }
+      const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
+      const matchShop = allShops.find(s => (s.phone || '').slice(-10) === clean);
+      if (matchShop) {
+        return {
+          name: matchShop.ownerName || matchShop.name || 'Shop Owner',
+          age: '',
+          source: 'MERCHANT'
+        };
+      }
+      const activeShop = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
+      if (activeShop && (activeShop.phone || '').slice(-10) === clean) {
+        return {
+          name: activeShop.ownerName || activeShop.name || 'Shop Owner',
+          age: '',
+          source: 'MERCHANT'
+        };
+      }
+    } catch (e) {}
+    return null;
+  };
 
   // 100% Customer Focused Navigation
   const navLinks = [
@@ -177,13 +220,21 @@ export default function Navbar() {
     setLoginSuccessMsg('');
     setOtpSent(false);
     setLoginOtp('');
-    setLoginName(customerName !== 'Guest' ? customerName : '');
-    setLoginAge(customerAge || '');
-    setLoginPhone(customerPhone || '');
+    const curPhone = customerPhone || '';
+    setLoginPhone(curPhone);
+    const detected = detectExistingUser(curPhone);
+    setExistingUserDetected(detected);
+    if (detected) {
+      setLoginName(detected.name || '');
+      setLoginAge(detected.age || '');
+    } else {
+      setLoginName(customerName !== 'Guest' ? customerName : '');
+      setLoginAge(customerAge || '');
+    }
     setLoginModalOpen(true);
   };
 
-  // Step 1: Send OTP (Mobile Number Only)
+  // Step 1: Send OTP (Existing customers need ONLY mobile number, new fill name & age)
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -194,16 +245,21 @@ export default function Navbar() {
       return;
     }
 
-    // Auto-detect if customer name already exists for this phone
-    if (typeof window !== 'undefined') {
-      try {
-        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-        if (savedProfiles[cleanPhone]?.name && !loginName) {
-          setLoginName(savedProfiles[cleanPhone].name);
-        } else if (localStorage.getItem('ak_phone') === cleanPhone && localStorage.getItem('ak_customer_name') && !loginName) {
-          setLoginName(localStorage.getItem('ak_customer_name'));
-        }
-      } catch (e) {}
+    const detected = existingUserDetected || detectExistingUser(cleanPhone);
+    if (!detected) {
+      if (!loginName.trim()) {
+        setLoginError("Naye customer ke liye Apna Pura Naam bharna zaroori hai.");
+        return;
+      }
+      if (!loginAge.trim()) {
+        setLoginError("Naye customer ke liye Apni Age (Umar) bharna zaroori hai.");
+        return;
+      }
+      const ageNum = parseInt(loginAge.trim(), 10);
+      if (isNaN(ageNum) || ageNum < 5 || ageNum > 115) {
+        setLoginError("Kripya sahi age (umar) darj karein (5 se 115 saal).");
+        return;
+      }
     }
 
     setLoginLoading(true);
@@ -240,8 +296,12 @@ export default function Navbar() {
       let token = 'mock-customer-jwt-' + Date.now();
       let serverName = '';
 
+      // Resolve final name: user input > detected profile > Customer (last 4 digits)
+      let resolvedName = loginName.trim() || (existingUserDetected?.name) || '';
+      let resolvedAge = loginAge.trim() || (existingUserDetected?.age) || '';
+
       try {
-        const res = await authApi.verifyOtp(cleanPhone, cleanOtp);
+        const res = await authApi.verifyOtp(cleanPhone, cleanOtp, resolvedName);
         if (res?.data?.data?.token) {
           token = res.data.data.token;
         }
@@ -250,20 +310,6 @@ export default function Navbar() {
         }
       } catch (backendErr) {
         console.warn("Backend verify-otp fallback:", backendErr?.message);
-      }
-
-      // Resolve final name: user input > saved profile > server name > Customer (last 4 digits)
-      let resolvedName = loginName.trim();
-      let resolvedAge = loginAge.trim();
-
-      if (typeof window !== 'undefined') {
-        const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-        if (!resolvedName && savedProfiles[cleanPhone]?.name) {
-          resolvedName = savedProfiles[cleanPhone].name;
-          resolvedAge = savedProfiles[cleanPhone].age || resolvedAge;
-        } else if (!resolvedName && localStorage.getItem('ak_phone') === cleanPhone && localStorage.getItem('ak_customer_name')) {
-          resolvedName = localStorage.getItem('ak_customer_name');
-        }
       }
 
       if (!resolvedName && serverName) {
@@ -281,7 +327,7 @@ export default function Navbar() {
         localStorage.setItem('ak_customer_name', resolvedName);
         if (resolvedAge) localStorage.setItem('ak_customer_age', resolvedAge);
 
-        // Update persistent phone -> profile map so user never has to re-enter
+        // Update persistent phone -> profile map so user never has to re-register
         const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
         savedProfiles[cleanPhone] = { name: resolvedName, age: resolvedAge };
         localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
@@ -300,7 +346,7 @@ export default function Navbar() {
     }
   };
 
-  // Logout Customer account -> returns to GUEST state
+  // Logout Customer account -> returns to GUEST state & redirects to explore shops
   const handleLogout = () => {
     if (window.confirm("Do you want to log out from this customer account?")) {
       if (typeof window !== 'undefined') {
@@ -310,6 +356,7 @@ export default function Navbar() {
         localStorage.removeItem('ak_customer_age');
         localStorage.removeItem('ak_role');
         window.dispatchEvent(new Event('storage'));
+        window.location.href = '/';
       }
       setIsCustomerLoggedIn(false);
       setUserRole('GUEST');
@@ -322,23 +369,19 @@ export default function Navbar() {
     }
   };
 
-  // Logout Shopkeeper account -> returns to GUEST state
+  // Logout Shopkeeper account -> returns to GUEST state & redirects to explore shops
   const handleMerchantLogout = () => {
     if (window.confirm("Do you want to log out from this shopkeeper account?")) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_role');
         window.dispatchEvent(new Event('storage'));
+        window.location.href = '/';
       }
       setIsShopkeeperLoggedIn(false);
       setRegisteredMerchantShop(null);
       setUserRole('GUEST');
       setMerchantDropdownOpen(false);
-      
-      // If currently on merchant dashboard, redirect to merchant register / login portal
-      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant')) {
-        window.location.href = '/merchant/register';
-      }
     }
   };
 
@@ -824,16 +867,17 @@ export default function Navbar() {
                           maxLength={10}
                           value={loginPhone}
                           onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '');
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                             setLoginPhone(val);
-                            // Auto-fetch name if already saved for this phone
-                            if (val.length === 10 && typeof window !== 'undefined') {
-                              try {
-                                const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-                                if (savedProfiles[val]?.name) {
-                                  setLoginName(savedProfiles[val].name);
-                                }
-                              } catch (err) {}
+                            if (val.length === 10) {
+                              const detected = detectExistingUser(val);
+                              setExistingUserDetected(detected);
+                              if (detected) {
+                                setLoginName(detected.name || '');
+                                setLoginAge(detected.age || '');
+                              }
+                            } else {
+                              setExistingUserDetected(null);
                             }
                           }}
                           placeholder="9876543210"
@@ -842,31 +886,70 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {loginName ? (
-                      <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center justify-between">
-                        <span>Recognized Account: <strong>{loginName}</strong></span>
-                        <button
-                          type="button"
-                          onClick={() => setLoginName('')}
-                          className="text-[10px] text-emerald-600 underline cursor-pointer"
-                        >
-                          Change
-                        </button>
+                    {existingUserDetected ? (
+                      <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                        <div className="flex items-center justify-between font-bold text-emerald-800">
+                          <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600" /> Account Recognized</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExistingUserDetected(null);
+                              setLoginName('');
+                              setLoginAge('');
+                            }}
+                            className="text-[10px] text-emerald-700 underline cursor-pointer"
+                          >
+                            Change Details
+                          </button>
+                        </div>
+                        <p className="font-bold text-xs text-[#283B3D]">
+                          {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
+                        </p>
+                        <span className="text-[11px] text-emerald-700 block">
+                          Aapka number pehle se registered hai! Dobara details bharne ki zaroorat nahi hai. Bas mobile number se verify karke sign-in karein.
+                        </span>
                       </div>
                     ) : (
-                      <div>
-                        <label className="text-xs font-bold text-[#283B3D]/70 block mb-1">
-                          Your Name <span className="text-slate-400 font-normal">(Optional for new customers)</span>
-                        </label>
-                        <div className="relative">
-                          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                          <input
-                            type="text"
-                            value={loginName}
-                            onChange={(e) => setLoginName(e.target.value)}
-                            placeholder="e.g. Abhishek Sharma"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                          />
+                      <div className="space-y-3 pt-1">
+                        <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
+                          <span className="font-bold block">✨ New Customer Registration</span>
+                          <span className="text-[11px] text-amber-800 block">Pehli baar login kar rahe hain to kripya apna Naam aur Age bharein (sirf ek baar).</span>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                            Your Full Name <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                            <input
+                              type="text"
+                              required
+                              value={loginName}
+                              onChange={(e) => setLoginName(e.target.value)}
+                              placeholder="e.g. Abhishek Sharma"
+                              className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                            Your Age (in years) <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                            <input
+                              type="number"
+                              min={5}
+                              max={115}
+                              required
+                              value={loginAge}
+                              onChange={(e) => setLoginAge(e.target.value)}
+                              placeholder="e.g. 25"
+                              className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
