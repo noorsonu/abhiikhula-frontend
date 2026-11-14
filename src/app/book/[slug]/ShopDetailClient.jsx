@@ -1071,17 +1071,30 @@ export default function ShopDetailClient() {
                     maxLength={10}
                     placeholder="9876543210"
                     value={customerPhone}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                       setCustomerPhone(val);
-                      if (val.length === 10 && typeof window !== 'undefined') {
-                        try {
-                          const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-                          if (savedProfiles[val]) {
-                            if (savedProfiles[val].name && !customerName) setCustomerName(savedProfiles[val].name);
-                            if (savedProfiles[val].age && !customerAge) setCustomerAge(savedProfiles[val].age);
-                          }
-                        } catch (err) {}
+                      if (val.length === 10) {
+                        let matched = false;
+                        if (typeof window !== 'undefined') {
+                          try {
+                            const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
+                            if (savedProfiles[val]) {
+                              if (savedProfiles[val].name && !customerName) setCustomerName(savedProfiles[val].name);
+                              if (savedProfiles[val].age && !customerAge) setCustomerAge(String(savedProfiles[val].age));
+                              matched = true;
+                            }
+                          } catch (err) {}
+                        }
+                        if (!matched) {
+                          try {
+                            const res = await authApi.checkPhone(val);
+                            if (res?.data?.data?.registered) {
+                              if (res.data.data.name && !customerName) setCustomerName(res.data.data.name);
+                              if (res.data.data.age && !customerAge) setCustomerAge(String(res.data.data.age));
+                            }
+                          } catch (err) {}
+                        }
                       }
                     }}
                     className="w-full pl-13 pr-4 py-3 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-sm font-semibold text-[#283B3D] bg-[#F3F1E9]/40 tracking-wider"

@@ -106,6 +106,10 @@ export default function MerchantRegisterPage() {
             } catch (err) {}
           }
 
+          if (params.get('tab') === 'login' || params.get('login') === 'true') {
+            setIsLoginTab(true);
+          }
+
           if (params.get('new') === 'true') {
             setForceNewRegister(true);
           }
@@ -163,6 +167,8 @@ export default function MerchantRegisterPage() {
 
     if (match) {
       setExistingShopDetectedOnPhone(match);
+      setAuthError(`❌ Mobile number is already registered! (+91 ${clean}). Is number par "${match.name || 'Dukan'}" pehle se registered hai. Kripya "Quick Login" tab se login karein.`);
+      return;
     } else {
       setExistingShopDetectedOnPhone(null);
     }
@@ -668,24 +674,23 @@ export default function MerchantRegisterPage() {
             /* New Registration Step 1 Form */
             <div className="space-y-4 max-w-lg">
               {authError && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
-                  {authError}
-                </div>
-              )}
-
-              {/* Detected Existing Shop on Phone Banner */}
-              {existingShopDetectedOnPhone && (
-                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-bold flex items-center justify-between gap-3">
-                  <div>
-                    <span>This mobile is already linked to <strong>{existingShopDetectedOnPhone.name}</strong>!</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDirectLoginWithShop(existingShopDetectedOnPhone)}
-                    className="px-3 py-1.5 rounded-xl bg-[#176B65] text-white text-[11px] font-bold shrink-0 hover:bg-[#125550] cursor-pointer"
-                  >
-                    Open Dashboard →
-                  </button>
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 space-y-2.5">
+                  <p>{authError}</p>
+                  {existingShopDetectedOnPhone && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoginTab(true);
+                        setLoginPhone(ownerPhone.replace(/\D/g, '').slice(-10));
+                        setAuthError('');
+                        setLoginError('');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#176B65] text-white text-xs font-bold shadow-xs hover:bg-[#125550] cursor-pointer"
+                    >
+                      <LogIn className="w-3.5 h-3.5 text-[#F2A15A]" />
+                      <span>⚡ Go to Quick Login →</span>
+                    </button>
+                  )}
                 </div>
               )}
 

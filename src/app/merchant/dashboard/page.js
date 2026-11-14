@@ -815,13 +815,15 @@ export default function MerchantDashboardPage() {
           setShopStatus(parsed.status || 'OPEN');
           setIsAuthorized(true);
 
-          // Verify with cloud DB that shop was not deleted
+          // Verify with cloud DB that shop was not deleted (only wipe on explicit 404, never on network error)
           if (parsed.id) {
-            shopApi.getShopById(parsed.id).catch(() => {
-              localStorage.removeItem('ak_active_merchant_shop');
-              localStorage.removeItem('ak_role');
-              setActiveShop(null);
-              setIsAuthorized(false);
+            shopApi.getShopById(parsed.id).catch((err) => {
+              if (err?.response?.status === 404) {
+                localStorage.removeItem('ak_active_merchant_shop');
+                localStorage.removeItem('ak_role');
+                setActiveShop(null);
+                setIsAuthorized(false);
+              }
             });
           }
 
@@ -2779,7 +2781,7 @@ export default function MerchantDashboardPage() {
 
           <div className="space-y-3 pt-2">
             <Link
-              href="/merchant/register"
+              href="/merchant/register?tab=login"
               className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#135954] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <Store className="w-4 h-4 text-[#F2A15A]" />

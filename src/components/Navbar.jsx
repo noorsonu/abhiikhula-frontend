@@ -234,6 +234,44 @@ export default function Navbar() {
     setLoginModalOpen(true);
   };
 
+  // Handle Phone input change with real-time Cloud DB + Local detection
+  const handlePhoneInputChange = async (val) => {
+    const clean = val.replace(/\D/g, '').slice(0, 10);
+    setLoginPhone(clean);
+    setLoginError('');
+
+    if (clean.length === 10) {
+      // 1. Quick check localStorage
+      const localMatch = detectExistingUser(clean);
+      if (localMatch) {
+        setExistingUserDetected(localMatch);
+        setLoginName(localMatch.name || '');
+        setLoginAge(localMatch.age || '');
+        return;
+      }
+
+      // 2. Query cloud PostgreSQL database via checkPhone API
+      try {
+        const res = await authApi.checkPhone(clean);
+        if (res?.data?.data?.registered) {
+          const cloudMatch = {
+            name: res.data.data.name || 'Customer',
+            age: res.data.data.age ? String(res.data.data.age) : '',
+            source: 'CLOUD'
+          };
+          setExistingUserDetected(cloudMatch);
+          setLoginName(cloudMatch.name);
+          setLoginAge(cloudMatch.age);
+          return;
+        }
+      } catch (err) {}
+
+      setExistingUserDetected(null);
+    } else {
+      setExistingUserDetected(null);
+    }
+  };
+
   // Step 1: Send OTP (Existing customers need ONLY mobile number, new fill name & age)
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -245,27 +283,58 @@ export default function Navbar() {
       return;
     }
 
-    const detected = existingUserDetected || detectExistingUser(cleanPhone);
+    setLoginLoading(true);
+
+    // Double check cloud DB if not detected locally yet
+    let detected = existingUserDetected || detectExistingUser(cleanPhone);
+    if (!detected) {
+      try {
+        const checkRes = await authApi.checkPhone(cleanPhone);
+        if (checkRes?.data?.data?.registered) {
+          detected = {
+            name: checkRes.data.data.name || 'Customer',
+            age: checkRes.data.data.age ? String(checkRes.data.data.age) : '',
+            source: 'CLOUD'
+          };
+          setExistingUserDetected(detected);
+          setLoginName(detected.name);
+          setLoginAge(detected.age);
+        }
+      } catch (err) {}
+    }
+
     if (!detected) {
       if (!loginName.trim()) {
         setLoginError("Naye customer ke liye Apna Pura Naam bharna zaroori hai.");
+        setLoginLoading(false);
         return;
       }
       if (!loginAge.trim()) {
         setLoginError("Naye customer ke liye Apni Age (Umar) bharna zaroori hai.");
+        setLoginLoading(false);
         return;
       }
       const ageNum = parseInt(loginAge.trim(), 10);
       if (isNaN(ageNum) || ageNum < 5 || ageNum > 115) {
         setLoginError("Kripya sahi age (umar) darj karein (5 se 115 saal).");
+        setLoginLoading(false);
         return;
       }
     }
 
-    setLoginLoading(true);
     try {
       try {
-        await authApi.sendOtp(cleanPhone);
+        const otpRes = await authApi.sendOtp(cleanPhone);
+        if (otpRes?.data?.data?.registered && !detected) {
+          const autoFound = {
+            name: otpRes.data.data.name || 'Customer',
+            age: otpRes.data.data.age ? String(otpRes.data.data.age) : '',
+            source: 'CLOUD'
+          };
+          setExistingUserDetected(autoFound);
+          if (autoFound.name) setLoginName(autoFound.name);
+          if (autoFound.age) setLoginAge(autoFound.age);
+        }
       } catch (backendErr) {
         console.warn("Backend send-otp fallback:", backendErr?.message);
       }
@@ -301,12 +370,15 @@ export default function Navbar() {
       let resolvedAge = loginAge.trim() || (existingUserDetected?.age) || '';
 
       try {
-        const res = await authApi.verifyOtp(cleanPhone, cleanOtp, resolvedName);
+        const res = await authApi.verifyOtp(cleanPhone, cleanOtp, resolvedName, resolvedAge);
         if (res?.data?.data?.token) {
           token = res.data.data.token;
         }
         if (res?.data?.data?.name) {
           serverName = res.data.data.name;
+        }
+        if (res?.data?.data?.age) {
+          resolvedAge = String(res.data.data.age);
         }
       } catch (backendErr) {
         console.warn("Backend verify-otp fallback:", backendErr?.message);
@@ -866,20 +938,7 @@ export default function Navbar() {
                           autoFocus
                           maxLength={10}
                           value={loginPhone}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                            setLoginPhone(val);
-                            if (val.length === 10) {
-                              const detected = detectExistingUser(val);
-                              setExistingUserDetected(detected);
-                              if (detected) {
-                                setLoginName(detected.name || '');
-                                setLoginAge(detected.age || '');
-                              }
-                            } else {
-                              setExistingUserDetected(null);
-                            }
-                          }}
+                          onChange={(e) => handlePhoneInputChange(e.target.value)}
                           placeholder="9876543210"
                           className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                         />
