@@ -3398,20 +3398,11 @@ export default function MerchantDashboardPage() {
             type="button"
             onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0] || null, 'SWITCH')}
             className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Switch active operator or punch attendance with PIN (FR-711)"
+            title="Staff Operator Login & PIN Desk"
           >
             <KeyRound className="w-4 h-4 text-[#176B65]" />
-            <span className="hidden sm:inline">
-              Staff: <span className="text-[#176B65] font-black">{activeOperator?.name?.split(' ')[0] || 'Staff'}</span>
-            </span>
-            <span className="sm:hidden">Staff</span>
-            {activeOperator?.status === 'ON_DUTY' ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" title="On Duty" />
-            ) : activeOperator?.status === 'ON_BREAK' ? (
-              <span className="w-2 h-2 rounded-full bg-amber-500 ml-0.5" title="On Break" />
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-slate-300 ml-0.5" title="Off Duty" />
-            )}
+            <span>Staff</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" title="Staff Desk" />
           </button>
 
           {/* Shop Status Switch (OPEN / PAUSED / CLOSED) with Smart Break Timer (FR-707) */}
@@ -10042,6 +10033,87 @@ export default function MerchantDashboardPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Staff Member Selection Pills */}
+              <div className="space-y-1.5 text-left">
+                <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block">
+                  Select Staff Member:
+                </span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {staffList.map((st) => {
+                    const isSelected = pinTargetStaff?.id === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          setPinTargetStaff(st);
+                          setPinInput('');
+                          setPinError('');
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
+                          isSelected
+                            ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                            : 'bg-slate-50 text-[#283B3D] border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${st.status === 'ON_DUTY' ? 'bg-emerald-400 animate-pulse' : st.status === 'ON_BREAK' ? 'bg-amber-400' : 'bg-slate-300'}`} />
+                        <span>{st.name.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinTargetStaff('OWNER');
+                      setPinAction('OWNER_SETTINGS');
+                      setPinInput('');
+                      setPinError('');
+                    }}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                      pinTargetStaff === 'OWNER'
+                        ? 'bg-[#283B3D] text-white border-[#283B3D] shadow-xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    👑 Owner
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Selector */}
+              {pinTargetStaff !== 'OWNER' && (
+                <div className="grid grid-cols-4 gap-1 bg-[#F3F1E9] p-1 rounded-xl text-[10px] font-bold text-[#283B3D]">
+                  <button
+                    type="button"
+                    onClick={() => setPinAction('CLOCK_IN')}
+                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'CLOCK_IN' ? 'bg-white text-emerald-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                  >
+                    Clock In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPinAction('BREAK')}
+                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'BREAK' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                  >
+                    Break
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPinAction('CLOCK_OUT')}
+                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'CLOCK_OUT' ? 'bg-white text-rose-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                  >
+                    Clock Out
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPinAction('SWITCH')}
+                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'SWITCH' ? 'bg-white text-[#176B65] shadow-2xs font-black' : 'text-slate-500'}`}
+                  >
+                    Desk
+                  </button>
+                </div>
+              )}
 
               {/* Action Description */}
               <p className="text-xs text-[#283B3D]/70 font-semibold">
