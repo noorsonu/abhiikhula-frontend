@@ -6,10 +6,11 @@ import { usePathname } from 'next/navigation';
 import { 
   Compass, Ticket, Store, Sparkles, User, UserCheck, 
   ChevronDown, LogOut, Edit2, Check, X, History, ShieldCheck, 
-  ArrowRight, Phone, Calendar, KeyRound, Lock, RefreshCw, AlertCircle, Sparkle, Heart
+  ArrowRight, Phone, Calendar, KeyRound, Lock, RefreshCw, AlertCircle, Sparkle, Heart, BellRing
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '@/lib/api';
+import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
 
@@ -28,6 +29,8 @@ export default function Navbar() {
   const [isCustomerLoggedIn, setIsCustomerLoggedIn] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
+  const [turnRingAlert, setTurnRingAlert] = useState(null);
+  const customerFirstName = (customerName || 'Customer').trim().split(/\s+/)[0];
 
   // Merchant Profile State
   const [isShopkeeperLoggedIn, setIsShopkeeperLoggedIn] = useState(false);
@@ -165,6 +168,27 @@ export default function Navbar() {
         }) : [];
         setActiveCount(userActive.length);
 
+        // Check if any active token is called / serving right now!
+        for (const t of userActive) {
+          const isCalled = t.status === 'SERVING' || t.status === 'CALLED' || t.peopleAhead === 0;
+          if (isCalled && t.status !== 'COMPLETED' && t.status !== 'CANCELLED') {
+            const tokenIdentifier = t.id || t.displayToken || t.tokenNumber;
+            const sessionKey = `ak_turn_alerted_${tokenIdentifier}`;
+            if (typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)) {
+              sessionStorage.setItem(sessionKey, 'true');
+              playCounterRing({
+                tokenNumber: t.displayToken || t.tokenNumber,
+                customerName: t.customerName || name || 'Customer',
+                shopName: t.shopName || ''
+              });
+              setTurnRingAlert({
+                tokenNumber: t.displayToken || t.tokenNumber,
+                shopName: t.shopName || ''
+              });
+            }
+          }
+        }
+
         const histStr = localStorage.getItem('ak_customer_history');
         const histList = histStr ? JSON.parse(histStr) : [];
         const userHist = Array.isArray(histList) ? histList.filter(t => {
@@ -198,6 +222,7 @@ export default function Navbar() {
 
     syncProfile();
     window.addEventListener('storage', syncProfile);
+    const pollTimer = setInterval(syncProfile, 3000);
 
     // Click outside listener for dropdowns
     const handleClickOutside = (e) => {
@@ -213,6 +238,7 @@ export default function Navbar() {
 
     return () => {
       window.removeEventListener('storage', syncProfile);
+      clearInterval(pollTimer);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
@@ -711,7 +737,7 @@ export default function Navbar() {
           {/* Shopkeeper button is HIDDEN. Customer Profile with Logout */}
           {/* ======================================================== */}
           {userRole === 'CUSTOMER' && (
-            <div className="relative flex items-center gap-2.5" ref={dropdownRef}>
+            <div className="relative flex items-center gap-2" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => {
@@ -719,22 +745,23 @@ export default function Navbar() {
                   setProfileOpen(!profileOpen);
                   setIsEditingProfile(false);
                 }}
-                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/20 text-[#283B3D]"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/20 text-[#283B3D]"
+                title={`Logged in as ${customerName}`}
               >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white">
-                  <User className="w-4 h-4" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white">
+                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
 
-                <div className="text-left hidden sm:block pr-1">
-                  <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
+                <div className="text-left pr-0.5 max-w-[70px] sm:max-w-[110px]">
+                  <span className="text-[9px] uppercase font-bold text-[#176B65] hidden sm:block leading-none">
                     Customer
                   </span>
-                  <span className="text-xs font-black text-[#283B3D] line-clamp-1 max-w-[120px] leading-tight mt-0.5">
-                    {customerName}
+                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight">
+                    {customerFirstName}
                   </span>
                 </div>
 
-                <ChevronDown className={`w-3.5 h-3.5 text-[#283B3D]/60 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-[#283B3D]/60 transition-transform shrink-0 ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
 
             {/* Profile Dropdown Card (When Logged In) */}
@@ -1171,18 +1198,6 @@ export default function Navbar() {
             );
           })}
 
-          {/* Mobile State: CUSTOMER LOGGED IN -> Show Profile Pill */}
-          {userRole === 'CUSTOMER' && (
-            <button
-              type="button"
-              onClick={() => setProfileOpen(true)}
-              className="flex items-center gap-1.5 py-2 px-3 rounded-full text-[#176B65] font-bold cursor-pointer hover:bg-[#DCE9E3]/50 transition-colors"
-            >
-              <User className="w-4 h-4 text-[#176B65]" />
-              <span className="text-xs tracking-tight truncate max-w-[80px]">{customerName}</span>
-            </button>
-          )}
-
           {/* Mobile State: SHOPKEEPER LOGGED IN -> Single Quick Console Link */}
           {userRole === 'MERCHANT' && (
             <Link
@@ -1195,6 +1210,59 @@ export default function Navbar() {
           )}
         </nav>
       )}
+
+      {/* Global Turn Arrival Counter Ring Floating Banner */}
+      <AnimatePresence>
+        {turnRingAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -40, scale: 0.95 }}
+            className="fixed top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-50 bg-[#176B65] text-white p-3.5 rounded-2xl shadow-2xl border-2 border-emerald-300 flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <BellRing className="w-5 h-5 text-emerald-200 animate-bounce" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md inline-block">
+                  Aapka Number Aa Gaya Hai! 🔔
+                </div>
+                <div className="text-xs font-black truncate mt-0.5 text-white">
+                  Token {turnRingAlert.tokenNumber} {turnRingAlert.shopName ? `• ${turnRingAlert.shopName}` : ''}
+                </div>
+                <div className="text-[11px] text-emerald-100 font-medium truncate">
+                  Kripya counter par aa jayein!
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/tokens"
+                onClick={() => {
+                  stopCounterRing();
+                  setTurnRingAlert(null);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white text-[#176B65] font-black text-xs hover:bg-emerald-50 transition-all shadow-xs"
+              >
+                Pass Dekhein
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  stopCounterRing();
+                  setTurnRingAlert(null);
+                }}
+                className="w-7 h-7 rounded-lg bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-all cursor-pointer"
+                title="Stop Ringing"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

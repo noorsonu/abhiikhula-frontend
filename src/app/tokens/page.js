@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { queueApi, reviewApi } from '@/lib/api';
-import { playChime } from '@/lib/audioChime';
+import { playChime, playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import { shareTokenPass } from '@/lib/shareToken';
 import { notifyTurnArrival, requestTurnNotificationPermission } from '@/lib/notifications';
 
@@ -448,6 +448,28 @@ export default function MyTokensPage() {
       const activeList = combined.filter(t => t.status !== 'CANCELLED' && t.status !== 'COMPLETED');
       setTokens(activeList);
 
+      // Check if any active token is called / serving right now!
+      activeList.forEach(tk => {
+        if (tk.status === 'SERVING' || tk.status === 'CALLED') {
+          const alertedKey = `ak_turn_alerted_${tk.id || tk.displayToken}`;
+          if (typeof window !== 'undefined' && !sessionStorage.getItem(alertedKey)) {
+            sessionStorage.setItem(alertedKey, 'true');
+            if (soundEnabled) {
+              playCounterRing({
+                tokenNumber: tk.displayToken || tk.tokenNumber,
+                customerName: tk.customerName,
+                shopName: tk.shopName
+              });
+            }
+            notifyTurnArrival(tk.shopName, tk.displayToken);
+            setCalledTokenAlert({
+              tokenNumber: tk.displayToken || tk.tokenNumber,
+              shopName: tk.shopName
+            });
+          }
+        }
+      });
+
       // Read past history tokens (combining localStorage + backendHistoryTokens)
       if (isGuest) {
         // In guest mode, do not show any phone's history and DO NOT wipe stored data
@@ -558,7 +580,11 @@ export default function MyTokensPage() {
                   // If customer's turn just arrived!
                   if (isMyTurnNow && tk.status !== 'CALLED' && tk.status !== 'SERVING') {
                     if (soundEnabled) {
-                      playChime('turn');
+                      playCounterRing({
+                        tokenNumber: tk.displayToken || tk.tokenNumber,
+                        customerName: tk.customerName,
+                        shopName: data.shopName || tk.shopName
+                      });
                     }
                     notifyTurnArrival(data.shopName || tk.shopName, tk.displayToken);
                     setCalledTokenAlert({
@@ -1158,10 +1184,13 @@ export default function MyTokensPage() {
             </div>
 
             <button
-              onClick={() => setCalledTokenAlert(null)}
+              onClick={() => {
+                stopCounterRing();
+                setCalledTokenAlert(null);
+              }}
               className="px-5 py-2 rounded-xl bg-white text-emerald-800 font-bold text-xs shadow-sm hover:bg-emerald-50 transition-all cursor-pointer shrink-0"
             >
-              Dismiss
+              Stop Ring / Dismiss
             </button>
           </motion.div>
         )}
