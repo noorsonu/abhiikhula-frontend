@@ -49,6 +49,7 @@ export default function MerchantDashboardPage() {
   // BRD FR-605 / FR-302: Printable Counter QR Standee Generator State
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [tabDropdownOpen, setTabDropdownOpen] = useState(false);
   const [standeeQrUrl, setStandeeQrUrl] = useState('');
   const [standeeFormat, setStandeeFormat] = useState('TABLETOP'); // 'TABLETOP' (A5) | 'POSTER' (A4) | 'STICKER' (Square)
   const [standeeTheme, setStandeeTheme] = useState('EMERALD'); // 'EMERALD' | 'MIDNIGHT' | 'MINIMAL'
@@ -3789,7 +3790,112 @@ export default function MerchantDashboardPage() {
       {/* ========================================================= */}
       {/* SECTION TABS: LIVE COUNTER vs DAILY ANALYTICS (BRD FR-710) */}
       {/* ========================================================= */}
-      <div className="w-full max-w-full bg-white p-1.5 sm:p-2.5 rounded-3xl border border-[#DCE9E3] shadow-xs overflow-hidden">
+      
+      {/* Mobile Tab Dropdown Selector (Clean & Zero-Overflow) */}
+      <div className="sm:hidden relative w-full">
+        {(() => {
+          const currentTabInfo = {
+            COUNTER: { label: 'Live Counter Station', icon: Store, badge: `${waitingQueue.length} Waiting`, badgeClass: 'bg-emerald-100 text-[#176B65]' },
+            ANALYTICS: { label: 'Daily Analytics & Reports', icon: BarChart3, badge: 'FR-710', badgeClass: 'bg-[#F2A15A]/20 text-[#D97706]' },
+            KHATA: { label: 'Khata & Udhaar', icon: BookOpen, badge: `₹${khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')} Due`, badgeClass: 'bg-rose-100 text-rose-800' },
+            PROFILE: { label: 'Shop Profile & Timings', icon: Settings, badge: 'FR-602', badgeClass: 'bg-emerald-100 text-emerald-800' },
+            REVIEWS: { label: 'Customer Reviews', icon: Star, badge: `★ ${avgRating}`, badgeClass: 'bg-amber-100 text-amber-900' },
+            STAFF: { label: 'Staff & Attendance', icon: BadgeCheck, badge: `${staffList.filter(s => s.status === 'ON_DUTY').length}/${staffList.length} On Duty`, badgeClass: 'bg-emerald-100 text-emerald-800' },
+          }[activeTab] || { label: 'Live Counter Station', icon: Store, badge: `${waitingQueue.length} Waiting`, badgeClass: 'bg-emerald-100 text-[#176B65]' };
+          
+          const CurrentIcon = currentTabInfo.icon;
+
+          return (
+            <>
+              <button
+                type="button"
+                onClick={() => setTabDropdownOpen(!tabDropdownOpen)}
+                className="w-full bg-white p-3 rounded-2xl border border-[#DCE9E3] shadow-xs flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#176B65] text-white flex items-center justify-center shrink-0">
+                    <CurrentIcon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Active Section</div>
+                    <div className="text-xs font-black text-[#283B3D] truncate">
+                      {currentTabInfo.label}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentTabInfo.badgeClass}`}>
+                    {currentTabInfo.badge}
+                  </span>
+                  <div className={`w-7 h-7 rounded-lg bg-[#F3F1E9] flex items-center justify-center text-[#283B3D] transition-transform duration-200 ${tabDropdownOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {tabDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]" onClick={() => setTabDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-2.5 space-y-1"
+                    >
+                      {[
+                        { id: 'COUNTER', label: 'Live Counter Station', icon: Store, badge: `${waitingQueue.length} Waiting`, badgeClass: 'bg-emerald-100 text-[#176B65]' },
+                        { id: 'ANALYTICS', label: 'Daily Analytics & Reports', icon: BarChart3, badge: 'FR-710', badgeClass: 'bg-[#F2A15A]/20 text-[#D97706]' },
+                        { id: 'KHATA', label: 'Khata & Udhaar', icon: BookOpen, badge: `₹${khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}`, badgeClass: 'bg-rose-100 text-rose-800' },
+                        { id: 'PROFILE', label: 'Shop Profile & Timings', icon: Settings, badge: 'FR-602', badgeClass: 'bg-emerald-100 text-emerald-800' },
+                        { id: 'REVIEWS', label: 'Customer Reviews', icon: Star, badge: `★ ${avgRating}`, badgeClass: 'bg-amber-100 text-amber-900' },
+                        { id: 'STAFF', label: 'Staff & Attendance', icon: BadgeCheck, badge: `${staffList.filter(s => s.status === 'ON_DUTY').length}/${staffList.length} On Duty`, badgeClass: 'bg-emerald-100 text-emerald-800' },
+                      ].map((tab) => {
+                        const TabIcon = tab.icon;
+                        const isSelected = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveTab(tab.id);
+                              setTabDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-[#176B65] text-white shadow-sm font-black' 
+                                : 'hover:bg-[#DCE9E3]/40 text-[#283B3D] font-bold'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
+                              }`}>
+                                <TabIcon className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-xs truncate">{tab.label}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                              isSelected ? 'bg-white/20 text-white' : tab.badgeClass
+                            }`}>
+                              {tab.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </>
+          );
+        })()}
+      </div>
+
+      {/* Desktop Tab Strip (Hidden on mobile, visible sm and up) */}
+      <div className="hidden sm:block w-full max-w-full bg-white p-1.5 sm:p-2.5 rounded-3xl border border-[#DCE9E3] shadow-xs overflow-hidden">
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 w-full">
           <button
             type="button"
