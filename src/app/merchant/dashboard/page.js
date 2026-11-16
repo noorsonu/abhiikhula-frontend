@@ -4231,16 +4231,19 @@ export default function MerchantDashboardPage() {
         <div className="lg:col-span-7 space-y-6">
           
           {/* NOW SERVING HERO CARD */}
-          <div className="bg-[#283B3D] text-[#F3F1E9] rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden border-4 border-[#176B65]">
+          <div className="bg-[#283B3D] text-[#F3F1E9] rounded-3xl p-5 sm:p-7 space-y-5 shadow-xl relative overflow-hidden border-4 border-[#176B65]">
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#176B65]/20 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#F2A15A] bg-white/10 px-3 py-1 rounded-full">
-                Desk Counter Serving
+            {/* Header: Responsive Live Serving Badge & Elapsed Timer */}
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-3.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5 rounded-xl shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Live Desk Counter</span>
               </span>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                <Clock className="w-3.5 h-3.5 text-[#F2A15A]" />
-                <span>Elapsed: {formatTimer(counterSeconds)}</span>
+              <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-200 bg-black/40 border border-white/15 px-3 py-1.5 rounded-xl shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] text-slate-300">Elapsed:</span>
+                <span className="font-mono font-black text-white tracking-wide text-xs sm:text-sm">{formatTimer(counterSeconds)}</span>
               </div>
             </div>
 
@@ -4286,60 +4289,88 @@ export default function MerchantDashboardPage() {
                   </div>
                 </div>
 
-                {/* Counter / Chair Assignment Selector (Shopkeeper decides counter from Green Card) */}
+                {/* Counter / Chair Assignment Dropdown (Responsive Dropdown Selector) */}
                 {stationsList.filter(s => s.active).length > 0 && (
                   <div className="pt-3 border-t border-white/10 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                    <label className="flex items-center justify-between text-xs font-bold text-slate-300 flex-wrap gap-1">
                       <span className="flex items-center gap-1.5 text-emerald-300">
                         <Users className="w-4 h-4 text-[#F2A15A]" />
-                        <span>Send to Service Counter / Chair:</span>
+                        <span>Send to Counter / Chair:</span>
                       </span>
                       {servingToken.assignedStation ? (
-                        <span className="text-[11px] font-black text-amber-300 bg-amber-400/20 border border-amber-300/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                        <span className="text-[11px] font-black text-amber-300 bg-amber-400/20 border border-amber-300/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
                           <Check className="w-3 h-3 text-emerald-400" />
                           <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-medium">Click chair below to assign & announce</span>
+                        <span className="text-[10px] text-slate-400 font-medium">Select counter below</span>
                       )}
+                    </label>
+
+                    <div className="relative">
+                      <select
+                        value={
+                          servingToken.assignedStation?.id ||
+                          stationsList.find(s => s.name === (servingToken.assignedStation?.name || servingToken.assignedStation))?.id ||
+                          ""
+                        }
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          if (!selectedId) return;
+                          const st = stationsList.find(s => s.id === selectedId);
+                          if (st) {
+                            handleAssignStationToServingToken(st);
+                          }
+                        }}
+                        className="w-full appearance-none bg-[#174642] hover:bg-[#123936] focus:bg-[#0e2f2c] text-white text-xs sm:text-sm font-bold py-3 pl-3.5 pr-10 rounded-2xl border border-white/20 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="" disabled className="bg-[#283B3D] text-slate-400">
+                          -- Choose Service Counter / Chair --
+                        </option>
+                        {stationsList.filter(s => s.active).map(station => {
+                          const isAssigned = servingToken.assignedStation && (
+                            servingToken.assignedStation.id === station.id ||
+                            servingToken.assignedStation.name === station.name ||
+                            servingToken.assignedStation === station.name
+                          );
+                          const statusTag = isAssigned
+                            ? "✓ Currently Assigned"
+                            : station.currentToken
+                            ? `In Use by #${station.currentToken.tokenNumber}`
+                            : "Free / Ready";
+                          return (
+                            <option
+                              key={station.id}
+                              value={station.id}
+                              className="bg-[#283B3D] text-white py-2"
+                            >
+                              {station.name} • {station.staffName} ({station.role}) — [{statusTag}]
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-emerald-300">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {stationsList.filter(s => s.active).map(station => {
-                        const isAssigned = servingToken.assignedStation && (
-                          servingToken.assignedStation.id === station.id ||
-                          servingToken.assignedStation.name === station.name ||
-                          servingToken.assignedStation === station.name
-                        );
-                        return (
-                          <button
-                            key={station.id}
-                            type="button"
-                            onClick={() => handleAssignStationToServingToken(station)}
-                            className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                              isAssigned
-                                ? 'bg-emerald-600/40 border-emerald-400 text-white shadow-md ring-2 ring-emerald-400/60'
-                                : 'bg-white/10 hover:bg-white/20 border-white/15 text-slate-200'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black">{station.name}</span>
-                              {isAssigned ? (
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                              ) : (
-                                <span className="text-[9px] text-slate-400 font-bold uppercase">{station.currentToken ? 'In Use' : 'Free'}</span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-slate-300 font-semibold block truncate mt-0.5">
-                              {station.staffName}
-                            </span>
-                            <span className="text-[10px] text-emerald-300/80 font-medium block truncate">
-                              {station.role}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {servingToken.assignedStation && (
+                      <div className="text-[11px] text-emerald-200/90 font-medium flex items-center justify-between gap-2 px-1">
+                        <span className="truncate">
+                          Current: <strong className="text-white">{servingToken.assignedStation.name || servingToken.assignedStation}</strong> {servingToken.assignedStation.staffName ? `(${servingToken.assignedStation.staffName})` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const st = stationsList.find(s => s.id === servingToken.assignedStation?.id || s.name === servingToken.assignedStation?.name || s.name === servingToken.assignedStation);
+                            if (st) handleAssignStationToServingToken(st);
+                          }}
+                          className="text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer text-[10px] shrink-0"
+                        >
+                          Re-announce
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
