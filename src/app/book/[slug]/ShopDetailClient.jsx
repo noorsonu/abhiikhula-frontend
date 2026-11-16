@@ -663,6 +663,24 @@ export default function ShopDetailClient() {
             <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
           </a>
         </div>
+
+        {/* Option to Book Another Token in Parallel */}
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setBookedToken(null);
+              setCustomerName('');
+              setCustomerPurpose('');
+              setCompanionDetails([]);
+              setEffectiveGroupSize(1);
+            }}
+            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-[#DCE9E3] hover:bg-[#cbe0d7] text-[#176B65] font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-98"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Book Another Token / Kisi aur ke liye token lein</span>
+          </button>
+        </div>
       </motion.div>
     );
   }

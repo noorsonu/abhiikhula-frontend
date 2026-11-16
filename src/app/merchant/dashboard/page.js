@@ -2295,18 +2295,45 @@ export default function MerchantDashboardPage() {
     if (typeof window === 'undefined') return;
     try {
       const storedStr = localStorage.getItem('ak_customer_tokens');
-      if (storedStr) {
-        const list = JSON.parse(storedStr);
-        if (Array.isArray(list)) {
-          const matchTarget = (t, target) => {
-            if (!target) return false;
-            if (t.id && target.id && String(t.id) === String(target.id)) return true;
-            const cleanT = String(t.displayToken || t.tokenNumber || '').replace(/\D/g, '');
-            const cleanTarget = String(target.displayToken || target.tokenNumber || '').replace(/\D/g, '');
-            return Boolean(cleanT && cleanTarget && cleanT === cleanTarget);
-          };
+      const list = storedStr ? JSON.parse(storedStr) : [];
+      if (Array.isArray(list)) {
+        const matchTarget = (t, target) => {
+          if (!target) return false;
+          if (t.id && target.id && String(t.id) === String(target.id)) return true;
+          const cleanT = String(t.displayToken || t.tokenNumber || '').replace(/\D/g, '');
+          const cleanTarget = String(target.displayToken || target.tokenNumber || '').replace(/\D/g, '');
+          return Boolean(cleanT && cleanTarget && cleanT === cleanTarget);
+        };
 
-          const updated = list.map(t => {
+        // When a token is completed, automatically move it to customer history
+        if (prevCompleted) {
+          const matchingCompleted = list.filter(t => matchTarget(t, prevCompleted));
+          if (matchingCompleted.length > 0) {
+            const historyStr = localStorage.getItem('ak_customer_history');
+            const historyList = historyStr ? JSON.parse(historyStr) : [];
+            const newHistoryItems = matchingCompleted.map(t => ({
+              ...t,
+              status: 'COMPLETED',
+              completedAt: new Date().toISOString(),
+              duration: `${Math.max(1, Math.floor(counterSeconds / 60))} min`,
+              amount: billDetails?.amount !== undefined ? billDetails.amount : (t.amount || 0),
+              paymentMode: billDetails?.paymentMode || t.paymentMode || '-',
+              serviceDetails: billDetails?.serviceDetails || t.customerPurpose || t.service,
+              assignedStation: prevCompleted.assignedStation || t.assignedStation || null,
+              reviewed: false,
+              shopName: activeShop?.name || t.shopName || 'Shop',
+              shopId: activeShop?.id || t.shopId
+            }));
+
+            const updatedHistory = [...newHistoryItems, ...historyList.filter(h => !matchingCompleted.some(m => String(m.id) === String(h.id)))];
+            localStorage.setItem('ak_customer_history', JSON.stringify(updatedHistory));
+          }
+        }
+
+        // Keep only remaining active tokens in ak_customer_tokens
+        const updated = list
+          .filter(t => !prevCompleted || !matchTarget(t, prevCompleted))
+          .map(t => {
             if (nextServing && matchTarget(t, nextServing)) {
               return { 
                 ...t, 
@@ -2314,18 +2341,6 @@ export default function MerchantDashboardPage() {
                 peopleAhead: 0, 
                 estimatedWaitMin: 0,
                 assignedStation: nextServing.assignedStation || t.assignedStation || null
-              };
-            }
-            if (prevCompleted && matchTarget(t, prevCompleted)) {
-              return { 
-                ...t, 
-                status: 'COMPLETED',
-                completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                duration: `${Math.max(1, Math.floor(counterSeconds / 60))} min`,
-                amount: billDetails?.amount !== undefined ? billDetails.amount : (t.amount || 0),
-                paymentMode: billDetails?.paymentMode || t.paymentMode || '-',
-                serviceDetails: billDetails?.serviceDetails || t.customerPurpose || t.service,
-                assignedStation: prevCompleted.assignedStation || t.assignedStation || null
               };
             }
             if (nextAbsent && matchTarget(t, nextAbsent)) {
@@ -2338,11 +2353,13 @@ export default function MerchantDashboardPage() {
             }
             return t;
           });
-          localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
-          window.dispatchEvent(new Event('storage'));
-        }
+
+        localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('syncWithCustomerStorage error:', e);
+    }
   };
 
   // Action: Call Next Token

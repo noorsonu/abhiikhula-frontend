@@ -317,15 +317,22 @@ export default function MyTokensPage() {
       const cleanPhone = normalizePhone(currentPhoneRaw);
       const isGuest = !cleanPhone;
 
-      let backendTokens = [];
+      let backendActiveTokens = [];
+      let backendHistoryTokens = [];
       const token = typeof window !== 'undefined' ? localStorage.getItem('ak_token') : null;
 
       if (token && cleanPhone) {
         try {
-          const res = await queueApi.getMyActiveTokens();
-          if (res?.data?.data && Array.isArray(res.data.data)) {
+          const [activeRes, historyRes] = await Promise.all([
+            queueApi.getMyActiveTokens().catch(() => ({ data: { data: [] } })),
+            queueApi.getMyTokenHistory().catch(() => ({ data: { data: [] } }))
+          ]);
+          if (activeRes?.data?.data && Array.isArray(activeRes.data.data)) {
             // Keep backend tokens that match logged in phone
-            backendTokens = res.data.data.filter(t => !t.customerPhone || normalizePhone(t.customerPhone) === cleanPhone);
+            backendActiveTokens = activeRes.data.data.filter(t => !t.customerPhone || normalizePhone(t.customerPhone) === cleanPhone);
+          }
+          if (historyRes?.data?.data && Array.isArray(historyRes.data.data)) {
+            backendHistoryTokens = historyRes.data.data.filter(t => !t.customerPhone || normalizePhone(t.customerPhone) === cleanPhone);
           }
         } catch (err) {
           if (err?.response?.status === 401) {
@@ -369,10 +376,63 @@ export default function MyTokensPage() {
         scopedLocal = localTokens.filter(t => !t.customerPhone || t.isGuest);
       }
 
-      // Merge backend tokens with local tokens
+      // Check if any scopedLocal token has been completed or cancelled
+      const newlyCompletedFromLocal = [];
+      const remainingScopedLocal = [];
+
+      for (const lt of scopedLocal) {
+        if (lt.status === 'COMPLETED' || lt.status === 'CANCELLED') {
+          newlyCompletedFromLocal.push(lt);
+          continue;
+        }
+
+        // Check if backend returned this token in history (completed/cancelled)
+        const inBackendHistory = backendHistoryTokens.find(bt => String(bt.id) === String(lt.id));
+        if (inBackendHistory && (inBackendHistory.status === 'COMPLETED' || inBackendHistory.status === 'CANCELLED')) {
+          newlyCompletedFromLocal.push({ ...lt, ...inBackendHistory, status: inBackendHistory.status });
+          continue;
+        }
+
+        // If authenticated and token has a UUID (length > 20) and is NOT in backendActiveTokens:
+        // check individual token status on backend
+        if (token && lt.id && String(lt.id).length > 20 && !backendActiveTokens.some(bt => String(bt.id) === String(lt.id))) {
+          try {
+            const checkRes = await queueApi.getTokenById(lt.id);
+            if (checkRes?.data?.data?.status === 'COMPLETED') {
+              newlyCompletedFromLocal.push({ ...lt, ...checkRes.data.data, status: 'COMPLETED' });
+              continue;
+            } else if (checkRes?.data?.data?.status === 'CANCELLED') {
+              newlyCompletedFromLocal.push({ ...lt, ...checkRes.data.data, status: 'CANCELLED' });
+              continue;
+            }
+          } catch (e) {}
+        }
+
+        remainingScopedLocal.push(lt);
+      }
+
+      // Move newly completed tokens to ak_customer_history and remove from ak_customer_tokens
+      if (newlyCompletedFromLocal.length > 0 && typeof window !== 'undefined') {
+        const historyStr = localStorage.getItem('ak_customer_history');
+        const prevHistory = historyStr ? JSON.parse(historyStr) : [];
+        const addedToHistory = newlyCompletedFromLocal.map(t => ({
+          ...t,
+          completedAt: t.completedAt || new Date().toISOString(),
+          reviewed: t.reviewed || false
+        }));
+
+        const mergedHistory = [...addedToHistory, ...prevHistory.filter(h => !addedToHistory.some(a => String(a.id) === String(h.id)))];
+        localStorage.setItem('ak_customer_history', JSON.stringify(mergedHistory));
+
+        const updatedLocalAll = localTokens.filter(t => !newlyCompletedFromLocal.some(c => String(c.id) === String(t.id)));
+        localStorage.setItem('ak_customer_tokens', JSON.stringify(updatedLocalAll));
+        localTokens = updatedLocalAll;
+      }
+
+      // Merge backend active tokens with remaining scopedLocal
       const mergedMap = new Map();
-      backendTokens.forEach(t => mergedMap.set(String(t.id), t));
-      scopedLocal.forEach(t => {
+      backendActiveTokens.forEach(t => mergedMap.set(String(t.id), t));
+      remainingScopedLocal.forEach(t => {
         if (!mergedMap.has(String(t.id))) {
           mergedMap.set(String(t.id), t);
         } else {
@@ -388,7 +448,7 @@ export default function MyTokensPage() {
       const activeList = combined.filter(t => t.status !== 'CANCELLED' && t.status !== 'COMPLETED');
       setTokens(activeList);
 
-      // Read past history tokens (100% Scoped to Current Logged-in Mobile Number)
+      // Read past history tokens (combining localStorage + backendHistoryTokens)
       if (isGuest) {
         // In guest mode, do not show any phone's history and DO NOT wipe stored data
         setHistoryTokens([]);
@@ -397,9 +457,32 @@ export default function MyTokensPage() {
         let parsedHistory = historyStr ? JSON.parse(historyStr) : [];
         // Purge any legacy dummy IDs
         parsedHistory = parsedHistory.filter(t => t.id !== 'completed-visit-royal-barber' && t.id !== 'completed-sample-1');
-        // Only show history for THIS exact phone number
-        const userHistory = parsedHistory.filter(t => normalizePhone(t.customerPhone) === cleanPhone);
-        setHistoryTokens(userHistory);
+
+        const historyMap = new Map();
+        backendHistoryTokens.forEach(bt => {
+          historyMap.set(String(bt.id), {
+            ...bt,
+            reviewed: false,
+            customerPhone: bt.customerPhone || cleanPhone
+          });
+        });
+        parsedHistory.forEach(ht => {
+          if (!historyMap.has(String(ht.id))) {
+            historyMap.set(String(ht.id), ht);
+          } else {
+            const existing = historyMap.get(String(ht.id));
+            historyMap.set(String(ht.id), { ...existing, ...ht });
+          }
+        });
+
+        const combinedHistory = Array.from(historyMap.values())
+          .filter(t => normalizePhone(t.customerPhone) === cleanPhone);
+
+        setHistoryTokens(combinedHistory);
+
+        if (typeof window !== 'undefined' && combinedHistory.length > 0) {
+          localStorage.setItem('ak_customer_history', JSON.stringify(combinedHistory));
+        }
       }
 
       return activeList;
@@ -498,6 +581,11 @@ export default function MyTokensPage() {
                     }
                   }
 
+                  // If counter serving number moved past customer's token, service is completed
+                  if (servingNum > 0 && myNum > 0 && servingNum > myNum) {
+                    setTimeout(() => loadTokens(), 100);
+                  }
+
                   return {
                     ...tk,
                     peopleAhead: isMyTurnNow ? 0 : newPeopleAhead,
@@ -529,10 +617,10 @@ export default function MyTokensPage() {
       }
     });
 
-    // Fallback periodic poll every 12 seconds in case SSE disconnects
+    // Fallback periodic poll every 4 seconds in case SSE disconnects or background status changes
     const pollInterval = setInterval(() => {
       loadTokens();
-    }, 12000);
+    }, 4000);
 
     return () => {
       clearInterval(pollInterval);
@@ -861,8 +949,14 @@ export default function MyTokensPage() {
   };
 
   // Complete Active Real Token and Immediately Open Rating Modal
-  const handleCompleteAndRate = (token) => {
+  const handleCompleteAndRate = async (token) => {
     if (!token) return;
+
+    try {
+      if (token.shopId && token.id && String(token.id).length > 20) {
+        queueApi.completeToken(token.shopId, token.id).catch(() => {});
+      }
+    } catch (e) {}
 
     const currentPhoneRaw = typeof window !== 'undefined' ? localStorage.getItem('ak_phone') : null;
     const cleanPhone = normalizePhone(currentPhoneRaw);
@@ -896,7 +990,8 @@ export default function MyTokensPage() {
       window.dispatchEvent(new Event('storage'));
     }
 
-    // Open review modal with default 5-stars
+    // Switch to history tab and open review modal with default 5-stars
+    setActiveTab('history');
     setTokenToReview(completedToken);
     setRatingStars(5);
     setHoverStars(0);
@@ -1220,6 +1315,15 @@ export default function MyTokensPage() {
             {historyTokens.length}
           </span>
         </button>
+
+        <Link
+          href="/"
+          className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#DCE9E3] hover:bg-[#cbe0d7] text-[#176B65] font-black text-xs transition-all shadow-2xs active:scale-98"
+          title="Kisi aur ke liye ya doosri dukan ka token lein"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>+ Book Another Token</span>
+        </Link>
       </div>
 
       {/* ============================================================== */}
@@ -1592,8 +1696,18 @@ export default function MyTokensPage() {
                           )}
                         </div>
 
-                        {/* Action Buttons: Running Late + Cancel Token */}
+                        {/* Action Buttons: Customer Completed Service / Rate + Running Late + Cancel Token */}
                         <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteAndRate(token)}
+                            className="col-span-2 py-2.5 px-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-98"
+                            title="Aapki service complete ho gayi? Tap karke shop ko rating aur review dein"
+                          >
+                            <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
+                            <span>Service Ho Gayi? Rating Dein ⭐</span>
+                          </button>
+
                           <button
                             onClick={() => handleOpenDelayModal(token)}
                             className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 ${

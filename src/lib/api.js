@@ -53,6 +53,7 @@ export const queueApi = {
   markNoShow: (shopId, tokenId) => apiClient.post(`/api/shops/${shopId}/queue/tokens/${tokenId}/no-show`),
   skipToken: (shopId, tokenId) => apiClient.post(`/api/shops/${shopId}/queue/tokens/${tokenId}/skip`),
   getMyActiveTokens: () => apiClient.get('/api/queue/tokens/my'),
+  getMyTokenHistory: () => apiClient.get('/api/queue/tokens/my/history'),
   getTokenById: (tokenId) => apiClient.get(`/api/tokens/${tokenId}`),
   cancelToken: (tokenId, reason = 'Cancelled by customer') =>
     apiClient.post(`/api/queue/tokens/${tokenId}/cancel`, { reason }),
