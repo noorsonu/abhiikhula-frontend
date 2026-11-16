@@ -14,7 +14,7 @@ import {
   Star, ThumbsUp, MessageSquare, Flag, Reply, CornerDownRight,
   Radio, Siren, Send, Copy, ExternalLink, Trash2,
   BookOpen, Wallet, History,
-  KeyRound, BadgeCheck, Fingerprint
+  KeyRound, BadgeCheck, Fingerprint, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -184,6 +184,13 @@ export default function MerchantDashboardPage() {
   const [newServicePrice, setNewServicePrice] = useState('');
   const [newServiceDuration, setNewServiceDuration] = useState('15');
   const [serviceFeedbackMsg, setServiceFeedbackMsg] = useState('');
+
+  // Shop Photos & Work Showcase State
+  const [photosModalOpen, setPhotosModalOpen] = useState(false);
+  const [shopPhotosList, setShopPhotosList] = useState([]);
+  const [photoUrlInput, setPhotoUrlInput] = useState('');
+  const [photoCaptionInput, setPhotoCaptionInput] = useState('');
+  const [photoFeedbackMsg, setPhotoFeedbackMsg] = useState('');
 
   // BRD FR-704 / FR-402: 1-Tap Customer WhatsApp Call & Turn Reminder State
   const [whatsappSentMap, setWhatsappSentMap] = useState({});
@@ -424,6 +431,91 @@ export default function MerchantDashboardPage() {
       localStorage.setItem(key, JSON.stringify(defaults));
     } catch (e) {}
     return defaults;
+  };
+
+  const getPhotosStorageKey = (shop) => `ak_shop_photos_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopPhotos = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    try {
+      const key = getPhotosStorageKey(shop);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [
+      { id: 'def-1', url: shop.imageUrl || '/images/clinic.jpg', caption: 'Shop Front & Counter' },
+      { id: 'def-2', url: '/images/barber-real.jpg', caption: 'Styling & Work Station' }
+    ];
+  };
+
+  const saveShopPhotos = (updatedList) => {
+    setShopPhotosList(updatedList);
+    if (activeShop) {
+      try {
+        localStorage.setItem(getPhotosStorageKey(activeShop), JSON.stringify(updatedList));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+  };
+
+  const handleUploadPhotoFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const dataUrl = uploadEvent.target.result;
+        const newPhotoObj = {
+          id: 'photo-' + Date.now() + Math.random().toString(36).substr(2, 4),
+          url: dataUrl,
+          dataUrl: dataUrl,
+          caption: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Work Showcase',
+          createdAt: new Date().toISOString()
+        };
+        setShopPhotosList(prev => {
+          const next = [newPhotoObj, ...prev];
+          if (activeShop) {
+            try {
+              localStorage.setItem(getPhotosStorageKey(activeShop), JSON.stringify(next));
+              window.dispatchEvent(new Event('storage'));
+            } catch (err) {}
+          }
+          return next;
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setPhotoFeedbackMsg(`✅ ${files.length} Photo(s) uploaded successfully!`);
+    setTimeout(() => setPhotoFeedbackMsg(''), 4000);
+  };
+
+  const handleAddPhotoByUrl = (e) => {
+    if (e) e.preventDefault();
+    if (!photoUrlInput.trim()) return;
+    const newPhoto = {
+      id: 'photo-' + Date.now(),
+      url: photoUrlInput.trim(),
+      caption: photoCaptionInput.trim() || 'Work Showcase',
+      createdAt: new Date().toISOString()
+    };
+    const next = [newPhoto, ...shopPhotosList];
+    saveShopPhotos(next);
+    setPhotoUrlInput('');
+    setPhotoCaptionInput('');
+    setPhotoFeedbackMsg('✅ Photo added to showcase gallery!');
+    setTimeout(() => setPhotoFeedbackMsg(''), 4000);
+  };
+
+  const handleDeletePhoto = (id) => {
+    const next = shopPhotosList.filter(p => p.id !== id);
+    saveShopPhotos(next);
+    setPhotoFeedbackMsg('🗑️ Photo removed.');
+    setTimeout(() => setPhotoFeedbackMsg(''), 3000);
   };
 
   const getStorageKey = (shop) => `ak_merchant_history_${(shop?.slug || 'shop').toLowerCase()}`;
@@ -955,6 +1047,10 @@ export default function MerchantDashboardPage() {
           const servs = loadShopServices(parsed);
           setShopServicesList(servs);
 
+          // Load Shop & Work Photos
+          const photos = loadShopPhotos(parsed);
+          setShopPhotosList(photos);
+
           // Load Multi-Counter Stations (BRD FR-709)
           const stns = loadShopStations(parsed);
           setStationsList(stns);
@@ -1062,6 +1158,8 @@ export default function MerchantDashboardPage() {
         setOwnerMasterPin(oPin);
         const revs = loadShopReviews(activeShop);
         setReviewsList(revs);
+        const photos = loadShopPhotos(activeShop);
+        setShopPhotosList(photos);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
@@ -3207,6 +3305,21 @@ export default function MerchantDashboardPage() {
             <Receipt className="w-4 h-4 text-[#176B65]" />
             <span className="hidden sm:inline">Rate Card & Menu</span>
             <span className="sm:hidden">Rate Card</span>
+          </button>
+
+          {/* Shop Photos & Work Showcase Button */}
+          <button
+            type="button"
+            onClick={() => setPhotosModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Upload Shop & Work Showcase Photos for Customers & Guests"
+          >
+            <ImageIcon className="w-4 h-4 text-[#176B65]" />
+            <span className="hidden sm:inline">Shop & Work Photos</span>
+            <span className="sm:hidden">Photos</span>
+            <span className="ml-0.5 text-[10px] font-black bg-[#DCE9E3] text-[#176B65] px-1.5 py-0.5 rounded-full">
+              {shopPhotosList.length}
+            </span>
           </button>
 
           {/* Multi-Counter / Multi-Station Studio Button (BRD FR-709) */}
@@ -8839,6 +8952,188 @@ export default function MerchantDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setServicesModalOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                >
+                  Done
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL: SHOP & WORK PHOTOS SHOWCASE GALLERY               */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {photosModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setPhotosModalOpen(false)} 
+              className="fixed inset-0"
+            />
+
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#DCE9E3] z-10 overflow-hidden max-h-[92vh] flex flex-col"
+            >
+              {/* Modal Top Bar */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] px-6 py-4 bg-[#F3F1E9]/60 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#176B65] text-white flex items-center justify-center shadow-xs">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#283B3D]">Shop & Work Showcase Photos</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Photos shown in Quick View Modal, Shop Page & Reviews to all customers & guests
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhotosModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white border border-[#DCE9E3] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Feedback Alert */}
+              {photoFeedbackMsg && (
+                <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between">
+                  <span>{photoFeedbackMsg}</span>
+                  <button type="button" onClick={() => setPhotoFeedbackMsg('')} className="text-emerald-600 hover:text-emerald-900 text-xs">✕</button>
+                </div>
+              )}
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto space-y-6">
+                {/* Upload Form Box */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#F8FAF9] border-2 border-dashed border-[#176B65]/30 space-y-4">
+                  <div className="text-center sm:text-left">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#176B65]">Upload Work & Shop Photos</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Choose multiple photos from your mobile camera or gallery (Shop front, Haircuts, Work Station, Counter).
+                    </p>
+                  </div>
+
+                  {/* Multi-File Upload Button */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <label
+                      htmlFor="shop-multi-photo-input"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-black shadow-xs cursor-pointer transition-all active:scale-95"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span>📸 Choose Multiple Photos / Camera</span>
+                    </label>
+                    <input
+                      id="shop-multi-photo-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleUploadPhotoFiles}
+                      className="hidden"
+                    />
+                    <span className="text-[11px] text-slate-400 font-medium">Supports JPG, PNG, WEBP (multiple files at once)</span>
+                  </div>
+
+                  {/* Divider or Link Option */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <p className="text-[11px] font-bold text-slate-500 mb-2">Or add photo by online image link:</p>
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="url"
+                        value={photoUrlInput}
+                        onChange={(e) => setPhotoUrlInput(e.target.value)}
+                        placeholder="https://images.unsplash.com/... or image link"
+                        className="w-full sm:flex-1 px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] text-xs text-[#283B3D] focus:outline-none focus:ring-2 focus:ring-[#176B65]/30"
+                      />
+                      <input
+                        type="text"
+                        value={photoCaptionInput}
+                        onChange={(e) => setPhotoCaptionInput(e.target.value)}
+                        placeholder="Caption (e.g. Modern Barber Chair)"
+                        className="w-full sm:w-48 px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] text-xs text-[#283B3D] focus:outline-none focus:ring-2 focus:ring-[#176B65]/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddPhotoByUrl}
+                        disabled={!photoUrlInput.trim()}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#283B3D] hover:bg-[#1f2e30] disabled:opacity-50 text-white text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        + Add Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Photos List Grid */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#283B3D]">
+                      Active Showcase Gallery ({shopPhotosList.length})
+                    </h4>
+                    <span className="text-[11px] text-slate-500">Live for all customers & guests</span>
+                  </div>
+
+                  {shopPhotosList.length === 0 ? (
+                    <div className="text-center py-10 px-4 rounded-2xl bg-white border border-slate-200">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 text-slate-400">
+                        <ImageIcon className="w-6 h-6" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-600">No photos in gallery yet</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Upload photos to display your work, salon chairs, and counter.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {shopPhotosList.map((photo, idx) => (
+                        <div
+                          key={photo.id || idx}
+                          className="group relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-xs flex flex-col"
+                        >
+                          <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
+                            <img
+                              src={photo.url || photo.dataUrl}
+                              alt={photo.caption || 'Showcase'}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePhoto(photo.id)}
+                              className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-md transition-all cursor-pointer"
+                              title="Delete Photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="p-2 bg-white flex-1 flex flex-col justify-between">
+                            <p className="text-[11px] font-bold text-[#283B3D] truncate" title={photo.caption}>
+                              {photo.caption || 'Shop Work'}
+                            </p>
+                            <span className="text-[9px] text-slate-400">Photo #{idx + 1}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="border-t border-[#DCE9E3] px-6 py-3.5 bg-[#F3F1E9]/40 flex items-center justify-between shrink-0">
+                <span className="text-[11px] text-slate-500 font-semibold">
+                  {shopPhotosList.length} photo(s) visible in modal & public shop page.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPhotosModalOpen(false)}
                   className="px-5 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                 >
                   Done

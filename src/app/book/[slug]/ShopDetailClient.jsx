@@ -7,7 +7,8 @@ import {
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
-  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare, Send, Reply, Edit3, CornerDownRight
+  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare, Send, Reply, Edit3, CornerDownRight,
+  ChevronLeft, ChevronRight, Image as ImageIcon, Check, Tag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -333,6 +334,87 @@ export default function ShopDetailClient() {
     window.addEventListener('storage', loadStations);
     return () => window.removeEventListener('storage', loadStations);
   }, [slug]);
+
+  // Shopkeeper uploaded photos
+  const [shopPhotos, setShopPhotos] = useState([]);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  useEffect(() => {
+    const loadPhotos = () => {
+      if (typeof window === 'undefined' || !slug) return;
+      try {
+        const saved = localStorage.getItem(`ak_shop_photos_${slug.toLowerCase()}`);
+        const defaults = [
+          { id: 'def-1', url: shop?.imageUrl || '/images/clinic.jpg', caption: 'Shop Front & Counter' },
+          { id: 'def-2', url: '/images/barber-real.jpg', caption: 'Styling & Work Station' }
+        ];
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setShopPhotos([...parsed, ...defaults]);
+            return;
+          }
+        }
+        setShopPhotos(defaults);
+      } catch (e) {}
+    };
+    loadPhotos();
+    window.addEventListener('storage', loadPhotos);
+    return () => window.removeEventListener('storage', loadPhotos);
+  }, [slug, shop?.imageUrl]);
+
+  // Multi-service selection & Custom list states
+  const [selectedServicesList, setSelectedServicesList] = useState([]);
+  const [customServiceInput, setCustomServiceInput] = useState('');
+
+  // Review pagination
+  const [reviewPage, setReviewPage] = useState(1);
+  const reviewsPerPage = 3;
+
+  const handleToggleServiceSelection = (srv) => {
+    const sName = typeof srv === 'string' ? srv : srv.name;
+    const sPrice = typeof srv === 'object' && srv.price ? Number(srv.price) : 0;
+
+    setSelectedServicesList(prev => {
+      const exists = prev.find(item => item.name.toLowerCase() === sName.toLowerCase());
+      let next;
+      if (exists) {
+        next = prev.filter(item => item.name.toLowerCase() !== sName.toLowerCase());
+      } else {
+        next = [...prev, { id: 'srv-' + Date.now() + Math.random(), name: sName, price: sPrice }];
+      }
+
+      // Update customerPurpose text
+      const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
+      const total = next.reduce((s, u) => s + (u.price || 0), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      return next;
+    });
+  };
+
+  const handleAddCustomServiceToList = (e) => {
+    if (e) e.preventDefault();
+    if (!customServiceInput.trim()) return;
+    const name = customServiceInput.trim();
+    setSelectedServicesList(prev => {
+      const next = [...prev, { id: 'custom-' + Date.now(), name, price: 0 }];
+      const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
+      const total = next.reduce((s, u) => s + (u.price || 0), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      return next;
+    });
+    setCustomServiceInput('');
+  };
+
+  const handleRemoveServiceFromList = (id) => {
+    setSelectedServicesList(prev => {
+      const next = prev.filter(item => item.id !== id);
+      const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
+      const total = next.reduce((s, u) => s + (u.price || 0), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (slug) {
@@ -1036,6 +1118,94 @@ export default function ShopDetailClient() {
             </div>
           </div>
 
+          {/* ============================================================== */}
+          {/* 1. SHOPKEEPER WORK & SHOWCASE PHOTOS GALLERY                   */}
+          {/* ============================================================== */}
+          <div className="urban-card rounded-3xl p-5 border border-[#DCE9E3] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center border border-[#176B65]/20">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-[#283B3D]">Shop Showcase & Work Photos</h3>
+                  <span className="text-[10px] text-[#176B65] font-bold">
+                    Uploaded by Shopkeeper ({shopPhotos.length} Photos)
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Verified Store
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+              {shopPhotos.map((photo, pIdx) => (
+                <div
+                  key={photo.id || pIdx}
+                  onClick={() => setPreviewPhoto(photo)}
+                  className="group relative aspect-square rounded-2xl overflow-hidden border border-[#DCE9E3] bg-slate-100 cursor-pointer shadow-2xs hover:shadow-md transition-all active:scale-95"
+                >
+                  <img 
+                    src={photo.url || photo.dataUrl} 
+                    alt={photo.caption || 'Shop photo'} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
+                    <span className="text-[9px] text-white font-bold truncate drop-shadow-md">
+                      {photo.caption || 'Tap to view'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ============================================================== */}
+          {/* 2. OFFICIAL RATE CARD & PRICES SET BY SHOPKEEPER                */}
+          {/* ============================================================== */}
+          <div className="urban-card rounded-3xl p-5 border border-[#DCE9E3] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center border border-[#176B65]/20">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-[#283B3D]">Rate Card & Fixed Counter Prices</h3>
+                  <span className="text-[10px] text-slate-500 font-semibold">
+                    Set by Shopkeeper ({customServices.length > 0 ? customServices.length : 3} Items)
+                  </span>
+                </div>
+              </div>
+              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                No Hidden Charges
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {(customServices.length > 0 ? customServices : [
+                { id: 'def-1', name: 'Standard Haircut', price: 150, durationMin: 15 },
+                { id: 'def-2', name: 'Beard Styling & Trim', price: 80, durationMin: 10 },
+                { id: 'def-3', name: 'Head Massage / Wash', price: 120, durationMin: 15 }
+              ]).map((srv, idx) => (
+                <div 
+                  key={srv.id || idx}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/90 flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <span className="font-bold text-[#283B3D] block text-[11px]">{srv.name}</span>
+                    {srv.durationMin && (
+                      <span className="text-[10px] text-slate-400 font-medium">~{srv.durationMin}m duration</span>
+                    )}
+                  </div>
+                  <span className="font-token font-bold text-xs text-[#176B65] bg-white px-2 py-0.5 rounded-lg border border-[#DCE9E3]">
+                    ₹{srv.price || 0}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Customer Reviews & Ratings Summary Card */}
           <div className="urban-card rounded-3xl p-5 border border-[#DCE9E3] space-y-4">
             <div className="flex items-center justify-between">
@@ -1101,7 +1271,7 @@ export default function ShopDetailClient() {
 
               {ratingSummary?.reviews && ratingSummary.reviews.length > 0 ? (
                 <div className="space-y-3">
-                  {(showAllReviews ? ratingSummary.reviews : ratingSummary.reviews.slice(0, 3)).map((rev, idx) => {
+                  {ratingSummary.reviews.slice((reviewPage - 1) * reviewsPerPage, reviewPage * reviewsPerPage).map((rev, idx) => {
                     const revKey = rev.id || `rev-${idx}`;
                     const threadReplies = Array.isArray(rev.replies) && rev.replies.length > 0
                       ? rev.replies
@@ -1266,14 +1436,50 @@ export default function ShopDetailClient() {
                     );
                   })}
 
-                  {ratingSummary.reviews.length > 3 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllReviews(!showAllReviews)}
-                      className="w-full py-2 text-center text-[11px] font-bold text-[#176B65] hover:text-[#135954] hover:bg-[#DCE9E3]/30 rounded-xl transition-all cursor-pointer border border-[#DCE9E3]"
-                    >
-                      {showAllReviews ? '▲ Show Fewer Reviews' : `▼ View All ${ratingSummary.reviews.length} Customer Reviews`}
-                    </button>
+                  {/* Review Pagination Controls */}
+                  {Math.ceil(ratingSummary.reviews.length / reviewsPerPage) > 1 && (
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#DCE9E3]">
+                      <button
+                        type="button"
+                        disabled={reviewPage === 1}
+                        onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
+                        className="px-3 py-1.5 rounded-xl border border-[#DCE9E3] bg-white text-xs font-bold text-[#283B3D] hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>Previous</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.ceil(ratingSummary.reviews.length / reviewsPerPage) }).map((_, pIdx) => {
+                          const pNum = pIdx + 1;
+                          const isActive = reviewPage === pNum;
+                          return (
+                            <button
+                              key={pNum}
+                              type="button"
+                              onClick={() => setReviewPage(pNum)}
+                              className={`w-7 h-7 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                isActive
+                                  ? 'bg-[#176B65] text-white shadow-xs'
+                                  : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
+                              }`}
+                            >
+                              {pNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={reviewPage >= Math.ceil(ratingSummary.reviews.length / reviewsPerPage)}
+                        onClick={() => setReviewPage(prev => Math.min(Math.ceil(ratingSummary.reviews.length / reviewsPerPage), prev + 1))}
+                        className="px-3 py-1.5 rounded-xl border border-[#DCE9E3] bg-white text-xs font-bold text-[#283B3D] hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1561,40 +1767,126 @@ export default function ShopDetailClient() {
                 </div>
               </div>
 
-              {/* Service Required / Purpose of Visit (Optional) */}
-              <div className="space-y-2 pt-1">
+              {/* Multi-Service Selection & Custom List Form */}
+              <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-[#283B3D] flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5 text-[#176B65]" />
-                    <span>Service Needed / Purpose of Visit <span className="text-slate-400 font-normal">(Optional)</span></span>
+                    <span>Select Services <span className="text-slate-400 font-normal">(Pick Multiple or Add Custom)</span></span>
                   </label>
+                  {selectedServicesList.length > 0 && (
+                    <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3]/50 px-2.5 py-0.5 rounded-lg border border-[#176B65]/20">
+                      {selectedServicesList.length} Selected • ₹{selectedServicesList.reduce((s, i) => s + (i.price || 0), 0)}
+                    </span>
+                  )}
                 </div>
 
-                {/* Quick Selection Tags */}
-                <div className="flex flex-wrap gap-1.5">
-                  {serviceSuggestions.map((srv, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setCustomerPurpose(srv)}
-                      className={`text-[11px] px-2.5 py-1 rounded-xl transition-all border ${
-                        customerPurpose === srv
-                          ? 'bg-[#176B65] text-white border-[#176B65] font-bold'
-                          : 'bg-[#F3F1E9] text-[#283B3D]/80 border-[#DCE9E3] hover:border-[#176B65] font-medium'
-                      }`}
-                    >
-                      {srv}
-                    </button>
-                  ))}
+                {/* Multi-Service Checkbox / Chip Grid from Rate Card */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Choose from Rate Card (Tap to Select Multiple):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(customServices.length > 0 ? customServices : [
+                      { id: 'def-1', name: 'Standard Haircut', price: 150 },
+                      { id: 'def-2', name: 'Beard Styling', price: 80 },
+                      { id: 'def-3', name: 'Head Massage', price: 120 },
+                      { id: 'def-4', name: 'Facial / Clean-up', price: 250 }
+                    ]).map((srv, idx) => {
+                      const isSelected = selectedServicesList.some(item => item.name.toLowerCase() === srv.name.toLowerCase());
+                      return (
+                        <button
+                          key={srv.id || idx}
+                          type="button"
+                          onClick={() => handleToggleServiceSelection(srv)}
+                          className={`text-[11px] px-3 py-1.5 rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-[#176B65] text-white border-[#176B65] font-bold shadow-xs'
+                              : 'bg-white text-[#283B3D] border-[#DCE9E3] hover:border-[#176B65] font-semibold'
+                          }`}
+                        >
+                          <span className="font-bold">{isSelected ? '✓' : '+'}</span>
+                          <span>{srv.name}</span>
+                          {srv.price > 0 && (
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                              isSelected ? 'bg-white/20 text-white' : 'bg-[#F3F1E9] text-[#176B65] font-bold'
+                            }`}>
+                              ₹{srv.price}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <input
-                  type="text"
-                  placeholder="Or write custom service (e.g. Haircut & Beard, Tooth checkup...)"
-                  value={customerPurpose}
-                  onChange={(e) => setCustomerPurpose(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-[#F3F1E9]/30"
-                />
+                {/* Custom Service Item Add Input */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Or type custom service / item (e.g. Hair Color, Shave...)"
+                    value={customServiceInput}
+                    onChange={(e) => setCustomServiceInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomServiceToList();
+                      }
+                    }}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-xs text-[#283B3D] bg-slate-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomServiceToList}
+                    disabled={!customServiceInput.trim()}
+                    className="px-3.5 py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-xs transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add to List</span>
+                  </button>
+                </div>
+
+                {/* Selected Services Breakdown List */}
+                {selectedServicesList.length > 0 && (
+                  <div className="p-3.5 bg-[#F3F1E9]/70 rounded-2xl border border-[#DCE9E3] space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-black text-[#283B3D]">
+                      <span>Selected Services List ({selectedServicesList.length}):</span>
+                      <span className="text-[#176B65]">
+                        Estimated Total: ₹{selectedServicesList.reduce((s, i) => s + (i.price || 0), 0)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {selectedServicesList.map((item, sIdx) => (
+                        <div 
+                          key={item.id || sIdx}
+                          className="flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-[#DCE9E3] text-xs font-semibold text-[#283B3D]"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-[#DCE9E3] text-[#176B65] text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {sIdx + 1}
+                            </span>
+                            <span>{item.name}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {item.price > 0 && (
+                              <span className="text-[#176B65] font-bold">₹{item.price}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveServiceFromList(item.id)}
+                              className="w-5 h-5 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer text-xs"
+                              title="Remove item"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Multi-Counter / Multi-Stylist / Doctor Preference (BRD FR-709) */}
                 {shopStations.length > 0 && (
@@ -1942,6 +2234,32 @@ export default function ShopDetailClient() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Full-Screen Shop Photo Preview Modal */}
+      {previewPhoto && (
+        <div 
+          onClick={() => setPreviewPhoto(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer"
+        >
+          <div className="max-w-2xl w-full space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between text-white">
+              <span className="text-sm font-bold">{previewPhoto.caption || 'Shop Photo'}</span>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center cursor-pointer text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <img 
+              src={previewPhoto.url || previewPhoto.dataUrl} 
+              alt="Full preview" 
+              className="w-full max-h-[75vh] object-contain rounded-2xl border border-white/20"
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );
