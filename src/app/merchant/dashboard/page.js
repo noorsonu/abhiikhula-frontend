@@ -1968,12 +1968,14 @@ export default function MerchantDashboardPage() {
     } catch (e) {}
   };
 
-  // Voice Announcement using Web Speech API
-  const speakAnnouncement = (tokenNum, name) => {
+  // Voice Announcement using Web Speech API: announces customer full name + proceed to counter
+  const speakAnnouncement = (tokenNum, name, counterName) => {
     if (!soundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
-      const text = `Token ${tokenNum}. ${name || 'Customer'}, please proceed to the service counter.`;
+      const targetCounter = counterName || (servingToken?.assignedStation?.name) || 'Counter 1';
+      const cleanName = (name && name !== 'Customer') ? name.trim() : `Token ${tokenNum || ''}`;
+      const text = `${cleanName}, please proceed to ${targetCounter}.`;
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95;
       utterance.pitch = 1.0;
@@ -2009,8 +2011,12 @@ export default function MerchantDashboardPage() {
       return;
     }
     playChime();
-    speakAnnouncement(servingToken.tokenNumber, servingToken.customerName);
-    setAnnouncementMsg(`📢 Re-calling: Token ${servingToken.tokenNumber} (${servingToken.customerName})`);
+    const custFullName = servingToken.customerName && servingToken.customerName !== 'Customer'
+      ? servingToken.customerName
+      : `Token ${servingToken.tokenNumber}`;
+    const targetDesk = servingToken.assignedStation?.name || 'Counter 1';
+    speakAnnouncement(servingToken.tokenNumber, custFullName, targetDesk);
+    setAnnouncementMsg(`📢 Re-calling: ${custFullName} to ${targetDesk}`);
     setTimeout(() => setAnnouncementMsg(''), 3500);
   };
 
@@ -2022,6 +2028,56 @@ export default function MerchantDashboardPage() {
       localStorage.setItem(getStationsStorageKey(activeShop), JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
     } catch (e) {}
+  };
+
+  // Shopkeeper manually assigns current serving customer to a specific counter/chair from the Green Card
+  const handleAssignStationToServingToken = (station) => {
+    if (!servingToken) return;
+
+    const tokenWithStation = {
+      ...servingToken,
+      assignedStation: {
+        id: station.id,
+        name: station.name,
+        staffName: station.staffName,
+        role: station.role
+      }
+    };
+
+    setServingToken(tokenWithStation);
+
+    // Update stationsList:
+    // 1. Assign this token to target station
+    // 2. Remove this token from any other station so it's not duplicated
+    const updatedStations = stationsList.map(s => {
+      if (s.id === station.id) {
+        return {
+          ...s,
+          currentToken: tokenWithStation,
+          timerSeconds: 0
+        };
+      }
+      if (s.currentToken && isTokenMatch(s.currentToken, servingToken)) {
+        return {
+          ...s,
+          currentToken: null,
+          timerSeconds: 0
+        };
+      }
+      return s;
+    });
+
+    saveStationsList(updatedStations);
+    syncWithCustomerStorage(tokenWithStation);
+
+    // Announce via speech: Customer full name + please proceed to counter
+    const custFullName = servingToken.customerName && servingToken.customerName !== 'Customer'
+      ? servingToken.customerName
+      : `Token ${servingToken.tokenNumber}`;
+    speakAnnouncement(servingToken.tokenNumber, custFullName, station.name);
+
+    setAnnouncementMsg(`🪑 Assigned ${custFullName} to ${station.name} (${station.staffName})`);
+    setTimeout(() => setAnnouncementMsg(''), 4000);
   };
 
   const handleToggleStationActive = (stationId) => {
@@ -2179,19 +2235,14 @@ export default function MerchantDashboardPage() {
       queueApi.callNext(activeShop.id).catch(() => {});
     }
 
-    if (soundEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const text = `Token ${nextToken.tokenNumber}. ${nextToken.customerName || 'Customer'}, please proceed to ${station.name}.`;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {}
-    }
+    const custFullName = nextToken.customerName && nextToken.customerName !== 'Customer'
+      ? nextToken.customerName
+      : `Token ${nextToken.tokenNumber}`;
+    speakAnnouncement(nextToken.tokenNumber, custFullName, station.name);
 
     syncWithCustomerStorage(tokenWithStation, prevStationToken);
 
-    setAnnouncementMsg(`🪑 Calling Token ${nextToken.tokenNumber} to ${station.name} (${station.staffName})`);
+    setAnnouncementMsg(`🪑 Calling ${custFullName} to ${station.name} (${station.staffName})`);
     setTimeout(() => setAnnouncementMsg(''), 4500);
   };
 
@@ -2216,17 +2267,12 @@ export default function MerchantDashboardPage() {
       return;
     }
     playChime();
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const text = `Token ${station.currentToken.tokenNumber}. ${station.currentToken.customerName || 'Customer'}, please proceed to ${station.name}.`;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {}
-    }
+    const custFullName = station.currentToken.customerName && station.currentToken.customerName !== 'Customer'
+      ? station.currentToken.customerName
+      : `Token ${station.currentToken.tokenNumber}`;
+    speakAnnouncement(station.currentToken.tokenNumber, custFullName, station.name);
     syncWithCustomerStorage(station.currentToken);
-    setAnnouncementMsg(`📢 Re-announced: Token ${station.currentToken.tokenNumber} to ${station.name}`);
+    setAnnouncementMsg(`📢 Re-announced: ${custFullName} to ${station.name}`);
     setTimeout(() => setAnnouncementMsg(''), 3500);
   };
 
@@ -2835,8 +2881,11 @@ export default function MerchantDashboardPage() {
       waitMin: nextToken.estWaitMin || 0
     });
 
-    // Announce via speech
-    speakAnnouncement(nextToken.tokenNumber, nextToken.customerName);
+    // Announce via speech (Customer full name + proceed to counter)
+    const custFullName = nextToken.customerName && nextToken.customerName !== 'Customer'
+      ? nextToken.customerName
+      : `Token ${nextToken.tokenNumber}`;
+    speakAnnouncement(nextToken.tokenNumber, custFullName, nextToken.assignedStation?.name || 'Counter 1');
 
     // Sync with customer storage
     syncWithCustomerStorage(nextToken, prevServing);
@@ -4173,169 +4222,6 @@ export default function MerchantDashboardPage() {
             )}
           </div>
 
-          {/* ========================================================= */}
-          {/* MULTI-COUNTER & MULTI-CHAIR OPERATIONAL STATIONS (BRD FR-709) */}
-          {/* ========================================================= */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DCE9E3] pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-black text-[#283B3D]">
-                      Multi-Station & Multi-Desk Calling Grid
-                    </h3>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#176B65] text-white">
-                      BRD FR-709
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500">
-                      ({stationsList.filter(s => s.active).length} of {stationsList.length} Active)
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#283B3D]/70 font-semibold mt-0.5">
-                    Independent calling & billing for barbers, doctors, pharmacy counters & checkout bays.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setStationModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#176B65]" />
-                  <span>Manage Stations</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Stations Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {stationsList.map((station) => {
-                const isStationServing = !!station.currentToken;
-                return (
-                  <div
-                    key={station.id}
-                    className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
-                      !station.active
-                        ? 'bg-slate-50 border-slate-200 opacity-60'
-                        : isStationServing
-                        ? 'bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-300 shadow-xs'
-                        : 'bg-[#F3F1E9]/40 border-[#DCE9E3] hover:border-[#176B65]/40'
-                    }`}
-                  >
-                    <div>
-                      {/* Station Header */}
-                      <div className="flex items-center justify-between gap-2 border-b border-[#DCE9E3]/70 pb-2.5">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black text-[#283B3D]">{station.name}</span>
-                            <span className={`w-2 h-2 rounded-full ${station.active ? (isStationServing ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500') : 'bg-slate-400'}`}></span>
-                          </div>
-                          <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
-                            {station.staffName} {station.role ? `• ${station.role}` : ''}
-                          </span>
-                        </div>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
-                          !station.active
-                            ? 'bg-slate-200 text-slate-600'
-                            : isStationServing
-                            ? 'bg-emerald-600 text-white animate-pulse'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {!station.active ? 'On Leave' : isStationServing ? 'Serving' : 'Available'}
-                        </span>
-                      </div>
-
-                      {/* Station Content */}
-                      <div className="py-3">
-                        {isStationServing ? (
-                          <div className="space-y-2">
-                            <div className="flex items-baseline justify-between">
-                              <span className="text-2xl font-token font-bold text-emerald-800">
-                                {station.currentToken.tokenNumber}
-                              </span>
-                              <span className="text-[11px] font-bold text-[#283B3D]/70 flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-[#176B65]" />
-                                <span>{formatTimer(station.timerSeconds || 0)}</span>
-                              </span>
-                            </div>
-                            <div className="text-xs font-bold text-[#283B3D] line-clamp-1">
-                              {station.currentToken.customerName || 'Customer'}
-                            </div>
-                            <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/60 px-2 py-0.5 rounded-md line-clamp-1">
-                              {station.currentToken.service || 'General Service'}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="py-3 text-center space-y-1">
-                            <span className="text-xs font-bold text-slate-400 block">
-                              {station.active ? 'Chair / Desk is Empty' : 'Marked Inactive / Off-duty'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block">
-                              {station.totalServedToday || 0} served today
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Station Actions */}
-                    <div className="pt-2 border-t border-[#DCE9E3]/70 space-y-1.5">
-                      {station.active && isStationServing && (
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStationBilling(station.id)}
-                            className="col-span-2 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                            title="Complete service & enter billing amount"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Done & Bill</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleMarkStationAbsent(station.id)}
-                            className="py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                            title="Customer not present at this counter"
-                          >
-                            <span>Skip</span>
-                          </button>
-                        </div>
-                      )}
-
-                      {station.active && !isStationServing && (
-                        <button
-                          type="button"
-                          onClick={() => handleCallNextForStation(station.id)}
-                          disabled={waitingQueue.length === 0}
-                          className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shadow-xs"
-                        >
-                          <Volume2 className="w-3.5 h-3.5 text-[#F2A15A]" />
-                          <span>Call Next Here {waitingQueue.length > 0 ? `(${waitingQueue[0].tokenNumber})` : ''}</span>
-                        </button>
-                      )}
-
-                      {station.active && isStationServing && (
-                        <button
-                          type="button"
-                          onClick={() => handleAnnounceStationToken(station.id)}
-                          className="w-full py-1 rounded-lg text-slate-500 hover:text-[#176B65] text-[10px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <Volume2 className="w-3 h-3" />
-                          <span>Re-announce to {station.name}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
       {/* ========================================================= */}
       {/* MAIN TWO-COLUMN WORKSPACE: NOW SERVING & QUEUE LIST       */}
       {/* ========================================================= */}
@@ -4399,6 +4285,63 @@ export default function MerchantDashboardPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Counter / Chair Assignment Selector (Shopkeeper decides counter from Green Card) */}
+                {stationsList.filter(s => s.active).length > 0 && (
+                  <div className="pt-3 border-t border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <span className="flex items-center gap-1.5 text-emerald-300">
+                        <Users className="w-4 h-4 text-[#F2A15A]" />
+                        <span>Send to Service Counter / Chair:</span>
+                      </span>
+                      {servingToken.assignedStation ? (
+                        <span className="text-[11px] font-black text-amber-300 bg-amber-400/20 border border-amber-300/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">Click chair below to assign & announce</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {stationsList.filter(s => s.active).map(station => {
+                        const isAssigned = servingToken.assignedStation && (
+                          servingToken.assignedStation.id === station.id ||
+                          servingToken.assignedStation.name === station.name ||
+                          servingToken.assignedStation === station.name
+                        );
+                        return (
+                          <button
+                            key={station.id}
+                            type="button"
+                            onClick={() => handleAssignStationToServingToken(station)}
+                            className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                              isAssigned
+                                ? 'bg-emerald-600/40 border-emerald-400 text-white shadow-md ring-2 ring-emerald-400/60'
+                                : 'bg-white/10 hover:bg-white/20 border-white/15 text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black">{station.name}</span>
+                              {isAssigned ? (
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                              ) : (
+                                <span className="text-[9px] text-slate-400 font-bold uppercase">{station.currentToken ? 'In Use' : 'Free'}</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-300 font-semibold block truncate mt-0.5">
+                              {station.staffName}
+                            </span>
+                            <span className="text-[10px] text-emerald-300/80 font-medium block truncate">
+                              {station.role}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Primary Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -4677,6 +4620,170 @@ export default function MerchantDashboardPage() {
 
         </div>
 
+      </div>
+
+      {/* ========================================================= */}
+      {/* MULTI-COUNTER & MULTI-CHAIR OPERATIONAL STATIONS (BRD FR-709) */}
+      {/* Placed below the main green calling card per merchant preference */}
+      {/* ========================================================= */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DCE9E3] pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-black text-[#283B3D]">
+                  Multi-Station & Multi-Desk Calling Grid
+                </h3>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#176B65] text-white">
+                  BRD FR-709
+                </span>
+                <span className="text-[10px] font-bold text-slate-500">
+                  ({stationsList.filter(s => s.active).length} of {stationsList.length} Active)
+                </span>
+              </div>
+              <p className="text-[11px] text-[#283B3D]/70 font-semibold mt-0.5">
+                Counter stations & chairs for barbers, stylists, doctors & billing desks.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setStationModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#176B65]" />
+              <span>Manage Stations</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stations Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {stationsList.map((station) => {
+            const isStationServing = !!station.currentToken;
+            return (
+              <div
+                key={station.id}
+                className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                  !station.active
+                    ? 'bg-slate-50 border-slate-200 opacity-60'
+                    : isStationServing
+                    ? 'bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-300 shadow-xs'
+                    : 'bg-[#F3F1E9]/40 border-[#DCE9E3] hover:border-[#176B65]/40'
+                }`}
+              >
+                <div>
+                  {/* Station Header */}
+                  <div className="flex items-center justify-between gap-2 border-b border-[#DCE9E3]/70 pb-2.5">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-[#283B3D]">{station.name}</span>
+                        <span className={`w-2 h-2 rounded-full ${station.active ? (isStationServing ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500') : 'bg-slate-400'}`}></span>
+                      </div>
+                      <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
+                        {station.staffName} {station.role ? `• ${station.role}` : ''}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                      !station.active
+                        ? 'bg-slate-200 text-slate-600'
+                        : isStationServing
+                        ? 'bg-emerald-600 text-white animate-pulse'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {!station.active ? 'On Leave' : isStationServing ? 'Serving' : 'Available'}
+                    </span>
+                  </div>
+
+                  {/* Station Content */}
+                  <div className="py-3">
+                    {isStationServing ? (
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-2xl font-token font-bold text-emerald-800">
+                            {station.currentToken.tokenNumber}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#283B3D]/70 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-[#176B65]" />
+                            <span>{formatTimer(station.timerSeconds || 0)}</span>
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-[#283B3D] line-clamp-1">
+                          {station.currentToken.customerName || 'Customer'}
+                        </div>
+                        <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/60 px-2 py-0.5 rounded-md line-clamp-1">
+                          {station.currentToken.service || 'General Service'}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-3 text-center space-y-1">
+                        <span className="text-xs font-bold text-slate-400 block">
+                          {station.active ? 'Chair / Desk is Empty' : 'Marked Inactive / Off-duty'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {station.totalServedToday || 0} served today
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Station Actions */}
+                <div className="pt-2 border-t border-[#DCE9E3]/70 space-y-1.5">
+                  {station.active && isStationServing && (
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenStationBilling(station.id)}
+                        className="col-span-2 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                        title="Complete service & enter billing amount"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Done & Bill</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkStationAbsent(station.id)}
+                        className="py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        title="Customer not present at this counter"
+                      >
+                        <span>Skip</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {station.active && !isStationServing && (
+                    <button
+                      type="button"
+                      onClick={() => handleCallNextForStation(station.id)}
+                      disabled={waitingQueue.length === 0}
+                      className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shadow-xs"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-[#F2A15A]" />
+                      <span>Call Next Here {waitingQueue.length > 0 ? `(${waitingQueue[0].tokenNumber})` : ''}</span>
+                    </button>
+                  )}
+
+                  {station.active && isStationServing && (
+                    <button
+                      type="button"
+                      onClick={() => handleAnnounceStationToken(station.id)}
+                      className="w-full py-1 rounded-lg text-slate-500 hover:text-[#176B65] text-[10px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                      <span>Re-announce to {station.name}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
     )}
