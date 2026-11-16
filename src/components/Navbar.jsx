@@ -909,7 +909,7 @@ export default function Navbar() {
                     </Link>
                   </div>
 
-                  {/* Switch Phone / Logout Button */}
+                  {/* Logout Button */}
                   <div className="pt-2 border-t border-[#DCE9E3]">
                     <button
                       type="button"
@@ -917,7 +917,7 @@ export default function Navbar() {
                       className="w-full py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Switch Phone / Log Out</span>
+                      <span>Log Out</span>
                     </button>
                   </div>
 
