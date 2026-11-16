@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
-  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User
+  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -113,6 +113,7 @@ export default function ShopDetailClient() {
   const [otpError, setOtpError] = useState('');
   const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
   const [ratingSummary, setRatingSummary] = useState(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [shopBroadcast, setShopBroadcast] = useState(null);
 
@@ -267,19 +268,106 @@ export default function ShopDetailClient() {
     }
   }, [slug]);
 
-  // Fetch verified shop reviews and rating summary (BRD Section 22)
+  // Fetch verified shop reviews and rating summary (BRD Section 22) - Accessible publicly to Guests & all users
   useEffect(() => {
-    const shopUuid = shop?.id && shop.id.includes('-') ? shop.id : 'd1b2c3d4-0000-0000-0000-000000000001';
-    reviewApi.getShopReviews(shopUuid)
-      .then((res) => {
+    let isMounted = true;
+    const loadAllReviews = async () => {
+      let cloudSummary = null;
+      const shopUuid = shop?.id && shop.id.includes('-') ? shop.id : 'd1b2c3d4-0000-0000-0000-000000000001';
+      try {
+        const res = await reviewApi.getShopReviews(shopUuid);
         if (res?.data?.data) {
-          setRatingSummary(res.data.data);
+          cloudSummary = res.data.data;
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.warn("Reviews fetch fallback:", err?.message);
+      }
+
+      // Read local storage reviews for this shop slug
+      const currentSlug = (shop?.slug || slug || '').toLowerCase();
+      let localReviews = [];
+      try {
+        if (currentSlug) {
+          const key = `ak_merchant_reviews_${currentSlug}`;
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) localReviews.push(...parsed);
+          }
+        }
+        // Also check customer history reviews
+        const histStr = localStorage.getItem('ak_customer_history');
+        if (histStr) {
+          const hist = JSON.parse(histStr);
+          if (Array.isArray(hist)) {
+            hist.forEach(h => {
+              if (h.rating && (h.shopSlug === currentSlug || h.shopName === shop?.name)) {
+                localReviews.push({
+                  id: h.id || `hist-${h.displayToken}`,
+                  customerName: h.customerName || 'Customer',
+                  stars: h.rating,
+                  text: h.reviewComment || h.comment || '',
+                  tags: h.reviewTags || [],
+                  merchantReply: h.merchantReply || h.reply || null,
+                  reply: h.reply || h.merchantReply || null,
+                  replyAt: h.replyAt || h.merchantReplyDate || null,
+                  createdAt: h.completedAt || h.createdAt || new Date().toISOString()
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {}
+
+      // Merge cloud and local reviews
+      const map = new Map();
+      if (cloudSummary?.reviews && Array.isArray(cloudSummary.reviews)) {
+        cloudSummary.reviews.forEach(r => {
+          const key = r.id || `${r.customerName}_${r.stars}_${r.text}`;
+          map.set(key, { ...r });
+        });
+      }
+      localReviews.forEach(r => {
+        const key = r.id || `${r.customerName}_${r.stars}_${r.text}`;
+        if (map.has(key)) {
+          const existing = map.get(key);
+          map.set(key, {
+            ...existing,
+            ...r,
+            reply: r.reply || existing.reply || r.merchantReply || existing.merchantReply,
+            merchantReply: r.merchantReply || existing.merchantReply || r.reply || existing.reply,
+            replyAt: r.replyAt || existing.replyAt || r.merchantReplyDate || existing.merchantReplyDate
+          });
+        } else {
+          map.set(key, { ...r });
+        }
       });
-  }, [shop?.id]);
+
+      const combinedReviews = Array.from(map.values());
+      if (!isMounted) return;
+
+      if (combinedReviews.length > 0) {
+        const totalStars = combinedReviews.reduce((sum, r) => sum + (Number(r.stars) || 5), 0);
+        const avg = Math.round((totalStars / combinedReviews.length) * 10) / 10;
+        setRatingSummary({
+          averageRating: avg,
+          reviewCount: combinedReviews.length,
+          etaAccuracyScore: cloudSummary?.etaAccuracyScore || '96% Accurate',
+          reviews: combinedReviews
+        });
+      } else if (cloudSummary) {
+        setRatingSummary(cloudSummary);
+      }
+    };
+
+    loadAllReviews();
+    const handleStorageChange = () => loadAllReviews();
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [shop?.id, shop?.slug, slug]);
 
   const serviceSuggestions = customServices.length > 0 
     ? customServices.map(s => s.price > 0 ? `${s.name} (₹${s.price})` : s.name)
@@ -839,41 +927,106 @@ export default function ShopDetailClient() {
               </div>
             </div>
 
-            {/* Review Quotes */}
-            <div className="space-y-2 pt-2 border-t border-[#DCE9E3]">
-              <span className="text-[10px] font-bold uppercase text-[#283B3D]/60 block">
-                Recent Customer Feedbacks:
-              </span>
+            {/* Review Quotes & Shopkeeper Replies - Publicly Visible to Everyone / Guests */}
+            <div className="space-y-3 pt-3 border-t border-[#DCE9E3]">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#283B3D]/70 block flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-[#176B65]" />
+                  <span>Public Reviews & Counter Replies ({ratingSummary?.reviews?.length || 2}):</span>
+                </span>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  Publicly Visible
+                </span>
+              </div>
 
               {ratingSummary?.reviews && ratingSummary.reviews.length > 0 ? (
-                ratingSummary.reviews.slice(0, 2).map((rev, idx) => (
-                  <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-[#283B3D]">{rev.customerName || 'Customer'}</span>
-                      <div className="flex items-center gap-0.5 text-amber-500 font-bold">
-                        {rev.stars} ★
+                <div className="space-y-2.5">
+                  {(showAllReviews ? ratingSummary.reviews : ratingSummary.reviews.slice(0, 3)).map((rev, idx) => (
+                    <div key={rev.id || idx} className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 text-xs space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[#283B3D]">{rev.customerName || 'Verified Customer'}</span>
+                          <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold border border-emerald-100">
+                            Visit Verified
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-amber-500 font-bold">
+                          <span>{'★'.repeat(Math.min(5, Math.max(1, Math.round(Number(rev.stars) || 5))))}</span>
+                          <span className="text-[10px] text-slate-400">({rev.stars}★)</span>
+                        </div>
                       </div>
+
+                      {/* Customer Review Tags / Chips */}
+                      {rev.tags && Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {rev.tags.map((tag, tIdx) => (
+                            <span key={tIdx} className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#DCE9E3]/40 text-[#176B65] border border-[#176B65]/15">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Customer Comment */}
+                      {(rev.text || rev.comment) && (
+                        <p className="text-[11px] text-[#283B3D]/85 leading-relaxed bg-white/70 p-2 rounded-xl border border-slate-100 font-normal">
+                          "{rev.text || rev.comment}"
+                        </p>
+                      )}
+
+                      {/* Official Shopkeeper Reply (Visible to All Guests & Visitors) */}
+                      {(rev.reply || rev.merchantReply) && (
+                        <div className="mt-2 ml-1 pl-3 py-2 px-3 rounded-xl bg-[#176B65]/5 border-l-3 border-[#176B65] text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-1.5 font-black text-[#176B65]">
+                              <Store className="w-3.5 h-3.5" />
+                              <span>{shop?.name || 'Shopkeeper'} (Official Reply)</span>
+                            </div>
+                            {(rev.replyAt || rev.merchantReplyDate) && (
+                              <span className="text-[9px] text-slate-500 font-medium">
+                                {typeof rev.replyAt === 'string' && rev.replyAt.includes('T')
+                                  ? new Date(rev.replyAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
+                                  : (rev.merchantReplyDate || 'Recent')}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#283B3D] font-medium leading-relaxed">
+                            "{rev.reply || rev.merchantReply}"
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {rev.text && (
-                      <p className="text-[11px] text-[#283B3D]/80 italic">"{rev.text}"</p>
-                    )}
-                  </div>
-                ))
+                  ))}
+
+                  {ratingSummary.reviews.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllReviews(!showAllReviews)}
+                      className="w-full py-2 text-center text-[11px] font-bold text-[#176B65] hover:text-[#135954] hover:bg-[#DCE9E3]/30 rounded-xl transition-all cursor-pointer border border-[#DCE9E3]"
+                    >
+                      {showAllReviews ? '▲ Show Fewer Reviews' : `▼ View All ${ratingSummary.reviews.length} Customer Reviews`}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-2">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-bold text-[#283B3D]">Pooja S.</span>
-                      <span className="text-amber-500 font-bold">5 ★</span>
+                      <span className="text-amber-500 font-bold">★★★★★ (5.0★)</span>
                     </div>
                     <p className="text-[11px] text-[#283B3D]/80 italic">
                       "Token system worked seamlessly! Reached when 1 person was ahead and didn't waste time in line."
                     </p>
+                    <div className="mt-1.5 ml-1 pl-2.5 py-1.5 px-2.5 rounded-lg bg-[#176B65]/5 border-l-2 border-[#176B65] text-[10px]">
+                      <span className="font-bold text-[#176B65] block">🏪 {shop?.name || 'Shopkeeper'} (Official Reply):</span>
+                      <p className="text-[#283B3D]/80 italic mt-0.5">"Thank you Pooja! Happy to serve you without line waiting."</p>
+                    </div>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-bold text-[#283B3D]">Rohit V.</span>
-                      <span className="text-amber-500 font-bold">5 ★</span>
+                      <span className="text-amber-500 font-bold">★★★★★ (5.0★)</span>
                     </div>
                     <p className="text-[11px] text-[#283B3D]/80 italic">
                       "Staff was very polite and called turn exactly on time."

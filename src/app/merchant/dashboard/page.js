@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import QRCode from 'qrcode';
-import { queueApi, reviewApi } from '@/lib/api';
+import { queueApi, reviewApi, shopApi } from '@/lib/api';
 import { playChime } from '@/lib/audioChime';
 
 export default function MerchantDashboardPage() {
@@ -1552,6 +1552,7 @@ export default function MerchantDashboardPage() {
         await reviewApi.replyToReview(activeShop.id, review.id, replyMsg).catch(() => {});
       }
 
+      const nowIso = new Date().toISOString();
       setReviewsList(prev => {
         const updated = prev.map(r => {
           if (r.id === review.id || (review.tokenId && r.tokenId === review.tokenId)) {
@@ -1559,6 +1560,8 @@ export default function MerchantDashboardPage() {
               ...r,
               merchantReply: replyMsg,
               merchantReplyDate: replyDate,
+              reply: replyMsg,
+              replyAt: nowIso,
               replyDate
             };
           }
@@ -1568,6 +1571,25 @@ export default function MerchantDashboardPage() {
         if (activeShop) {
           try {
             localStorage.setItem(getReviewsStorageKey(activeShop), JSON.stringify(updated));
+            // Also sync to customer history so user sees reply on tokens/history page
+            const histStr = localStorage.getItem('ak_customer_history');
+            if (histStr) {
+              const hist = JSON.parse(histStr);
+              const updatedHist = hist.map(h => {
+                if (h.id === review.id || (review.tokenId && h.id === review.tokenId) || (review.tokenNumber && h.displayToken === review.tokenNumber)) {
+                  return {
+                    ...h,
+                    merchantReply: replyMsg,
+                    merchantReplyDate: replyDate,
+                    reply: replyMsg,
+                    replyAt: nowIso
+                  };
+                }
+                return h;
+              });
+              localStorage.setItem('ak_customer_history', JSON.stringify(updatedHist));
+            }
+            window.dispatchEvent(new Event('storage'));
           } catch (e) {}
         }
         return updated;
@@ -1579,6 +1601,8 @@ export default function MerchantDashboardPage() {
           ...review,
           merchantReply: replyMsg,
           merchantReplyDate: replyDate,
+          reply: replyMsg,
+          replyAt: nowIso,
           replyDate
         }
       }) : null);
