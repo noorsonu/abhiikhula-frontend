@@ -937,12 +937,12 @@ export default function Navbar() {
       {/* ========================================================= */}
       <AnimatePresence>
         {loginModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#283B3D]/65 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#283B3D]/65 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-5 text-[#283B3D]"
+              className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-4 text-[#283B3D] max-h-[92vh] overflow-y-auto no-scrollbar my-auto"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">

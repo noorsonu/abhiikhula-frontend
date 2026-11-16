@@ -516,39 +516,39 @@ export default function MerchantRegisterPage() {
 
       {/* Stepper Progress Bar (Only shown when registering a new shop or forced) */}
       {(!existingShop || forceNewRegister) && (
-        <div className="bg-white rounded-2xl p-4 border border-[#DCE9E3] shadow-xs">
-          <div className="flex items-center justify-between max-w-md mx-auto text-xs font-bold">
+        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-[#DCE9E3] shadow-xs">
+          <div className="flex items-center justify-between max-w-md mx-auto text-[11px] sm:text-xs font-bold">
             
             {/* Step 1 */}
-            <div className="flex items-center gap-2">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-black ${
                 step > 1 ? 'bg-emerald-600 text-white' : step === 1 ? 'bg-[#176B65] text-white' : 'bg-slate-100 text-slate-400'
               }`}>
-                {step > 1 ? <Check className="w-4 h-4" /> : '1'}
+                {step > 1 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : '1'}
               </span>
               <span className={step >= 1 ? 'text-[#283B3D]' : 'text-slate-400'}>Owner Auth</span>
             </div>
 
-            <div className={`h-0.5 flex-1 mx-3 ${step > 1 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
+            <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${step > 1 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
 
             {/* Step 2 */}
-            <div className="flex items-center gap-2">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-black ${
                 step > 2 ? 'bg-emerald-600 text-white' : step === 2 ? 'bg-[#176B65] text-white' : 'bg-slate-100 text-slate-400'
               }`}>
-                {step > 2 ? <Check className="w-4 h-4" /> : '2'}
+                {step > 2 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : '2'}
               </span>
               <span className={step >= 2 ? 'text-[#283B3D]' : 'text-slate-400'}>Shop Info</span>
             </div>
 
-            <div className={`h-0.5 flex-1 mx-3 ${step > 2 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
+            <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${step > 2 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
 
             {/* Step 3 */}
-            <div className="flex items-center gap-2">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-black ${
                 step > 3 ? 'bg-emerald-600 text-white' : step === 3 ? 'bg-[#176B65] text-white' : 'bg-slate-100 text-slate-400'
               }`}>
-                {step > 3 ? <Check className="w-4 h-4" /> : '3'}
+                {step > 3 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : '3'}
               </span>
               <span className={step >= 3 ? 'text-[#283B3D]' : 'text-slate-400'}>Queue Setup</span>
             </div>
@@ -564,7 +564,7 @@ export default function MerchantRegisterPage() {
         <motion.div 
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl p-6 sm:p-10 border border-[#DCE9E3] shadow-sm space-y-6"
+          className="bg-white rounded-3xl p-5 sm:p-10 border border-[#DCE9E3] shadow-sm space-y-6"
         >
           {/* Auth Tab Switcher */}
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4 flex-wrap gap-3">
@@ -577,11 +577,11 @@ export default function MerchantRegisterPage() {
               </p>
             </div>
 
-            <div className="inline-flex p-1 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3]">
+            <div className="inline-flex p-1 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => { setIsLoginTab(false); setAuthError(''); }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                   !isLoginTab ? 'bg-[#176B65] text-white shadow-2xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
                 }`}
               >
@@ -590,7 +590,7 @@ export default function MerchantRegisterPage() {
               <button
                 type="button"
                 onClick={() => { setIsLoginTab(true); setLoginError(''); }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                   isLoginTab ? 'bg-[#176B65] text-white shadow-2xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
                 }`}
               >

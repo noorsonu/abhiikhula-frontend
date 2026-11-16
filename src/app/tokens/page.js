@@ -1288,7 +1288,7 @@ export default function MyTokensPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Sound Notification Toggle */}
           <button
             type="button"
@@ -1304,7 +1304,7 @@ export default function MyTokensPage() {
               }
             }}
             title={soundEnabled ? "Turn Alerts: Sound ON (Click to Test / Mute)" : "Turn Alerts: Muted (Click to Turn ON)"}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 sm:py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               soundEnabled
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 shadow-xs'
                 : 'bg-white text-slate-500 border-[#DCE9E3] hover:bg-slate-50'
@@ -1327,7 +1327,7 @@ export default function MyTokensPage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#DCE9E3] shadow-xs text-xs font-bold text-[#176B65] hover:bg-[#DCE9E3]/50 transition-all cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white border border-[#DCE9E3] shadow-xs text-xs font-bold text-[#176B65] hover:bg-[#DCE9E3]/50 transition-all cursor-pointer disabled:opacity-50"
             title="Sync latest live token status from cloud"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#176B65] ${refreshing ? 'animate-spin' : ''}`} />
@@ -1337,7 +1337,7 @@ export default function MyTokensPage() {
           {/* Device Cache Reset Button */}
           <button
             onClick={handleClearDeviceCache}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-rose-200 shadow-xs text-xs font-bold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl bg-white border border-rose-200 shadow-xs text-xs font-bold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
             title="Phone me saved purana cache aur test tokens saaf karein"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-500" />
@@ -1346,45 +1346,55 @@ export default function MyTokensPage() {
         </div>
       </div>
 
-      {/* Tabs: Active Tokens vs History */}
-      <div className="flex items-center gap-3 border-b border-[#DCE9E3] pb-2">
-        <button
-          onClick={() => setActiveTab('active')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'active'
-              ? 'bg-[#176B65] text-white shadow-sm'
-              : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
-          }`}
-        >
-          <Ticket className="w-4 h-4" />
-          <span>Active In Queue</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${activeTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-            {tokens.length}
-          </span>
-        </button>
+      {/* Tabs & Action Controls: 100% Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DCE9E3] pb-3">
+        {/* 2 Main Tabs: Active Tokens vs History */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('active')}
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'active'
+                ? 'bg-[#176B65] text-white shadow-sm'
+                : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
+            }`}
+          >
+            <Ticket className="w-4 h-4 shrink-0" />
+            <span className="truncate">Active In Queue</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
+              activeTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {tokens.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'history'
-              ? 'bg-[#176B65] text-white shadow-sm'
-              : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
-          }`}
-        >
-          <History className="w-4 h-4" />
-          <span>Visit History & Ratings</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-            {historyTokens.length}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'history'
+                ? 'bg-[#176B65] text-white shadow-sm'
+                : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65]'
+            }`}
+          >
+            <History className="w-4 h-4 shrink-0" />
+            <span className="truncate">Visit History</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
+              activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {historyTokens.length}
+            </span>
+          </button>
+        </div>
 
+        {/* Book Another Token Button */}
         <Link
           href="/"
-          className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#DCE9E3] hover:bg-[#cbe0d7] text-[#176B65] font-black text-xs transition-all shadow-2xs active:scale-98"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-[#DCE9E3] hover:bg-[#cbe0d7] text-[#176B65] font-black text-xs transition-all shadow-2xs active:scale-98 w-full sm:w-auto shrink-0"
           title="Kisi aur ke liye ya doosri dukan ka token lein"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>+ Book Another Token</span>
+          <Plus className="w-4 h-4" />
+          <span>Book Another Token</span>
         </Link>
       </div>
 
