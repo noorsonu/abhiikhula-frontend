@@ -479,9 +479,10 @@ export default function MyTokensPage() {
       const activeList = combined.filter(t => t.status !== 'CANCELLED' && t.status !== 'COMPLETED');
       setTokens(activeList);
 
-      // Check if any active token is called / serving right now!
+      // Check if any active token is called / serving right now by merchant!
+      // NEVER ring on token generation or while status is WAITING
       activeList.forEach(tk => {
-        if (tk.status === 'SERVING' || tk.status === 'CALLED') {
+        if ((tk.status === 'SERVING' || tk.status === 'CALLED') && tk.status !== 'WAITING') {
           const alertedKey = `ak_turn_alerted_${tk.id || tk.displayToken}`;
           if (typeof window !== 'undefined' && !sessionStorage.getItem(alertedKey)) {
             sessionStorage.setItem(alertedKey, 'true');

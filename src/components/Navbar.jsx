@@ -168,9 +168,10 @@ export default function Navbar() {
         }) : [];
         setActiveCount(userActive.length);
 
-        // Check if any active token is called / serving right now!
+        // Check if any active token is explicitly called / serving right now by merchant!
+        // NEVER ring on token generation or while status is WAITING (even if peopleAhead is 0)
         for (const t of userActive) {
-          const isCalled = t.status === 'SERVING' || t.status === 'CALLED' || t.peopleAhead === 0;
+          const isCalled = (t.status === 'SERVING' || t.status === 'CALLED') && t.status !== 'WAITING';
           if (isCalled && t.status !== 'COMPLETED' && t.status !== 'CANCELLED') {
             const tokenIdentifier = t.id || t.displayToken || t.tokenNumber;
             const sessionKey = `ak_turn_alerted_${tokenIdentifier}`;
