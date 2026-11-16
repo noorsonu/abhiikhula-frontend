@@ -1067,6 +1067,33 @@ export default function MyTokensPage() {
       });
       setHistoryTokens(updatedHistory);
 
+      // Sync to merchant dashboard reviews in localStorage
+      const sSlug = (tokenToReview.shopSlug || (tokenToReview.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).toLowerCase();
+      if (sSlug && typeof window !== 'undefined') {
+        try {
+          const mKey = `ak_merchant_reviews_${sSlug}`;
+          const existingM = JSON.parse(localStorage.getItem(mKey) || '[]');
+          const newMReview = {
+            id: `rev-${Date.now()}`,
+            tokenId: tokenToReview.id,
+            customerName: customerName.trim(),
+            tokenNumber: tokenToReview.displayToken || `#${tokenToReview.tokenNumber || '1'}`,
+            customerPhone: tokenToReview.customerPhone || cleanPhone,
+            rating: ratingStars,
+            comment: reviewText.trim() || 'Service completed smoothly.',
+            tags: reviewTags.map(t => t === 'ON_TIME' ? '⏱️ On-Time Turn' : t === 'BEHAVIOUR' ? '🤝 Polite Staff' : '✨ Fair Queue Wait'),
+            date: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            verifiedVisit: true,
+            merchantReply: null,
+            replyDate: null,
+            flagged: false
+          };
+          const updatedM = [newMReview, ...existingM.filter(r => String(r.tokenId) !== String(tokenToReview.id))];
+          localStorage.setItem(mKey, JSON.stringify(updatedM));
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
+      }
+
       setReviewSuccessMsg(`Thank you! Your ${ratingStars}-star rating for ${tokenToReview.shopName || 'the store'} was submitted.`);
       setTimeout(() => setReviewSuccessMsg(null), 6000);
       setTokenToReview(null);

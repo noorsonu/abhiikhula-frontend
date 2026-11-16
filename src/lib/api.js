@@ -67,6 +67,7 @@ export const queueApi = {
 export const reviewApi = {
   submitReview: (payload) => apiClient.post('/api/reviews', payload),
   getShopReviews: (shopId) => apiClient.get(`/api/shops/${shopId}/reviews`),
+  replyToReview: (shopId, reviewId, reply) => apiClient.post(`/api/shops/${shopId}/reviews/${reviewId}/reply`, { reply }),
   reportAbuse: (reviewId, reason) => apiClient.post(`/api/reviews/${reviewId}/report-abuse`, { reason }),
 };
 

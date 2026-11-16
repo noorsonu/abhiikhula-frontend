@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import QRCode from 'qrcode';
-import { queueApi } from '@/lib/api';
+import { queueApi, reviewApi } from '@/lib/api';
 import { playChime } from '@/lib/audioChime';
 
 export default function MerchantDashboardPage() {
@@ -162,6 +162,12 @@ export default function MerchantDashboardPage() {
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flaggingReview, setFlaggingReview] = useState(null);
   const [flagReason, setFlagReason] = useState('Not a real customer visit');
+
+  // Customer Click Review & Feedback Drawer State
+  const [customerReviewModalOpen, setCustomerReviewModalOpen] = useState(false);
+  const [selectedCustomerForReview, setSelectedCustomerForReview] = useState(null);
+  const [customerReviewReplyText, setCustomerReviewReplyText] = useState('');
+  const [customerReviewReplySubmitting, setCustomerReviewReplySubmitting] = useState(false);
 
   // BRD FR-708 / FR-405: Emergency Flash Queue Broadcast Alert State
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
@@ -440,14 +446,129 @@ export default function MerchantDashboardPage() {
   const loadShopReviews = (shop) => {
     if (!shop || typeof window === 'undefined') return [];
     try {
+      const slug = (shop?.slug || 'shop').toLowerCase();
       const key = getReviewsStorageKey(shop);
       const saved = localStorage.getItem(key);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+      const list = saved ? JSON.parse(saved) : [];
+
+      // Also read any reviews from customer history on this machine
+      const customerHist = localStorage.getItem('ak_customer_history');
+      if (customerHist) {
+        const histParsed = JSON.parse(customerHist);
+        if (Array.isArray(histParsed)) {
+          histParsed.forEach(h => {
+            const hSlug = (h.shopSlug || (h.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).toLowerCase();
+            if (h.reviewed && (hSlug === slug || (shop.id && h.shopId === shop.id))) {
+              if (!list.some(r => String(r.tokenId) === String(h.id) || String(r.id) === String(h.id))) {
+                list.push({
+                  id: `cust-rev-${h.id}`,
+                  tokenId: h.id,
+                  customerName: h.customerName || 'Verified Customer',
+                  tokenNumber: h.displayToken || `#${h.tokenNumber || '1'}`,
+                  customerPhone: h.customerPhone || 'Verified',
+                  rating: h.reviewStars || 5,
+                  comment: h.reviewText || 'Service completed smoothly.',
+                  tags: (h.reviewTags || []).map(t => {
+                    if (t === 'ON_TIME') return '⏱️ On-Time Turn';
+                    if (t === 'BEHAVIOUR') return '🤝 Polite Staff';
+                    if (t === 'FAIR_WAIT') return '✨ Fair Queue Wait';
+                    return t;
+                  }),
+                  date: h.reviewedAt ? new Date(h.reviewedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Recently',
+                  verifiedVisit: true,
+                  merchantReply: null,
+                  replyDate: null,
+                  flagged: false
+                });
+              }
+            }
+          });
+        }
       }
+
+      return Array.isArray(list) ? list : [];
     } catch (e) {}
     return [];
+  };
+
+  const fetchShopReviewsFromCloud = async (shop) => {
+    if (!shop) return;
+    try {
+      let cloudReviews = [];
+      if (shop.id) {
+        const res = await reviewApi.getShopReviews(shop.id);
+        if (res?.data?.data?.reviews && Array.isArray(res.data.data.reviews)) {
+          cloudReviews = res.data.data.reviews.map(r => ({
+            id: r.id,
+            tokenId: r.tokenId,
+            customerName: r.customerName || 'Verified Customer',
+            tokenNumber: r.displayToken || 'Token',
+            rating: r.stars || 5,
+            comment: r.text || 'Service completed smoothly.',
+            tags: (r.tags || []).map(t => {
+              if (typeof t === 'string') {
+                if (t === 'ON_TIME') return '⏱️ On-Time Turn';
+                if (t === 'BEHAVIOUR') return '🤝 Polite Staff';
+                if (t === 'FAIR_WAIT') return '✨ Fair Queue Wait';
+              }
+              return t?.label || t;
+            }),
+            date: r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Recently',
+            verifiedVisit: Boolean(r.verifiedToken ?? true),
+            merchantReply: r.reply || null,
+            replyDate: r.replyAt ? new Date(r.replyAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : null,
+            flagged: Boolean(r.abuseReported)
+          }));
+        }
+      }
+
+      const localReviews = loadShopReviews(shop);
+
+      const map = new Map();
+      cloudReviews.forEach(r => map.set(String(r.id || r.tokenId), r));
+      localReviews.forEach(r => {
+        const key = String(r.id || r.tokenId);
+        if (!map.has(key)) {
+          map.set(key, r);
+        } else {
+          const existing = map.get(key);
+          if (r.merchantReply && !existing.merchantReply) {
+            map.set(key, { ...existing, merchantReply: r.merchantReply, replyDate: r.replyDate });
+          }
+        }
+      });
+
+      const merged = Array.from(map.values());
+      setReviewsList(merged);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(getReviewsStorageKey(shop), JSON.stringify(merged));
+      }
+    } catch (e) {
+      console.warn("fetchShopReviewsFromCloud fallback:", e?.message);
+    }
+  };
+
+  const findCustomerReview = (customer) => {
+    if (!customer || !reviewsList || reviewsList.length === 0) return null;
+    const cleanCustToken = String(customer.tokenNumber || customer.displayToken || '').replace(/\D/g, '');
+    const cleanCustPhone = (customer.customerPhone || '').replace(/\D/g, '').slice(-10);
+    const custId = customer.id ? String(customer.id) : null;
+    const custName = (customer.customerName || '').toLowerCase().trim();
+
+    return reviewsList.find(r => {
+      if (custId && r.tokenId && String(r.tokenId) === custId) return true;
+      if (r.id && custId && String(r.id) === custId) return true;
+      const cleanRToken = String(r.tokenNumber || '').replace(/\D/g, '');
+      if (cleanCustToken && cleanRToken && cleanCustToken === cleanRToken) return true;
+      if (cleanCustPhone && r.customerPhone) {
+        const cleanRPhone = String(r.customerPhone).replace(/\D/g, '').slice(-10);
+        if (cleanCustPhone === cleanRPhone) return true;
+      }
+      if (custName && custName !== 'customer' && (r.customerName || '').toLowerCase().trim() === custName) {
+        return true;
+      }
+      return false;
+    }) || null;
   };
 
   const getBroadcastStorageKey = (shop) => `ak_shop_broadcast_${(shop?.slug || 'shop').toLowerCase()}`;
@@ -824,6 +945,7 @@ export default function MerchantDashboardPage() {
           setShopRecords(recs);
           const revs = loadShopReviews(parsed);
           setReviewsList(revs);
+          fetchShopReviewsFromCloud(parsed);
 
           // Load Emergency Flash Broadcast if active (BRD FR-708 / FR-405)
           const bcast = loadShopBroadcast(parsed);
@@ -938,17 +1060,24 @@ export default function MerchantDashboardPage() {
         setStaffList(sList);
         const oPin = loadOwnerPin(activeShop);
         setOwnerMasterPin(oPin);
+        const revs = loadShopReviews(activeShop);
+        setReviewsList(revs);
       }
     };
     window.addEventListener('storage', handleStorageUpdate);
     return () => window.removeEventListener('storage', handleStorageUpdate);
   }, [activeShop]);
 
-  // Live Cloud Queue Polling: syncs tokens from Render Cloud Database every 3 seconds
+  // Live Cloud Queue Polling: syncs tokens and reviews from Render Cloud Database
   useEffect(() => {
     if (!activeShop) return;
+    let pollCount = 0;
     const pollTimer = setInterval(() => {
       syncCustomerQueueForShop(activeShop);
+      pollCount++;
+      if (pollCount % 2 === 0) {
+        fetchShopReviewsFromCloud(activeShop);
+      }
     }, 3000);
     return () => clearInterval(pollTimer);
   }, [activeShop, soundEnabled]);
@@ -1393,6 +1522,74 @@ export default function MerchantDashboardPage() {
     setFlagModalOpen(false);
     setFlaggingReview(null);
     setAnnouncementMsg(`🚩 Review by ${flaggingReview.customerName} flagged for admin verification.`);
+  };
+
+  // Handle Click on Customer to Open Review & Details Modal
+  const handleOpenCustomerReviewModal = (customer) => {
+    if (!customer) return;
+    const review = findCustomerReview(customer);
+    setSelectedCustomerForReview({
+      ...customer,
+      review: review || null
+    });
+    setCustomerReviewReplyText(review?.merchantReply || '');
+    setCustomerReviewModalOpen(true);
+  };
+
+  const handleSubmitReplyFromModal = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedCustomerForReview || !customerReviewReplyText.trim()) return;
+
+    const review = selectedCustomerForReview.review || findCustomerReview(selectedCustomerForReview);
+    if (!review) return;
+
+    setCustomerReviewReplySubmitting(true);
+    const replyMsg = customerReviewReplyText.trim();
+    const replyDate = 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    try {
+      if (activeShop?.id && review.id && String(review.id).length > 20) {
+        await reviewApi.replyToReview(activeShop.id, review.id, replyMsg).catch(() => {});
+      }
+
+      setReviewsList(prev => {
+        const updated = prev.map(r => {
+          if (r.id === review.id || (review.tokenId && r.tokenId === review.tokenId)) {
+            return {
+              ...r,
+              merchantReply: replyMsg,
+              merchantReplyDate: replyDate,
+              replyDate
+            };
+          }
+          return r;
+        });
+
+        if (activeShop) {
+          try {
+            localStorage.setItem(getReviewsStorageKey(activeShop), JSON.stringify(updated));
+          } catch (e) {}
+        }
+        return updated;
+      });
+
+      setSelectedCustomerForReview(prev => prev ? ({
+        ...prev,
+        review: {
+          ...review,
+          merchantReply: replyMsg,
+          merchantReplyDate: replyDate,
+          replyDate
+        }
+      }) : null);
+
+      setAnnouncementMsg(`💬 Reply posted to ${selectedCustomerForReview.customerName}'s review!`);
+      playChime();
+    } catch (err) {
+      console.warn('Reply error:', err);
+    } finally {
+      setCustomerReviewReplySubmitting(false);
+    }
   };
 
   // BRD FR-708 / FR-405: Publish Emergency Flash Queue Broadcast
@@ -3954,7 +4151,24 @@ export default function MerchantDashboardPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-token font-bold text-sm text-[#176B65]">{item.tokenNumber}</span>
-                          <span className="font-black text-xs text-[#283B3D] truncate">{item.customerName}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCustomerReviewModal(item)}
+                            className="font-black text-xs text-[#283B3D] hover:text-[#176B65] truncate hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                            title="Click karke is customer ka review aur visit details dekhein"
+                          >
+                            <span>{item.customerName}</span>
+                            {(() => {
+                              const rev = findCustomerReview(item);
+                              if (!rev) return null;
+                              return (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                  <span>{rev.rating}.0</span>
+                                </span>
+                              );
+                            })()}
+                          </button>
                           {index === 0 && (
                             <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
                               Next
@@ -4508,97 +4722,136 @@ export default function MerchantDashboardPage() {
                         <th className="py-3 px-3 text-center">Payment</th>
                         <th className="py-3 px-3">Time</th>
                         <th className="py-3 px-3">Duration</th>
+                        <th className="py-3 px-3 text-center">Customer Review</th>
                         <th className="py-3 px-3 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-[#283B3D]">
-                      {displayedTableRecords.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-3 font-token font-bold text-[#176B65] text-sm">
-                            {item.tokenNumber}
-                          </td>
-                          <td className="py-3 px-3 font-bold text-[#283B3D]">
-                            {item.customerName}
-                          </td>
-                          <td className="py-3 px-3 font-mono text-slate-600">
-                            {item.customerPhone ? (item.customerPhone.startsWith('+') ? item.customerPhone : `+91 ${item.customerPhone}`) : 'Offline / Walk-in'}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded-md bg-[#F3F1E9] text-[#283B3D] font-bold text-[11px] border border-[#DCE9E3]">
-                              {item.groupSize || 1} {item.groupSize > 1 ? 'People' : 'Person'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-slate-700 max-w-[220px]">
-                            <span className="font-semibold block truncate" title={item.serviceBreakdown || item.service}>
-                              {item.serviceBreakdown || item.service || 'General Service'}
-                            </span>
-                            {item.billNotes && (
-                              <span className="text-[10px] text-slate-400 block truncate" title={item.billNotes}>
-                                Note: {item.billNotes}
+                      {displayedTableRecords.map((item, idx) => {
+                        const custReview = findCustomerReview(item);
+                        return (
+                          <tr key={item.id || idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-3 font-token font-bold text-[#176B65] text-sm">
+                              {item.tokenNumber}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-[#283B3D]">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCustomerReviewModal(item)}
+                                className="font-bold text-[#283B3D] hover:text-[#176B65] text-left transition-colors flex items-center gap-1.5 cursor-pointer group"
+                                title="Click karke is customer ka review aur visit details dekhein"
+                              >
+                                <span className="group-hover:underline">{item.customerName}</span>
+                                {custReview && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                    <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                    <span>{custReview.rating}.0</span>
+                                  </span>
+                                )}
+                              </button>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-slate-600">
+                              {item.customerPhone ? (item.customerPhone.startsWith('+') ? item.customerPhone : `+91 ${item.customerPhone}`) : 'Offline / Walk-in'}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded-md bg-[#F3F1E9] text-[#283B3D] font-bold text-[11px] border border-[#DCE9E3]">
+                                {item.groupSize || 1} {item.groupSize > 1 ? 'People' : 'Person'}
                               </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-right whitespace-nowrap">
-                            {item.amount !== undefined && item.amount > 0 ? (
-                              <span className="font-token font-black text-sm text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200 inline-block shadow-2xs">
-                                ₹{Number(item.amount).toLocaleString('en-IN')}
+                            </td>
+                            <td className="py-3 px-3 text-slate-700 max-w-[220px]">
+                              <span className="font-semibold block truncate" title={item.serviceBreakdown || item.service}>
+                                {item.serviceBreakdown || item.service || 'General Service'}
                               </span>
-                            ) : item.status === 'COMPLETED' ? (
-                              <span className="text-slate-400 text-xs font-semibold">₹0 / Free</span>
-                            ) : (
-                              <span className="text-slate-300 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center whitespace-nowrap">
-                            {item.paymentMode === 'UPI' && (
-                              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200">
-                                📱 UPI
-                              </span>
-                            )}
-                            {item.paymentMode === 'CASH' && (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200">
-                                💵 Cash
-                              </span>
-                            )}
-                            {item.paymentMode === 'PENDING' && (
-                              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold text-[10px] border border-amber-200">
-                                ⏳ Udhaar
-                              </span>
-                            )}
-                            {(!item.paymentMode || item.paymentMode === '-') && (
-                              <span className="text-slate-300 font-bold text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
-                            {item.completedAt || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today')}
-                          </td>
-                          <td className="py-3 px-3 font-bold text-slate-700">
-                            {item.durationMin ? `${item.durationMin}m` : (item.duration || (item.status === 'WAITING' ? `Est: ${item.waitMin || 10}m` : item.status === 'SERVING' ? 'Serving...' : '-'))}
-                          </td>
-                          <td className="py-3 px-3 text-right whitespace-nowrap">
-                            {item.status === 'COMPLETED' && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                                Completed
-                              </span>
-                            )}
-                            {item.status === 'SERVING' && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200 animate-pulse">
-                                Serving at Desk
-                              </span>
-                            )}
-                            {item.status === 'WAITING' && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold text-[10px] border border-amber-200">
-                                In Line (Waiting)
-                              </span>
-                            )}
-                            {item.status === 'NO_SHOW' && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold text-[10px] border border-rose-200">
-                                No-Show / Absent
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                              {item.billNotes && (
+                                <span className="text-[10px] text-slate-400 block truncate" title={item.billNotes}>
+                                  Note: {item.billNotes}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              {item.amount !== undefined && item.amount > 0 ? (
+                                <span className="font-token font-black text-sm text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200 inline-block shadow-2xs">
+                                  ₹{Number(item.amount).toLocaleString('en-IN')}
+                                </span>
+                              ) : item.status === 'COMPLETED' ? (
+                                <span className="text-slate-400 text-xs font-semibold">₹0 / Free</span>
+                              ) : (
+                                <span className="text-slate-300 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {item.paymentMode === 'UPI' && (
+                                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200">
+                                  📱 UPI
+                                </span>
+                              )}
+                              {item.paymentMode === 'CASH' && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200">
+                                  💵 Cash
+                                </span>
+                              )}
+                              {item.paymentMode === 'PENDING' && (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold text-[10px] border border-amber-200">
+                                  ⏳ Udhaar
+                                </span>
+                              )}
+                              {(!item.paymentMode || item.paymentMode === '-') && (
+                                <span className="text-slate-300 font-bold text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
+                              {item.completedAt || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today')}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-700">
+                              {item.durationMin ? `${item.durationMin}m` : (item.duration || (item.status === 'WAITING' ? `Est: ${item.waitMin || 10}m` : item.status === 'SERVING' ? 'Serving...' : '-'))}
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {custReview ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCustomerReviewModal(item)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/80 hover:bg-amber-200/90 text-amber-950 font-black text-[11px] border border-amber-300 transition-all cursor-pointer shadow-xs active:scale-98"
+                                  title="Customer ka review aur rating dekhein"
+                                >
+                                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                                  <span>{custReview.rating}.0 ★ Review</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCustomerReviewModal(item)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-[#F3F1E9] text-slate-500 font-bold text-[10px] border border-slate-200 transition-all cursor-pointer"
+                                  title="Review status dekhein"
+                                >
+                                  <span>No Review</span>
+                                </button>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              {item.status === 'COMPLETED' && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                                  Completed
+                                </span>
+                              )}
+                              {item.status === 'SERVING' && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200 animate-pulse">
+                                  Serving at Desk
+                                </span>
+                              )}
+                              {item.status === 'WAITING' && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold text-[10px] border border-amber-200">
+                                  In Line (Waiting)
+                                </span>
+                              )}
+                              {item.status === 'NO_SHOW' && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold text-[10px] border border-rose-200">
+                                  No-Show / Absent
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -9700,6 +9953,218 @@ export default function MerchantDashboardPage() {
                   className="w-full py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-xs font-black transition-colors cursor-pointer text-center"
                 >
                   Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 19: CUSTOMER REVIEW & FEEDBACK DETAILS MODAL         */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {customerReviewModalOpen && selectedCustomerForReview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCustomerReviewModalOpen(false)}
+              className="fixed inset-0"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-5 z-10 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#176B65] to-[#283B3D] text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    {selectedCustomerForReview.customerName?.charAt(0) || 'C'}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg text-[#283B3D] flex items-center gap-2">
+                      <span>{selectedCustomerForReview.customerName}</span>
+                      <span className="text-xs font-mono font-bold bg-[#F3F1E9] text-[#176B65] px-2 py-0.5 rounded-md border border-[#DCE9E3]">
+                        {selectedCustomerForReview.tokenNumber || selectedCustomerForReview.displayToken}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {selectedCustomerForReview.customerPhone && selectedCustomerForReview.customerPhone !== 'Offline'
+                        ? (selectedCustomerForReview.customerPhone.startsWith('+') ? selectedCustomerForReview.customerPhone : `+91 ${selectedCustomerForReview.customerPhone}`)
+                        : 'Walk-in / In-Store Customer'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCustomerReviewModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Service & Visit Info Summary */}
+              <div className="grid grid-cols-3 gap-2 bg-[#F3F1E9]/70 p-3.5 rounded-2xl border border-[#DCE9E3] text-center text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Service</span>
+                  <span className="font-bold text-[#283B3D] truncate block mt-0.5" title={selectedCustomerForReview.serviceBreakdown || selectedCustomerForReview.service}>
+                    {selectedCustomerForReview.serviceBreakdown || selectedCustomerForReview.service || 'General'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Bill Paid</span>
+                  <span className="font-bold text-emerald-700 block mt-0.5">
+                    ₹{selectedCustomerForReview.amount || 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span>
+                  <span className="font-bold text-[#176B65] block mt-0.5">
+                    {selectedCustomerForReview.status || 'VISITED'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Review Card Section */}
+              {(() => {
+                const review = selectedCustomerForReview.review || findCustomerReview(selectedCustomerForReview);
+                if (review) {
+                  return (
+                    <div className="space-y-4">
+                      {/* Rating Box */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-5 h-5 ${
+                                  s <= review.rating
+                                    ? 'fill-amber-400 text-amber-500'
+                                    : 'fill-slate-200 text-slate-300'
+                                }`}
+                              />
+                            ))}
+                            <span className="text-base font-black text-amber-900 ml-1.5">
+                              {review.rating}.0 / 5
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Verified Review
+                          </span>
+                        </div>
+
+                        {/* Customer Comment */}
+                        <div className="p-3 bg-white rounded-xl border border-amber-200/60 text-xs sm:text-sm text-[#283B3D] font-medium leading-relaxed italic">
+                          &ldquo;{review.comment || review.text}&rdquo;
+                        </div>
+
+                        {/* Tags */}
+                        {review.tags && review.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {review.tags.map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-slate-700 border border-amber-200"
+                              >
+                                ✓ {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="text-[11px] text-slate-400 font-medium">
+                          Submitted: {review.date || 'Recently'}
+                        </div>
+                      </div>
+
+                      {/* Official Merchant Reply Section */}
+                      <div className="p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#176B65] flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Shopkeeper Official Reply</span>
+                          </span>
+                          {review.merchantReply && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                              Replied
+                            </span>
+                          )}
+                        </div>
+
+                        {review.merchantReply ? (
+                          <div className="p-3 bg-white rounded-xl border border-[#DCE9E3] text-xs text-[#283B3D] space-y-1">
+                            <p className="font-semibold">{review.merchantReply}</p>
+                            <span className="text-[10px] text-slate-400 block">{review.replyDate || review.merchantReplyDate || 'Posted'}</span>
+                          </div>
+                        ) : null}
+
+                        {/* Reply Form */}
+                        <form onSubmit={handleSubmitReplyFromModal} className="space-y-2">
+                          <textarea
+                            value={customerReviewReplyText}
+                            onChange={(e) => setCustomerReviewReplyText(e.target.value)}
+                            placeholder={review.merchantReply ? "Reply update karein..." : "Customer ke review par official reply likhein (e.g. Dhanyawad ji, fir aaiyega!)..."}
+                            rows={2}
+                            className="w-full p-2.5 bg-white border border-[#DCE9E3] rounded-xl text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                          />
+                          <button
+                            type="submit"
+                            disabled={customerReviewReplySubmitting || !customerReviewReplyText.trim()}
+                            className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Reply className="w-3.5 h-3.5" />
+                            <span>{customerReviewReplySubmitting ? 'Posting Reply...' : (review.merchantReply ? 'Update Official Reply' : 'Post Official Reply')}</span>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl">
+                        ⭐
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-sm text-[#283B3D]">Customer Has Not Submitted a Review Yet</h4>
+                        <p className="text-xs text-slate-500 font-medium">
+                          Is customer ne abhi tak visit complete hone ke baad rating/feedback darj nahi kiya hai.
+                        </p>
+                      </div>
+
+                      {/* WhatsApp Feedback Reminder Option */}
+                      {selectedCustomerForReview.customerPhone && selectedCustomerForReview.customerPhone !== 'Offline' && (
+                        <a
+                          href={`https://wa.me/91${selectedCustomerForReview.customerPhone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(
+                            `Namaste ${selectedCustomerForReview.customerName} ji! ${activeShop?.name || 'Hamari Dukan'} me padharne ke liye dhanyawad. Kripya 1 minute nikaal kar hamari service ka review aur rating dein: ${typeof window !== 'undefined' ? window.location.origin : ''}/tokens`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Request Rating via WhatsApp</span>
+                        </a>
+                      )}
+                    </div>
+                  );
+                }
+              })()}
+
+              <div className="pt-2 border-t border-[#DCE9E3] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCustomerReviewModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Close
                 </button>
               </div>
             </motion.div>
