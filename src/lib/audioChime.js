@@ -6,6 +6,35 @@
  */
 let activeAudioContext = null;
 
+// Auto-unlock AudioContext on first user interaction (touch/click) for mobile browsers
+export function initAudioUnlocker() {
+  if (typeof window === 'undefined') return;
+  const unlock = () => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        if (!activeAudioContext) {
+          activeAudioContext = new AudioContextClass();
+        }
+        if (activeAudioContext.state === 'suspended') {
+          activeAudioContext.resume().catch(() => {});
+        }
+      }
+    } catch (e) {}
+    ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evt => {
+      window.removeEventListener(evt, unlock);
+    });
+  };
+  ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evt => {
+    window.addEventListener(evt, unlock, { once: true, passive: true });
+  });
+}
+
+// Auto-run unlocker when script runs on client
+if (typeof window !== 'undefined') {
+  initAudioUnlocker();
+}
+
 export function playChime(type = 'turn') {
   if (typeof window === 'undefined') return;
   try {

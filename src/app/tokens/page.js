@@ -424,17 +424,27 @@ export default function MyTokensPage() {
           continue;
         }
 
-        // If authenticated and token has a UUID (length > 20) and is NOT in backendActiveTokens:
-        // check individual token status on backend
-        if (token && lt.id && String(lt.id).length > 20 && !backendActiveTokens.some(bt => String(bt.id) === String(lt.id))) {
+        // Check individual token status on backend (public endpoint, works with or without token)
+        if (lt.id && String(lt.id).length > 20 && !backendActiveTokens.some(bt => String(bt.id) === String(lt.id))) {
           try {
             const checkRes = await queueApi.getTokenById(lt.id);
-            if (checkRes?.data?.data?.status === 'COMPLETED') {
-              newlyCompletedFromLocal.push({ ...lt, ...checkRes.data.data, status: 'COMPLETED' });
-              continue;
-            } else if (checkRes?.data?.data?.status === 'CANCELLED') {
-              newlyCompletedFromLocal.push({ ...lt, ...checkRes.data.data, status: 'CANCELLED' });
-              continue;
+            const bToken = checkRes?.data?.data;
+            if (bToken) {
+              if (bToken.status === 'COMPLETED') {
+                newlyCompletedFromLocal.push({ ...lt, ...bToken, status: 'COMPLETED' });
+                continue;
+              } else if (bToken.status === 'CANCELLED') {
+                newlyCompletedFromLocal.push({ ...lt, ...bToken, status: 'CANCELLED' });
+                continue;
+              } else if (bToken.status === 'CALLED' || bToken.status === 'SERVING') {
+                lt.status = bToken.status;
+                lt.peopleAhead = 0;
+                lt.estimatedWaitMin = 0;
+                lt.assignedStation = bToken.assignedStation || lt.assignedStation;
+                lt.currentServing = bToken.displayToken || bToken.tokenNumber;
+              } else if (bToken.waitingAhead !== undefined) {
+                lt.peopleAhead = bToken.waitingAhead;
+              }
             }
           } catch (e) {}
         }
@@ -482,8 +492,14 @@ export default function MyTokensPage() {
       // Check if any active token is called / serving right now by merchant!
       // NEVER ring on token generation or while status is WAITING
       activeList.forEach(tk => {
+        const alertedKey = `ak_turn_alerted_${tk.id || tk.displayToken}`;
+        if (tk.status === 'WAITING') {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(alertedKey);
+          }
+          return;
+        }
         if ((tk.status === 'SERVING' || tk.status === 'CALLED') && tk.status !== 'WAITING') {
-          const alertedKey = `ak_turn_alerted_${tk.id || tk.displayToken}`;
           if (typeof window !== 'undefined' && !sessionStorage.getItem(alertedKey)) {
             sessionStorage.setItem(alertedKey, 'true');
             if (soundEnabled) {
@@ -558,12 +574,18 @@ export default function MyTokensPage() {
     }
     loadTokens();
 
+    // Active polling interval every 3 seconds so customer phone receives merchant turn call without delay
+    const pollInterval = setInterval(() => {
+      loadTokens();
+    }, 3000);
+
     // Listen to login/logout/switch account storage events
     const handleStorageChange = () => {
       loadTokens();
     };
     window.addEventListener('storage', handleStorageChange);
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);

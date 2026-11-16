@@ -9,7 +9,7 @@ import {
   ArrowRight, Phone, Calendar, KeyRound, Lock, RefreshCw, AlertCircle, Sparkle, Heart, BellRing
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authApi } from '@/lib/api';
+import { authApi, queueApi } from '@/lib/api';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
@@ -171,10 +171,35 @@ export default function Navbar() {
         // Check if any active token is explicitly called / serving right now by merchant!
         // NEVER ring on token generation or while status is WAITING (even if peopleAhead is 0)
         for (const t of userActive) {
-          const isCalled = (t.status === 'SERVING' || t.status === 'CALLED') && t.status !== 'WAITING';
+          const tokenIdentifier = t.id || t.displayToken || t.tokenNumber;
+          const sessionKey = `ak_turn_alerted_${tokenIdentifier}`;
+          if (t.status === 'WAITING') {
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem(sessionKey);
+            }
+            // Check backend for updates on this waiting token if it has an id
+            if (t.id && String(t.id).length > 20) {
+              queueApi.getTokenById(t.id).then(res => {
+                const b = res?.data?.data;
+                if (b && (b.status === 'CALLED' || b.status === 'SERVING')) {
+                  const freshStr = localStorage.getItem('ak_customer_tokens');
+                  const freshList = freshStr ? JSON.parse(freshStr) : [];
+                  const updated = freshList.map(item => {
+                    if (String(item.id) === String(t.id)) {
+                      return { ...item, status: b.status, peopleAhead: 0, estimatedWaitMin: 0 };
+                    }
+                    return item;
+                  });
+                  localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
+                  window.dispatchEvent(new Event('storage'));
+                }
+              }).catch(() => {});
+            }
+            continue;
+          }
+
+          const isCalled = (t.status === 'SERVING' || t.status === 'CALLED');
           if (isCalled && t.status !== 'COMPLETED' && t.status !== 'CANCELLED') {
-            const tokenIdentifier = t.id || t.displayToken || t.tokenNumber;
-            const sessionKey = `ak_turn_alerted_${tokenIdentifier}`;
             if (typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)) {
               sessionStorage.setItem(sessionKey, 'true');
               playCounterRing({

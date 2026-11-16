@@ -897,7 +897,13 @@ export default function MerchantDashboardPage() {
     if (a.id && b.id && String(a.id) === String(b.id)) return true;
     const ca = String(a.displayToken || a.tokenNumber || '').replace(/\D/g, '');
     const cb = String(b.displayToken || b.tokenNumber || '').replace(/\D/g, '');
-    return Boolean(ca && cb && ca === cb);
+    if (ca && cb) {
+      if (ca === cb) return true;
+      const na = parseInt(ca, 10);
+      const nb = parseInt(cb, 10);
+      if (!isNaN(na) && !isNaN(nb) && na === nb) return true;
+    }
+    return false;
   };
 
   // Sync real customer tokens booked for this specific shop from Cloud Backend & Local Fallback
@@ -979,6 +985,7 @@ export default function MerchantDashboardPage() {
       const waitingOnly = shopTokens.filter(t => {
         if (t.status && t.status !== 'WAITING') return false;
         if (isTokenMatch(servingTokenRef.current, t)) return false;
+        if (stationsList.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, t))) return false;
         if (completedListRef.current.some(c => isTokenMatch(c, t))) return false;
         if (absentListRef.current.some(a => isTokenMatch(a, t))) return false;
         return true;
@@ -2168,6 +2175,10 @@ export default function MerchantDashboardPage() {
       assignedStation: station.name
     });
 
+    if (activeShop?.id) {
+      queueApi.callNext(activeShop.id).catch(() => {});
+    }
+
     if (soundEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
@@ -2214,6 +2225,7 @@ export default function MerchantDashboardPage() {
         window.speechSynthesis.speak(utterance);
       } catch (e) {}
     }
+    syncWithCustomerStorage(station.currentToken);
     setAnnouncementMsg(`📢 Re-announced: Token ${station.currentToken.tokenNumber} to ${station.name}`);
     setTimeout(() => setAnnouncementMsg(''), 3500);
   };
@@ -2677,7 +2689,13 @@ export default function MerchantDashboardPage() {
           if (t.id && target.id && String(t.id) === String(target.id)) return true;
           const cleanT = String(t.displayToken || t.tokenNumber || '').replace(/\D/g, '');
           const cleanTarget = String(target.displayToken || target.tokenNumber || '').replace(/\D/g, '');
-          return Boolean(cleanT && cleanTarget && cleanT === cleanTarget);
+          if (cleanT && cleanTarget) {
+            if (cleanT === cleanTarget) return true;
+            const nt = parseInt(cleanT, 10);
+            const ntarget = parseInt(cleanTarget, 10);
+            if (!isNaN(nt) && !isNaN(ntarget) && nt === ntarget) return true;
+          }
+          return false;
         };
 
         // When a token is completed, automatically move it to customer history
