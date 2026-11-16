@@ -3010,6 +3010,20 @@ export default function MerchantDashboardPage() {
       }
       setBillingStationId(null);
     } else {
+      if (servingToken) {
+        const updatedStations = stationsList.map(st => {
+          if (st.currentToken && isTokenMatch(st.currentToken, servingToken)) {
+            return {
+              ...st,
+              currentToken: null,
+              timerSeconds: 0,
+              totalServedToday: (st.totalServedToday || 0) + 1
+            };
+          }
+          return st;
+        });
+        saveStationsList(updatedStations);
+      }
       setServingToken(null);
       setCounterSeconds(0);
     }
@@ -3082,6 +3096,20 @@ export default function MerchantDashboardPage() {
     if (waitingQueue.length > 0) {
       handleCallNext();
     } else {
+      if (servingToken) {
+        const updatedStations = stationsList.map(st => {
+          if (st.currentToken && isTokenMatch(st.currentToken, servingToken)) {
+            return {
+              ...st,
+              currentToken: null,
+              timerSeconds: 0,
+              totalServedToday: (st.totalServedToday || 0) + 1
+            };
+          }
+          return st;
+        });
+        saveStationsList(updatedStations);
+      }
       setServingToken(null);
       setCounterSeconds(0);
     }
@@ -4234,18 +4262,84 @@ export default function MerchantDashboardPage() {
           <div className="bg-[#283B3D] text-[#F3F1E9] rounded-3xl p-5 sm:p-7 space-y-5 shadow-xl relative overflow-hidden border-4 border-[#176B65]">
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#176B65]/20 rounded-full blur-3xl pointer-events-none"></div>
 
-            {/* Header: Responsive Live Serving Badge & Elapsed Timer */}
+            {/* Header: Responsive Live Serving Badge & Multi-Station Status */}
             <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-3.5 flex-wrap">
               <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5 rounded-xl shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Live Desk Counter</span>
+                <span>{stationsList.filter(s => s.active).length > 0 ? "Reception & Calling Desk" : "Live Desk Counter"}</span>
               </span>
               <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-200 bg-black/40 border border-white/15 px-3 py-1.5 rounded-xl shadow-2xs">
-                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[11px] text-slate-300">Elapsed:</span>
-                <span className="font-mono font-black text-white tracking-wide text-xs sm:text-sm">{formatTimer(counterSeconds)}</span>
+                {stationsList.filter(s => s.active).length > 0 ? (
+                  <>
+                    <Users className="w-3.5 h-3.5 text-[#F2A15A] shrink-0" />
+                    <span className="text-[11px] text-slate-300">Chairs Active:</span>
+                    <span className="font-mono font-black text-white tracking-wide text-xs sm:text-sm">
+                      {stationsList.filter(s => s.active && s.currentToken).length} / {stationsList.filter(s => s.active).length} Serving
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="text-[11px] text-slate-300">Elapsed:</span>
+                    <span className="font-mono font-black text-white tracking-wide text-xs sm:text-sm">{formatTimer(counterSeconds)}</span>
+                  </>
+                )}
               </div>
             </div>
+
+            {/* Live Multi-Staff Chairs Service & Elapsed Timers Overview Bar */}
+            {stationsList.filter(s => s.active).length > 0 && (
+              <div className="bg-black/30 rounded-2xl p-3 border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                  <span className="flex items-center gap-1 text-emerald-300">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Live Chairs Service & Elapsed Timers:</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Click chair to view</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {stationsList.filter(s => s.active).map(st => {
+                    const isServing = !!st.currentToken;
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          if (st.currentToken) {
+                            setServingToken(st.currentToken);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                          isServing
+                            ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-100 hover:border-emerald-400'
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs font-black truncate text-white">{st.name}</div>
+                          <div className="text-[10px] text-slate-300 truncate">{st.staffName?.split(' ')[0]}</div>
+                        </div>
+                        {isServing ? (
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-token font-bold text-emerald-300 block">
+                              #{st.currentToken.tokenNumber}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold text-amber-300 inline-flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-amber-400" />
+                              <span>{formatTimer(st.timerSeconds || 0)}</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                            Free
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {servingToken ? (
               <div className="space-y-6">
@@ -4423,21 +4517,29 @@ export default function MerchantDashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-10 space-y-4">
-                <Store className="w-12 h-12 text-slate-400 mx-auto" />
+              <div className="text-center py-8 space-y-4">
+                <Store className="w-10 h-10 text-slate-400 mx-auto" />
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black text-white">Desk Counter is Idle</h3>
-                  <p className="text-xs text-slate-400">Ready to serve the next customer in line.</p>
+                  <h3 className="text-lg sm:text-xl font-black text-white">
+                    {stationsList.some(s => s.active && s.currentToken)
+                      ? `${stationsList.filter(s => s.active && s.currentToken).length} Customer(s) Serving in Chairs`
+                      : "Desk Counter is Ready"}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {stationsList.some(s => s.active && s.currentToken)
+                      ? "Chairs are actively serving with live timers below. Ready to call next from queue."
+                      : "Ready to call the next customer in line."}
+                  </p>
                 </div>
 
                 {waitingQueue.length > 0 && (
                   <button
                     type="button"
                     onClick={handleCallNext}
-                    className="px-8 py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                    className="px-6 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 mx-auto cursor-pointer active:scale-95 transition-all"
                   >
                     <Volume2 className="w-4 h-4 text-[#F2A15A]" />
-                    <span>Call First Customer ({waitingQueue[0].tokenNumber})</span>
+                    <span>Call Next Customer ({waitingQueue[0].tokenNumber})</span>
                   </button>
                 )}
               </div>
@@ -4734,21 +4836,55 @@ export default function MerchantDashboardPage() {
                   {/* Station Content */}
                   <div className="py-3">
                     {isStationServing ? (
-                      <div className="space-y-2">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-2xl font-token font-bold text-emerald-800">
-                            {station.currentToken.tokenNumber}
+                      <div className="space-y-3">
+                        {/* Token Number & Prominent Live Elapsed Timer Badge */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-2xl sm:text-3xl font-token font-bold text-emerald-800">
+                            #{station.currentToken.tokenNumber}
                           </span>
-                          <span className="text-[11px] font-bold text-[#283B3D]/70 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#176B65]" />
-                            <span>{formatTimer(station.timerSeconds || 0)}</span>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#283B3D] text-amber-200 border border-emerald-900/30 shadow-2xs">
+                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="text-[10px] text-slate-300 font-semibold">Elapsed:</span>
+                            <span className="font-mono font-black text-white text-xs tracking-wide">
+                              {formatTimer(station.timerSeconds || 0)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Customer Name & Direct Call / WhatsApp */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs sm:text-sm font-black text-[#283B3D] truncate">
+                            {station.currentToken.customerName || 'Customer'}
                           </span>
+                          {station.currentToken.customerPhone && station.currentToken.customerPhone !== 'Offline' && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <a
+                                href={`tel:${station.currentToken.customerPhone}`}
+                                className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                                title="Direct Phone Call"
+                              >
+                                <PhoneCall className="w-3 h-3 text-emerald-600" />
+                                <span>Call</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleDirectWhatsAppSend(station.currentToken, 'SERVING_NOW')}
+                                className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
+                                title="Send WhatsApp Serving Alert"
+                              >
+                                <MessageCircle className="w-3 h-3 fill-current" />
+                                <span>WA</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs font-bold text-[#283B3D] line-clamp-1">
-                          {station.currentToken.customerName || 'Customer'}
-                        </div>
-                        <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/60 px-2 py-0.5 rounded-md line-clamp-1">
-                          {station.currentToken.service || 'General Service'}
+
+                        {/* Service & Party Size Pill */}
+                        <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/70 px-2.5 py-1 rounded-lg flex items-center justify-between gap-2">
+                          <span className="truncate">{station.currentToken.service || 'General Service'}</span>
+                          <span className="shrink-0 text-slate-600 font-medium text-[10px]">
+                            Party of {station.currentToken.groupSize || 1}
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -4756,7 +4892,7 @@ export default function MerchantDashboardPage() {
                         <span className="text-xs font-bold text-slate-400 block">
                           {station.active ? 'Chair / Desk is Empty' : 'Marked Inactive / Off-duty'}
                         </span>
-                        <span className="text-[10px] text-slate-400 block">
+                        <span className="text-[10px] text-slate-400 block font-medium">
                           {station.totalServedToday || 0} served today
                         </span>
                       </div>
