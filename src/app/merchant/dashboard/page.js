@@ -10225,7 +10225,7 @@ export default function MerchantDashboardPage() {
       {/* ========================================================= */}
       <AnimatePresence>
         {staffPinModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -10238,27 +10238,27 @@ export default function MerchantDashboardPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-4 z-10 text-center"
+              className="relative w-full max-w-sm bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-[#DCE9E3] space-y-2.5 sm:space-y-3.5 z-10 text-center my-auto max-h-[96dvh] overflow-y-auto no-scrollbar"
             >
-              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
-                <div className="flex items-center gap-2 text-left">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 text-[#176B65] flex items-center justify-center">
-                    <KeyRound className="w-5 h-5 text-[#176B65]" />
+              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-2.5 sm:pb-3">
+                <div className="flex items-center gap-2 text-left min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-teal-50 border border-teal-200 text-[#176B65] flex items-center justify-center shrink-0">
+                    <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-[#176B65]" />
                   </div>
-                  <div>
-                    <h3 className="font-black text-sm text-[#283B3D]">
+                  <div className="min-w-0">
+                    <h3 className="font-black text-xs sm:text-sm text-[#283B3D] truncate">
                       {pinTargetStaff === 'OWNER' ? 'Owner Master PIN' : (pinTargetStaff?.name || 'Staff Login')}
                     </h3>
-                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded-md inline-block">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded-md inline-block truncate max-w-[200px]">
                       {pinAction === 'SWITCH' ? 'Switch Active Terminal' : pinAction === 'CLOCK_IN' ? 'Punch Clock In (Start Duty)' : pinAction === 'CLOCK_OUT' ? 'Punch Clock Out (End Duty)' : pinAction === 'BREAK' ? 'Punch Break / Resume' : 'Owner Master Authentication'}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStaffPinModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
@@ -10267,7 +10267,7 @@ export default function MerchantDashboardPage() {
                 <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block">
                   Select Staff Member:
                 </span>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 w-full max-w-full">
                   {staffList.map((st) => {
                     const isSelected = pinTargetStaff?.id === st.id;
                     return (
@@ -10279,7 +10279,7 @@ export default function MerchantDashboardPage() {
                           setPinInput('');
                           setPinError('');
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border shrink-0 ${
                           isSelected
                             ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
                             : 'bg-slate-50 text-[#283B3D] border-slate-200 hover:bg-slate-100'
@@ -10298,7 +10298,7 @@ export default function MerchantDashboardPage() {
                       setPinInput('');
                       setPinError('');
                     }}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border shrink-0 ${
                       pinTargetStaff === 'OWNER'
                         ? 'bg-[#283B3D] text-white border-[#283B3D] shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -10311,32 +10311,32 @@ export default function MerchantDashboardPage() {
 
               {/* Action Selector */}
               {pinTargetStaff !== 'OWNER' && (
-                <div className="grid grid-cols-4 gap-1 bg-[#F3F1E9] p-1 rounded-xl text-[10px] font-bold text-[#283B3D]">
+                <div className="grid grid-cols-4 gap-1 bg-[#F3F1E9] p-1 rounded-xl text-[10px] sm:text-xs font-bold text-[#283B3D]">
                   <button
                     type="button"
                     onClick={() => setPinAction('CLOCK_IN')}
-                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'CLOCK_IN' ? 'bg-white text-emerald-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                    className={`py-1 rounded-lg transition-all ${pinAction === 'CLOCK_IN' ? 'bg-white text-emerald-700 shadow-2xs font-black' : 'text-slate-500'}`}
                   >
                     Clock In
                   </button>
                   <button
                     type="button"
                     onClick={() => setPinAction('BREAK')}
-                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'BREAK' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                    className={`py-1 rounded-lg transition-all ${pinAction === 'BREAK' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-500'}`}
                   >
                     Break
                   </button>
                   <button
                     type="button"
                     onClick={() => setPinAction('CLOCK_OUT')}
-                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'CLOCK_OUT' ? 'bg-white text-rose-700 shadow-2xs font-black' : 'text-slate-500'}`}
+                    className={`py-1 rounded-lg transition-all ${pinAction === 'CLOCK_OUT' ? 'bg-white text-rose-700 shadow-2xs font-black' : 'text-slate-500'}`}
                   >
                     Clock Out
                   </button>
                   <button
                     type="button"
                     onClick={() => setPinAction('SWITCH')}
-                    className={`py-1.5 rounded-lg transition-all ${pinAction === 'SWITCH' ? 'bg-white text-[#176B65] shadow-2xs font-black' : 'text-slate-500'}`}
+                    className={`py-1 rounded-lg transition-all ${pinAction === 'SWITCH' ? 'bg-white text-[#176B65] shadow-2xs font-black' : 'text-slate-500'}`}
                   >
                     Desk
                   </button>
@@ -10344,7 +10344,7 @@ export default function MerchantDashboardPage() {
               )}
 
               {/* Action Description */}
-              <p className="text-xs text-[#283B3D]/70 font-semibold">
+              <p className="text-[11px] sm:text-xs text-[#283B3D]/70 font-semibold leading-tight">
                 {pinTargetStaff === 'OWNER'
                   ? 'Enter 4-digit Master Owner PIN to unlock staff manager & PIN editor'
                   : `Enter 4-digit quick PIN for ${pinTargetStaff?.name || 'operator'}`
@@ -10352,14 +10352,14 @@ export default function MerchantDashboardPage() {
               </p>
 
               {/* 4-Digit Display Circles */}
-              <div className="py-2">
-                <div className="flex items-center justify-center gap-3">
+              <div className="py-1">
+                <div className="flex items-center justify-center gap-2.5 sm:gap-3">
                   {[0, 1, 2, 3].map((idx) => {
                     const isFilled = pinInput.length > idx;
                     return (
                       <div
                         key={idx}
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black font-mono transition-all border-2 ${
+                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl font-black font-mono transition-all border-2 ${
                           isFilled
                             ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs scale-105'
                             : 'bg-[#F3F1E9]/70 text-slate-300 border-[#DCE9E3]'
@@ -10388,19 +10388,19 @@ export default function MerchantDashboardPage() {
                   }}
                   autoFocus
                   placeholder="Enter 4-digit PIN"
-                  className="w-full mt-2.5 text-center bg-transparent text-xs font-mono font-bold text-transparent caret-[#176B65] focus:outline-none"
+                  className="w-full mt-1.5 text-center bg-transparent text-xs font-mono font-bold text-transparent caret-[#176B65] focus:outline-none"
                 />
               </div>
 
               {/* Error Message */}
               {pinError && (
-                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-shake">
+                <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-shake">
                   {pinError}
                 </div>
               )}
 
               {/* Touch Numpad Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <button
                     key={num}
@@ -10411,7 +10411,7 @@ export default function MerchantDashboardPage() {
                         setPinError('');
                       }
                     }}
-                    className="py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                    className="py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-base sm:text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
                   >
                     {num}
                   </button>
@@ -10424,7 +10424,7 @@ export default function MerchantDashboardPage() {
                     setPinInput('');
                     setPinError('');
                   }}
-                  className="py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                  className="py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors cursor-pointer active:scale-95"
                 >
                   Clear
                 </button>
@@ -10438,7 +10438,7 @@ export default function MerchantDashboardPage() {
                       setPinError('');
                     }
                   }}
-                  className="py-3 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                  className="py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-base sm:text-lg font-black transition-colors cursor-pointer active:scale-95 shadow-2xs"
                 >
                   0
                 </button>
@@ -10450,24 +10450,24 @@ export default function MerchantDashboardPage() {
                     setPinInput(prev => prev.slice(0, -1));
                     setPinError('');
                   }}
-                  className="py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                  className="py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer active:scale-95"
                 >
                   ⌫
                 </button>
               </div>
 
               {/* Hint for demo testing */}
-              <div className="text-[10px] text-slate-400 font-semibold pt-1">
+              <div className="text-[10px] text-slate-400 font-semibold pt-0.5">
                 Demo Quick PIN: <span className="font-bold text-[#176B65]">{pinTargetStaff === 'OWNER' ? ownerMasterPin : (pinTargetStaff?.pin || '1111')}</span>
               </div>
 
               {/* Verify CTA */}
-              <div className="pt-2 space-y-2">
+              <div className="pt-1 sm:pt-2 space-y-1.5">
                 <button
                   type="button"
                   disabled={pinInput.length !== 4}
                   onClick={handleVerifyAndExecutePin}
-                  className={`w-full py-3.5 rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 ${
+                  className={`w-full py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 ${
                     pinInput.length === 4
                       ? 'bg-[#176B65] hover:bg-[#125550] text-white shadow-teal-900/20'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
@@ -10480,7 +10480,7 @@ export default function MerchantDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setStaffPinModalOpen(false)}
-                  className="w-full py-1.5 rounded-xl text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                  className="w-full py-1 rounded-xl text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
