@@ -1144,9 +1144,9 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Floating Bottom Bar - only show on explore/customer routes, hide inside merchant dashboard console */}
+      {/* Mobile Floating Bottom Bar - Sleek Centered Pill Navigation (Only Customer Explorer Routes) */}
       {!pathname.startsWith('/merchant/dashboard') && (
-        <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-[#F3F1E9]/95 backdrop-blur-2xl border border-[#DCE9E3] rounded-3xl py-2.5 px-3 shadow-[0_12px_40px_rgba(40,59,61,0.15)] flex justify-around items-center">
+        <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#F3F1E9]/95 backdrop-blur-2xl border border-[#DCE9E3] rounded-full py-1.5 px-2.5 shadow-[0_12px_40px_rgba(40,59,61,0.2)] flex items-center justify-center gap-1.5 max-w-[92vw]">
           {userRole !== 'MERCHANT' && navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -1154,78 +1154,44 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex flex-col items-center gap-1 py-1 px-4 rounded-2xl transition-all relative ${
-                  isActive ? 'text-[#176B65] font-extrabold' : 'text-[#283B3D]/70 font-medium'
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-full transition-all relative ${
+                  isActive ? 'text-[#176B65] font-black' : 'text-[#283B3D]/70 font-bold hover:text-[#283B3D]'
                 }`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="mobileNavUrbanGlow"
-                    className="absolute inset-0 bg-[#DCE9E3] rounded-2xl border border-[#176B65]/20"
+                    className="absolute inset-0 bg-[#DCE9E3] rounded-full border border-[#176B65]/20 shadow-2xs"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
-                <Icon className="w-5 h-5 relative z-10 text-[#176B65]" />
-                <span className="text-[10px] tracking-tight relative z-10">{link.label}</span>
+                <Icon className="w-4 h-4 relative z-10 text-[#176B65]" />
+                <span className="text-xs tracking-tight relative z-10 whitespace-nowrap">{link.label}</span>
               </Link>
             );
           })}
 
-          {/* Mobile State 1: GUEST -> Show Both For Shop & Sign In */}
-          {userRole === 'GUEST' && (
-            <>
-              <Link
-                href="/merchant/register"
-                className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-[#283B3D]/70 font-medium cursor-pointer"
-              >
-                <Store className="w-5 h-5 text-[#176B65]" />
-                <span className="text-[10px] tracking-tight font-bold">For Shop</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleOpenLogin}
-                className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-[#283B3D]/70 font-medium cursor-pointer"
-              >
-                <User className="w-5 h-5 text-slate-500" />
-                <span className="text-[10px] tracking-tight font-bold">Sign In</span>
-              </button>
-            </>
-          )}
-
-          {/* Mobile State 2: SHOPKEEPER LOGGED IN -> Hide Customer, Show Console & Logout */}
-          {userRole === 'MERCHANT' && (
-            <>
-              <Link
-                href="/merchant/dashboard"
-                className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-[#176B65] font-extrabold cursor-pointer"
-              >
-                <Store className="w-5 h-5 text-[#176B65]" />
-                <span className="text-[10px] tracking-tight">Console</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleMerchantLogout}
-                className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-rose-600 font-bold cursor-pointer"
-                title="Log out as shopkeeper"
-              >
-                <LogOut className="w-5 h-5 text-rose-500" />
-                <span className="text-[10px] tracking-tight">Logout</span>
-              </button>
-            </>
-          )}
-
-          {/* Mobile State 3: CUSTOMER LOGGED IN -> Hide Shop, Show Customer Profile */}
+          {/* Mobile State: CUSTOMER LOGGED IN -> Show Profile Pill */}
           {userRole === 'CUSTOMER' && (
             <button
               type="button"
               onClick={() => setProfileOpen(true)}
-              className="flex flex-col items-center gap-1 py-1 px-4 rounded-2xl text-[#176B65] font-bold cursor-pointer"
+              className="flex items-center gap-1.5 py-2 px-3 rounded-full text-[#176B65] font-bold cursor-pointer hover:bg-[#DCE9E3]/50 transition-colors"
             >
-              <User className="w-5 h-5 text-[#176B65]" />
-              <span className="text-[10px] tracking-tight truncate max-w-[70px]">{customerName}</span>
+              <User className="w-4 h-4 text-[#176B65]" />
+              <span className="text-xs tracking-tight truncate max-w-[80px]">{customerName}</span>
             </button>
+          )}
+
+          {/* Mobile State: SHOPKEEPER LOGGED IN -> Single Quick Console Link */}
+          {userRole === 'MERCHANT' && (
+            <Link
+              href="/merchant/dashboard"
+              className="flex items-center gap-2 py-2 px-4 rounded-full bg-[#176B65] text-white font-black text-xs shadow-md transition-all cursor-pointer"
+            >
+              <Store className="w-4 h-4 text-white" />
+              <span>Dukan Console</span>
+            </Link>
           )}
         </nav>
       )}
