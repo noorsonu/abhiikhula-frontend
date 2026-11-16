@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { 
   X, Search, MapPin, Ticket, Star, ArrowUpRight, ArrowRight,
-  Store, ShieldCheck, ChevronRight, Eye, Heart, Clock 
+  Store, ShieldCheck, ChevronRight, Eye, Heart, Clock,
+  ChevronDown, Check, Scissors, Activity, Utensils, Wrench
 } from 'lucide-react';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 
@@ -21,6 +22,7 @@ export default function CategoryShopDirectoryModal({
   const [search, setSearch] = useState('');
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
   const [userRole, setUserRole] = useState('GUEST');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -104,6 +106,62 @@ export default function CategoryShopDirectoryModal({
     return matching.some(s => s.id === shop.id || s.slug === shop.slug);
   });
 
+  const getCategoryIcon = (id) => {
+    switch (id) {
+      case 'all': return Store;
+      case 'favorites': return Heart;
+      case 'salon': return Scissors;
+      case 'food': return Utensils;
+      case 'auto': return Wrench;
+      case 'pharmacy':
+      case 'clinic':
+      case 'diagnostic':
+        return Activity;
+      default: return Store;
+    }
+  };
+
+  const activeOption = (() => {
+    if (isAllPlaces) {
+      return {
+        id: 'all',
+        label: 'All Categories',
+        icon: Store,
+        badge: `${standardCategories.length} Categories`,
+        badgeClass: 'bg-[#DCE9E3] text-[#176B65]'
+      };
+    }
+    if (isFavorites) {
+      return {
+        id: 'favorites',
+        label: 'Saved Places',
+        icon: Heart,
+        badge: `${favoriteSlugs.length} Saved`,
+        badgeClass: 'bg-rose-100 text-rose-700'
+      };
+    }
+    const cat = standardCategories.find(c => c.id === selectedCat) || currentCatObj;
+    if (cat) {
+      const count = getCategoryShops(cat.id).length;
+      return {
+        id: cat.id,
+        label: cat.name,
+        icon: getCategoryIcon(cat.id),
+        badge: `${count} ${count === 1 ? 'Shop' : 'Shops'}`,
+        badgeClass: 'bg-emerald-100 text-[#176B65]'
+      };
+    }
+    return {
+      id: selectedCat,
+      label: 'Selected Category',
+      icon: Store,
+      badge: 'Active',
+      badgeClass: 'bg-[#DCE9E3] text-[#176B65]'
+    };
+  })();
+
+  const ActiveIcon = activeOption.icon;
+
   const headerTitle = isAllPlaces
     ? 'All Categories & Neighborhood Stores'
     : isFavorites 
@@ -166,73 +224,191 @@ export default function CategoryShopDirectoryModal({
             </button>
           </div>
 
-          {/* Search & Category Filter Pills */}
-          <div className="p-4 sm:p-5 border-b border-[#DCE9E3] space-y-3 shrink-0 bg-white">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input 
-                type="text"
-                placeholder={isAllPlaces ? "Search category (Salon, Medical, Clinic)..." : "Search store name or address..."}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-              />
-            </div>
+          {/* Search & Category Filter Section */}
+          <div className="p-4 sm:p-5 border-b border-[#DCE9E3] bg-white shrink-0">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+              {/* Search Box */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input 
+                  type="text"
+                  placeholder={isAllPlaces ? "Search category (Salon, Medical, Clinic)..." : "Search store name or address..."}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                />
+              </div>
 
-            {/* Category Switcher Pills: All Places is FIRST, then Saved Places, then Categories */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
-              
-              {/* 1. All Categories (First tab) */}
-              <button
-                type="button"
-                onClick={() => setSelectedCat('all')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isAllPlaces
-                    ? 'bg-[#176B65] text-white shadow-xs'
-                    : 'bg-white text-[#283B3D] border border-[#DCE9E3] hover:bg-[#DCE9E3]/40'
-                }`}
-              >
-                <Store className={`w-3.5 h-3.5 ${isAllPlaces ? 'text-[#F2A15A]' : 'text-[#176B65]'}`} />
-                <span>All Categories</span>
-              </button>
+              {/* Category Dropdown Selector (Mobile + Desktop Responsive) */}
+              <div className="relative w-full sm:w-72 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className={`w-full bg-[#F3F1E9]/80 hover:bg-[#F3F1E9] border rounded-2xl px-3.5 py-2 text-left flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+                    dropdownOpen ? 'border-[#176B65] ring-2 ring-[#176B65]/10' : 'border-[#DCE9E3]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                      isFavorites 
+                        ? 'bg-rose-100 text-rose-600' 
+                        : isAllPlaces 
+                          ? 'bg-[#176B65] text-white' 
+                          : 'bg-[#DCE9E3] text-[#176B65]'
+                    }`}>
+                      <ActiveIcon className={`w-3.5 h-3.5 ${isFavorites ? 'fill-rose-500' : ''}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider leading-none mb-0.5">Category</div>
+                      <div className="text-xs font-black text-[#283B3D] truncate leading-tight">
+                        {activeOption.label}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* 2. Saved Places Tab */}
-              <button
-                type="button"
-                onClick={() => setSelectedCat('favorites')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isFavorites
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-white text-[#283B3D] border border-rose-200 hover:bg-rose-50'
-                }`}
-              >
-                <Heart className={`w-3.5 h-3.5 ${isFavorites ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                <span>Saved Places</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
-                }`}>
-                  {favoriteSlugs.length}
-                </span>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${activeOption.badgeClass}`}>
+                      {activeOption.badge}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
 
-              {/* 3. The 6 Category Tabs */}
-              {standardCategories.map((c) => {
-                const isSelected = selectedCat === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setSelectedCat(c.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                      isSelected 
-                        ? 'bg-[#176B65] text-white shadow-xs' 
-                        : 'bg-[#F3F1E9] text-[#283B3D] border border-[#DCE9E3] hover:bg-[#DCE9E3]/50'
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
+                <AnimatePresence>
+                  {dropdownOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setDropdownOpen(false)} 
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 right-0 sm:right-0 sm:w-80 top-full mt-2 z-50 bg-white rounded-2xl border border-[#DCE9E3] shadow-2xl p-2 space-y-1 max-h-72 overflow-y-auto no-scrollbar"
+                      >
+                        {/* 1. All Categories Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCat('all');
+                            setDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                            isAllPlaces ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                              isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
+                            }`}>
+                              <Store className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black truncate">All Categories</div>
+                              <div className={`text-[10px] truncate ${isAllPlaces ? 'text-white/80' : 'text-slate-400'}`}>
+                                Browse entire neighborhood directory
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
+                            }`}>
+                              {standardCategories.length} Categories
+                            </span>
+                            {isAllPlaces && <Check className="w-4 h-4 text-white" />}
+                          </div>
+                        </button>
+
+                        {/* 2. Saved Places Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCat('favorites');
+                            setDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                            isFavorites ? 'bg-rose-600 text-white shadow-xs' : 'hover:bg-rose-50/70 text-[#283B3D]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                              isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
+                            }`}>
+                              <Heart className={`w-4 h-4 ${isFavorites ? 'fill-white' : 'fill-rose-500'}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black truncate">Saved Places</div>
+                              <div className={`text-[10px] truncate ${isFavorites ? 'text-white/80' : 'text-slate-400'}`}>
+                                Your bookmarked favorite stores
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+                            }`}>
+                              {favoriteSlugs.length} Saved
+                            </span>
+                            {isFavorites && <Check className="w-4 h-4 text-white" />}
+                          </div>
+                        </button>
+
+                        {/* Section Divider */}
+                        <div className="px-3 pt-2 pb-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                          Store Categories
+                        </div>
+
+                        {/* 3. Category Items */}
+                        {standardCategories.map((c) => {
+                          const isSelected = selectedCat === c.id;
+                          const CatIcon = getCategoryIcon(c.id);
+                          const count = getCategoryShops(c.id).length;
+
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCat(c.id);
+                                setDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${
+                                isSelected ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#DCE9E3]/70 text-[#176B65]'
+                                }`}>
+                                  <CatIcon className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-black truncate">{c.name}</div>
+                                  <div className={`text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                                    {c.description || 'Verified local places'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#F3F1E9] text-[#176B65]'
+                                }`}>
+                                  {count} {count === 1 ? 'Shop' : 'Shops'}
+                                </span>
+                                {isSelected && <Check className="w-4 h-4 text-white" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
 
