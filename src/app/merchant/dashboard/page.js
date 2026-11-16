@@ -2488,63 +2488,32 @@ export default function MerchantDashboardPage() {
     } catch (e) {}
   };
 
-  const handleTriggerStaffPinModal = (staffMember, action = 'SWITCH') => {
-    setPinTargetStaff(staffMember);
-    setPinAction(action);
-    setPinInput('');
-    setPinError('');
-    setStaffPinModalOpen(true);
-  };
-
-  const handleVerifyAndExecutePin = () => {
-    if (!pinTargetStaff) {
-      setPinError('No operator selected.');
-      return;
-    }
-
-    const expectedPin = pinTargetStaff === 'OWNER' ? ownerMasterPin : (pinTargetStaff.pin || '1111');
-    if (pinInput !== expectedPin) {
-      playAlert();
-      setPinError(`Incorrect 4-digit PIN! (Default demo PIN: ${expectedPin})`);
-      setPinInput('');
-      return;
-    }
-
-    // PIN is correct!
-    playChime();
+  // Direct 1-Tap Attendance Punch & Operator Switching for Shopkeeper (No PIN friction)
+  const handleDirectStaffAttendance = (staffMember, action = 'SWITCH') => {
+    if (!staffMember) return;
     const nowTimeStr = getNowTimeStr();
-
-    if (pinTargetStaff === 'OWNER') {
-      setIsOwnerUnlocked(true);
-      setStaffPinModalOpen(false);
-      setStaffManageModalOpen(true);
-      setStaffFeedbackMsg(`🔓 Owner Master Mode Unlocked at ${nowTimeStr}!`);
-      setTimeout(() => setStaffFeedbackMsg(''), 4000);
-      return;
-    }
-
-    const staffId = pinTargetStaff.id;
+    const staffId = staffMember.id;
     let feedback = '';
 
     const updated = staffList.map(st => {
       if (st.id === staffId) {
-        if (pinAction === 'CLOCK_IN') {
-          feedback = `✅ ${st.name} punched CLOCK-IN at ${nowTimeStr} (On Duty)`;
+        if (action === 'CLOCK_IN') {
+          feedback = `✅ ${st.name} ki Attendance CLOCK-IN lag gayi (${nowTimeStr}) - On Duty`;
           return { ...st, status: 'ON_DUTY', clockInTime: nowTimeStr, breakTime: null, clockOutTime: null };
-        } else if (pinAction === 'CLOCK_OUT') {
-          feedback = `👋 ${st.name} punched CLOCK-OUT at ${nowTimeStr} (Off Duty)`;
+        } else if (action === 'CLOCK_OUT') {
+          feedback = `👋 ${st.name} ki Attendance CLOCK-OUT lag gayi (${nowTimeStr}) - Off Duty`;
           return { ...st, status: 'OFF_DUTY', clockOutTime: nowTimeStr };
-        } else if (pinAction === 'BREAK') {
+        } else if (action === 'BREAK') {
           const isTakingBreak = st.status !== 'ON_BREAK';
           if (isTakingBreak) {
-            feedback = `☕ ${st.name} stepped out on BREAK at ${nowTimeStr}`;
+            feedback = `☕ ${st.name} break par chale gaye (${nowTimeStr})`;
             return { ...st, status: 'ON_BREAK', breakTime: nowTimeStr };
           } else {
-            feedback = `⚡ ${st.name} resumed duty from break at ${nowTimeStr}`;
+            feedback = `⚡ ${st.name} break se wapas duty par aa gaye (${nowTimeStr})`;
             return { ...st, status: 'ON_DUTY', resumeTime: nowTimeStr, breakTime: null };
           }
-        } else if (pinAction === 'SWITCH') {
-          feedback = `👤 Active operator switched to ${st.name} at ${nowTimeStr}`;
+        } else if (action === 'SWITCH') {
+          feedback = `👤 Active counter operator ${st.name} set ho gaye (${nowTimeStr})`;
           return { ...st, status: 'ON_DUTY', clockInTime: st.clockInTime || nowTimeStr };
         }
       }
@@ -2556,9 +2525,20 @@ export default function MerchantDashboardPage() {
     if (updatedStaff) {
       setActiveOperator(updatedStaff);
     }
+    playChime();
     setStaffPinModalOpen(false);
     setStaffFeedbackMsg(feedback);
     setTimeout(() => setStaffFeedbackMsg(''), 4500);
+  };
+
+  const handleTriggerStaffPinModal = (staffMember, action = 'SWITCH') => {
+    handleDirectStaffAttendance(staffMember, action);
+  };
+
+  const handleVerifyAndExecutePin = () => {
+    if (pinTargetStaff) {
+      handleDirectStaffAttendance(pinTargetStaff, pinAction);
+    }
   };
 
   const handleAddStaffMember = (e) => {
@@ -3314,14 +3294,14 @@ export default function MerchantDashboardPage() {
               )}
             </button>
 
-            {/* Staff Desk Button */}
+            {/* Staff Attendance Console Button */}
             <button
               type="button"
-              onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0] || null, 'SWITCH')}
+              onClick={() => setActiveTab('STAFF')}
               className="px-3 py-1.5 sm:py-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
-              title="Staff Operator Login & PIN Desk"
+              title="Open Staff & Attendance Console"
             >
-              <KeyRound className="w-3.5 h-3.5 text-[#176B65]" />
+              <Users className="w-3.5 h-3.5 text-[#176B65]" />
               <span className="text-[11px] font-bold">Staff</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </button>
@@ -6648,7 +6628,7 @@ export default function MerchantDashboardPage() {
                 {activeOperator?.status === 'ON_DUTY' && (
                   <button
                     type="button"
-                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'BREAK')}
+                    onClick={() => handleDirectStaffAttendance(activeOperator, 'BREAK')}
                     className="px-3.5 py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     <Coffee className="w-3.5 h-3.5 text-amber-300" />
@@ -6659,7 +6639,7 @@ export default function MerchantDashboardPage() {
                 {activeOperator?.status === 'ON_BREAK' && (
                   <button
                     type="button"
-                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'BREAK')}
+                    onClick={() => handleDirectStaffAttendance(activeOperator, 'BREAK')}
                     className="px-3.5 py-2 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/45 border border-emerald-400/50 text-emerald-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     <PlayCircle className="w-3.5 h-3.5 text-emerald-300" />
@@ -6670,7 +6650,7 @@ export default function MerchantDashboardPage() {
                 {activeOperator?.status !== 'OFF_DUTY' && (
                   <button
                     type="button"
-                    onClick={() => handleTriggerStaffPinModal(activeOperator, 'CLOCK_OUT')}
+                    onClick={() => handleDirectStaffAttendance(activeOperator, 'CLOCK_OUT')}
                     className="px-3.5 py-2 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/50 text-rose-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     <LogOut className="w-3.5 h-3.5 text-rose-300" />
@@ -6680,7 +6660,10 @@ export default function MerchantDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0], 'SWITCH')}
+                  onClick={() => {
+                    const nextStaff = staffList.find(s => s.id !== activeOperator?.id && s.status === 'ON_DUTY') || staffList.find(s => s.id !== activeOperator?.id) || staffList[0];
+                    if (nextStaff) handleDirectStaffAttendance(nextStaff, 'SWITCH');
+                  }}
                   className="px-4 py-2 rounded-xl bg-white text-[#176B65] hover:bg-slate-100 text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[#176B65]" />
@@ -6717,18 +6700,12 @@ export default function MerchantDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isOwnerUnlocked) {
-                      setStaffManageModalOpen(true);
-                    } else {
-                      handleTriggerStaffPinModal('OWNER', 'OWNER_SETTINGS');
-                    }
-                  }}
+                  onClick={() => setStaffManageModalOpen(true)}
                   className="px-3.5 py-2 rounded-xl bg-[#283B3D] hover:bg-[#1e2e30] text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-                  title="Owner Master Settings & PIN Manager"
+                  title="Manage Staff Roster & Roles"
                 >
-                  <Lock className="w-4 h-4 text-[#F2A15A]" />
-                  <span>Owner Mode {isOwnerUnlocked ? '(Unlocked)' : ''}</span>
+                  <Settings className="w-4 h-4 text-[#F2A15A]" />
+                  <span>Manage Staff Roster</span>
                 </button>
 
                 <button
@@ -6801,7 +6778,7 @@ export default function MerchantDashboardPage() {
                       </span>
                     </div>
 
-                    {/* Today's Punch Clock & PIN Info */}
+                    {/* Today's Punch Clock & Contact Info */}
                     <div className="grid grid-cols-2 gap-2 p-3 bg-[#F3F1E9]/60 rounded-2xl border border-[#DCE9E3]/60 text-xs">
                       <div>
                         <span className="text-[10px] text-slate-400 uppercase font-bold block">
@@ -6816,9 +6793,9 @@ export default function MerchantDashboardPage() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">PIN Security</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Contact Phone</span>
                         <span className="font-mono font-bold text-[#176B65]">
-                          {isOwnerUnlocked ? staff.pin : '•••• (Locked)'}
+                          {staff.phone || '9876543210'}
                         </span>
                       </div>
                       <div>
@@ -6831,23 +6808,23 @@ export default function MerchantDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Quick 1-Tap Attendance Punch Desk Buttons */}
+                    {/* Quick 1-Tap Attendance Punch Desk Buttons (No PIN Friction) */}
                     <div className="space-y-2 pt-1 border-t border-[#DCE9E3]">
                       <div className="grid grid-cols-2 gap-2">
                         {staff.status === 'OFF_DUTY' ? (
                           <button
                             type="button"
-                            onClick={() => handleTriggerStaffPinModal(staff, 'CLOCK_IN')}
+                            onClick={() => handleDirectStaffAttendance(staff, 'CLOCK_IN')}
                             className="col-span-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                           >
-                            <KeyRound className="w-3.5 h-3.5" />
-                            <span>Clock In with PIN</span>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Mark Present (Clock In)</span>
                           </button>
                         ) : (
                           <>
                             <button
                               type="button"
-                              onClick={() => handleTriggerStaffPinModal(staff, 'BREAK')}
+                              onClick={() => handleDirectStaffAttendance(staff, 'BREAK')}
                               className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 ${
                                 staff.status === 'ON_BREAK'
                                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
@@ -6860,7 +6837,7 @@ export default function MerchantDashboardPage() {
 
                             <button
                               type="button"
-                              onClick={() => handleTriggerStaffPinModal(staff, 'CLOCK_OUT')}
+                              onClick={() => handleDirectStaffAttendance(staff, 'CLOCK_OUT')}
                               className="py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                             >
                               <LogOut className="w-3.5 h-3.5" />
@@ -6873,11 +6850,11 @@ export default function MerchantDashboardPage() {
                       {staff.status !== 'OFF_DUTY' && !isActiveTerminal && (
                         <button
                           type="button"
-                          onClick={() => handleTriggerStaffPinModal(staff, 'SWITCH')}
+                          onClick={() => handleDirectStaffAttendance(staff, 'SWITCH')}
                           className="w-full py-2 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <KeyRound className="w-3.5 h-3.5 text-[#176B65]" />
-                          <span>Make Active Desk Operator</span>
+                          <Store className="w-3.5 h-3.5 text-[#176B65]" />
+                          <span>Set Active Desk Operator</span>
                         </button>
                       )}
                     </div>
