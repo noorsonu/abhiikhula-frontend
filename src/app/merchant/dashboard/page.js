@@ -109,6 +109,7 @@ export default function MerchantDashboardPage() {
   const [newStaffRole, setNewStaffRole] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffPin, setNewStaffPin] = useState('');
+  const [currentLiveClock, setCurrentLiveClock] = useState('');
 
   // Persistent Real Records for Analytics & Customer Logs
   const [shopRecords, setShopRecords] = useState([]);
@@ -279,37 +280,42 @@ export default function MerchantDashboardPage() {
     return [];
   };
 
+  // Helper to fetch live real-time formatted in Indian Standard 12-hour AM/PM
+  const getNowTimeStr = () => {
+    return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
   // BRD FR-711: Staff Attendance & Multi-Operator Storage Keys & Default Archetypes
   const CATEGORY_DEFAULT_STAFF = {
     SALON: [
-      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'ON_BREAK', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     CLINIC: [
-      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-3', name: 'Dr. Neha (Dentist)', role: 'Dental Care', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-3', name: 'Dr. Neha (Dentist)', role: 'Dental Care', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     PHARMACY: [
-      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:15 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     DIAGNOSTIC: [
-      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '08:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '08:45 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     FOOD: [
-      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '10:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     AUTO: [
-      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ],
     RETAIL: [
-      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: '09:00 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'ON_DUTY', clockInTime: '09:30 AM', clockOutTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
+      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
+      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
     ]
   };
 
@@ -319,16 +325,37 @@ export default function MerchantDashboardPage() {
   const loadShopStaff = (shop) => {
     if (!shop || typeof window === 'undefined') return [];
     const key = getStaffStorageKey(shop);
+    const nowLiveTime = getNowTimeStr();
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Replace any obsolete static demo times with real live login times
+          const sanitized = parsed.map((s, idx) => {
+            const hasStaticOldTime = s.clockInTime === '09:00 AM' || s.clockInTime === '09:30 AM' || s.clockInTime === '08:30 AM' || s.clockInTime === '08:45 AM' || s.clockInTime === '10:00 AM' || s.clockInTime === '09:15 AM';
+            if (hasStaticOldTime) {
+              if (idx === 0) {
+                return { ...s, clockInTime: nowLiveTime, status: 'ON_DUTY', breakTime: null };
+              } else {
+                return { ...s, clockInTime: null, status: 'OFF_DUTY', breakTime: null, clockOutTime: null };
+              }
+            }
+            return s;
+          });
+          return sanitized;
+        }
       }
     } catch (e) {}
 
     const catKey = detectCategoryKey(shop);
-    const defaults = CATEGORY_DEFAULT_STAFF[catKey] || CATEGORY_DEFAULT_STAFF.SALON;
+    const defaults = (CATEGORY_DEFAULT_STAFF[catKey] || CATEGORY_DEFAULT_STAFF.SALON).map((s, idx) => {
+      if (idx === 0) {
+        return { ...s, clockInTime: nowLiveTime, status: 'ON_DUTY' };
+      }
+      return { ...s, clockInTime: null, status: 'OFF_DUTY', breakTime: null, clockOutTime: null };
+    });
+
     try {
       localStorage.setItem(key, JSON.stringify(defaults));
     } catch (e) {}
@@ -850,6 +877,17 @@ export default function MerchantDashboardPage() {
   useEffect(() => {
     absentListRef.current = absentList;
   }, [absentList]);
+
+  // Live real-time digital clock (ticking every second)
+  useEffect(() => {
+    const updateLiveClock = () => {
+      const now = new Date();
+      setCurrentLiveClock(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+    };
+    updateLiveClock();
+    const clockTimer = setInterval(updateLiveClock, 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
 
   // Token matching helper for consistent comparison across UUIDs and numbers
   const isTokenMatch = (a, b) => {
@@ -2472,13 +2510,13 @@ export default function MerchantDashboardPage() {
 
     // PIN is correct!
     playChime();
-    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const nowTimeStr = getNowTimeStr();
 
     if (pinTargetStaff === 'OWNER') {
       setIsOwnerUnlocked(true);
       setStaffPinModalOpen(false);
       setStaffManageModalOpen(true);
-      setStaffFeedbackMsg('🔓 Owner Master Mode Unlocked!');
+      setStaffFeedbackMsg(`🔓 Owner Master Mode Unlocked at ${nowTimeStr}!`);
       setTimeout(() => setStaffFeedbackMsg(''), 4000);
       return;
     }
@@ -2490,18 +2528,21 @@ export default function MerchantDashboardPage() {
       if (st.id === staffId) {
         if (pinAction === 'CLOCK_IN') {
           feedback = `✅ ${st.name} punched CLOCK-IN at ${nowTimeStr} (On Duty)`;
-          return { ...st, status: 'ON_DUTY', clockInTime: nowTimeStr };
+          return { ...st, status: 'ON_DUTY', clockInTime: nowTimeStr, breakTime: null, clockOutTime: null };
         } else if (pinAction === 'CLOCK_OUT') {
           feedback = `👋 ${st.name} punched CLOCK-OUT at ${nowTimeStr} (Off Duty)`;
           return { ...st, status: 'OFF_DUTY', clockOutTime: nowTimeStr };
         } else if (pinAction === 'BREAK') {
-          const newStatus = st.status === 'ON_BREAK' ? 'ON_DUTY' : 'ON_BREAK';
-          feedback = newStatus === 'ON_BREAK'
-            ? `☕ ${st.name} stepped out on BREAK at ${nowTimeStr}`
-            : `⚡ ${st.name} resumed duty from break at ${nowTimeStr}`;
-          return { ...st, status: newStatus };
+          const isTakingBreak = st.status !== 'ON_BREAK';
+          if (isTakingBreak) {
+            feedback = `☕ ${st.name} stepped out on BREAK at ${nowTimeStr}`;
+            return { ...st, status: 'ON_BREAK', breakTime: nowTimeStr };
+          } else {
+            feedback = `⚡ ${st.name} resumed duty from break at ${nowTimeStr}`;
+            return { ...st, status: 'ON_DUTY', resumeTime: nowTimeStr, breakTime: null };
+          }
         } else if (pinAction === 'SWITCH') {
-          feedback = `👤 Active operator switched to ${st.name}`;
+          feedback = `👤 Active operator switched to ${st.name} at ${nowTimeStr}`;
           return { ...st, status: 'ON_DUTY', clockInTime: st.clockInTime || nowTimeStr };
         }
       }
@@ -6372,7 +6413,11 @@ export default function MerchantDashboardPage() {
                     </span>
                   </h3>
                   <p className="text-xs text-white/80">
-                    Punched In: <span className="font-bold text-white">{activeOperator?.clockInTime || 'Pending'}</span> • 
+                    {activeOperator?.status === 'ON_BREAK' ? (
+                      <>☕ Break Time: <span className="font-bold text-amber-300">{activeOperator?.breakTime || 'Just now'}</span> • </>
+                    ) : (
+                      <>⏰ Punched In: <span className="font-bold text-white">{activeOperator?.clockInTime || 'Pending'}</span> • </>
+                    )}
                     Served Today: <span className="font-bold text-emerald-300">{activeOperator?.servedCountToday || 0} customers</span> • 
                     Revenue: <span className="font-bold text-[#F2A15A]">₹{(activeOperator?.revenueGeneratedToday || 0).toLocaleString('en-IN')}</span>
                   </p>
@@ -6427,9 +6472,17 @@ export default function MerchantDashboardPage() {
 
             {/* ACTION TOOLBAR & SEARCH */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#DCE9E3]">
-              <div className="flex items-center gap-2 text-xs font-black text-[#283B3D]">
-                <BadgeCheck className="w-4 h-4 text-[#176B65]" />
-                <span>Shop Staff Directory ({staffList.length} Operators)</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-xs font-black text-[#283B3D]">
+                  <BadgeCheck className="w-4 h-4 text-[#176B65]" />
+                  <span>Shop Staff Directory ({staffList.length} Operators)</span>
+                </div>
+                {currentLiveClock && (
+                  <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+                    <Clock className="w-3.5 h-3.5 text-emerald-600 animate-spin" style={{ animationDuration: '6s' }} />
+                    <span>Real-Time Clock: {currentLiveClock}</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -6532,8 +6585,16 @@ export default function MerchantDashboardPage() {
                     {/* Today's Punch Clock & PIN Info */}
                     <div className="grid grid-cols-2 gap-2 p-3 bg-[#F3F1E9]/60 rounded-2xl border border-[#DCE9E3]/60 text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Clock In</span>
-                        <span className="font-bold text-[#283B3D]">{staff.clockInTime || 'Not punched'}</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                          {staff.status === 'ON_BREAK' ? '☕ On Break At' : staff.status === 'OFF_DUTY' && staff.clockOutTime ? '👋 Clock Out' : '⏰ Clock In'}
+                        </span>
+                        <span className="font-bold text-[#283B3D]">
+                          {staff.status === 'ON_BREAK'
+                            ? (staff.breakTime || 'Just now')
+                            : staff.status === 'OFF_DUTY' && staff.clockOutTime
+                            ? staff.clockOutTime
+                            : (staff.clockInTime || 'Not punched yet')}
+                        </span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 uppercase font-bold block">PIN Security</span>
