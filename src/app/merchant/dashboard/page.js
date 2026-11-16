@@ -3428,30 +3428,37 @@ export default function MerchantDashboardPage() {
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Dropdown Menu Modal / Sheet */}
+              {/* Dropdown Menu Modal / Sheet (Centered on mobile, Dropdown on desktop, No ugly scrollbar lining) */}
               <AnimatePresence>
                 {toolsDropdownOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]" 
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-0 sm:static">
+                    {/* Backdrop for click outside */}
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs sm:bg-black/15" 
                       onClick={() => setToolsDropdownOpen(false)} 
                     />
                     
                     <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      initial={{ opacity: 0, y: 10, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 z-50 w-[calc(100vw-32px)] sm:w-[380px] max-w-[380px] bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-3.5 space-y-2 max-h-[75vh] overflow-y-auto"
+                      exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                      transition={{ duration: 0.16 }}
+                      className="relative z-50 w-full max-w-sm sm:max-w-none sm:w-[380px] sm:absolute sm:right-0 sm:top-full sm:mt-2 bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-4 sm:p-5 space-y-2.5 max-h-[82vh] sm:max-h-[75vh] overflow-y-auto no-scrollbar"
                     >
-                      <div className="px-2.5 py-1.5 border-b border-[#DCE9E3]/70 flex items-center justify-between">
-                        <span className="text-xs font-black uppercase tracking-wider text-[#283B3D]">
-                          Dukan Tools & Settings
-                        </span>
+                      <div className="px-1 pb-2 border-b border-[#DCE9E3]/70 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-black uppercase tracking-wider text-[#283B3D] block">
+                            Dukan Tools & Settings
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">Select tool to manage</span>
+                        </div>
                         <button 
                           type="button"
                           onClick={() => setToolsDropdownOpen(false)}
-                          className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -3620,7 +3627,7 @@ export default function MerchantDashboardPage() {
                         </button>
                       </div>
                     </motion.div>
-                  </>
+                  </div>
                 )}
               </AnimatePresence>
             </div>
@@ -3823,7 +3830,7 @@ export default function MerchantDashboardPage() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-2.5 space-y-1"
+                      className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-2.5 space-y-1 overflow-y-auto no-scrollbar max-h-[70vh]"
                     >
                       {[
                         { id: 'COUNTER', label: 'Live Counter Station', icon: Store, badge: `${waitingQueue.length} Waiting`, badgeClass: 'bg-emerald-100 text-[#176B65]' },
