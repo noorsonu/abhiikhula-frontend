@@ -180,7 +180,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const resetKey = 'ak_reset_v4_clean_all';
+      const resetKey = 'ak_reset_v5_clean_all';
       if (!localStorage.getItem(resetKey)) {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_merchant_shops');
