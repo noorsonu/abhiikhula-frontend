@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Users, CheckCircle2, Navigation,
   MessageSquare, Store, User, Reply, Send, Edit3,
   ChevronLeft, ChevronRight, Image as ImageIcon,
-  Tag, Sparkles, Check
+  Tag, Sparkles, Check, ChevronDown, ChevronUp, Search
 } from 'lucide-react';
 import { reviewApi } from '@/lib/api';
 
@@ -23,6 +23,8 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
 
   // Rate card & Services state (prices set by shopkeeper)
   const [shopServices, setShopServices] = useState([]);
+  const [rateCardExpanded, setRateCardExpanded] = useState(false);
+  const [rateCardSearchQuery, setRateCardSearchQuery] = useState('');
 
   // Shopkeeper uploaded photos
   const [shopPhotos, setShopPhotos] = useState([]);
@@ -456,7 +458,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
             </div>
 
             {/* ============================================================== */}
-            {/* 2. OFFICIAL RATE CARD & PRICES SET BY SHOPKEEPER                */}
+            {/* 2. OFFICIAL RATE CARD & PRICES SET BY SHOPKEEPER (EXPANDABLE & SEARCH) */}
             {/* ============================================================== */}
             <div className="space-y-2.5 pt-2 border-t border-[#DCE9E3]">
               <div className="flex items-center justify-between">
@@ -464,29 +466,131 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                   <Tag className="w-4 h-4 text-[#176B65]" />
                   <span>Verified Rate Card & Price Menu ({shopServices.length})</span>
                 </div>
-                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  Fixed Counter Prices
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Fixed Counter Prices
+                  </span>
+                  {shopServices.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setRateCardExpanded(!rateCardExpanded)}
+                      className="text-[10px] font-black text-[#176B65] hover:text-[#125550] flex items-center gap-0.5 bg-[#DCE9E3]/50 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
+                    >
+                      <span>{rateCardExpanded ? 'Collapse ▲' : `View All (${shopServices.length}) ▼`}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {shopServices.map((srv, sIdx) => (
-                  <div 
-                    key={srv.id || sIdx}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/90 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-[#283B3D] block text-[11px]">{srv.name}</span>
-                      {srv.durationMin && (
-                        <span className="text-[10px] text-slate-400 font-medium">~{srv.durationMin} mins duration</span>
+              {/* If expanded, show Quick Search Bar & Dropdown Select Picker */}
+              {rateCardExpanded && (
+                <div className="space-y-2 pt-1 pb-1">
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    {/* Instant Search Filter */}
+                    <div className="relative w-full flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={rateCardSearchQuery}
+                        onChange={(e) => setRateCardSearchQuery(e.target.value)}
+                        placeholder="🔍 Search service (e.g. Haircut, Shave, Facial)..."
+                        className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#283B3D] focus:outline-none focus:ring-1 focus:ring-[#176B65] focus:bg-white placeholder:text-slate-400"
+                      />
+                      {rateCardSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setRateCardSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
-                    <span className="font-token font-bold text-sm text-[#176B65] bg-white px-2 py-0.5 rounded-lg border border-[#DCE9E3]">
-                      ₹{srv.price || 0}
-                    </span>
+
+                    {/* Quick Dropdown Picker */}
+                    <div className="w-full sm:w-auto">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setRateCardSearchQuery(e.target.value);
+                          }
+                        }}
+                        value=""
+                        className="w-full sm:w-48 px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold text-[#283B3D] focus:outline-none focus:ring-1 focus:ring-[#176B65] cursor-pointer"
+                      >
+                        <option value="">▼ Dropdown: Jump to service</option>
+                        {shopServices.map((srv, idx) => (
+                          <option key={srv.id || idx} value={srv.name}>
+                            {srv.name} — ₹{srv.price || 0}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Rendered Services: Top 3 if collapsed, filtered scrollable list if expanded */}
+              {(() => {
+                const listToDisplay = rateCardExpanded
+                  ? shopServices.filter(s => 
+                      !rateCardSearchQuery.trim() || 
+                      (s.name || '').toLowerCase().includes(rateCardSearchQuery.toLowerCase())
+                    )
+                  : shopServices.slice(0, 3);
+
+                if (rateCardExpanded && listToDisplay.length === 0) {
+                  return (
+                    <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs font-semibold">
+                      Koi service match nahi hui "{rateCardSearchQuery}" se.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${rateCardExpanded ? 'max-h-60 overflow-y-auto pr-1' : ''}`}>
+                    {listToDisplay.map((srv, sIdx) => (
+                      <div 
+                        key={srv.id || sIdx}
+                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 flex items-center justify-between text-xs transition-colors"
+                      >
+                        <div className="pr-2">
+                          <span className="font-bold text-[#283B3D] block text-[11px]">{srv.name}</span>
+                          {srv.durationMin && (
+                            <span className="text-[10px] text-slate-400 font-medium">~{srv.durationMin} mins duration</span>
+                          )}
+                        </div>
+                        <span className="font-token font-bold text-sm text-[#176B65] bg-white px-2 py-0.5 rounded-lg border border-[#DCE9E3] shrink-0">
+                          ₹{srv.price || 0}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Expand / Collapse Button if > 3 services */}
+              {shopServices.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextState = !rateCardExpanded;
+                    setRateCardExpanded(nextState);
+                    if (!nextState) setRateCardSearchQuery('');
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3]/70 text-[#176B65] text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                >
+                  {rateCardExpanded ? (
+                    <>
+                      <span>Show Less ▲</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>View Full Rate Card & Menu ({shopServices.length} Services) ▼</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* ============================================================== */}
