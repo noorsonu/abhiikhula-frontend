@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
           <Navbar />
         </Suspense>
         
-        <main className="flex-1 w-full mx-auto pb-28 md:pb-16">
+        <main className="flex-1 w-full mx-auto pb-10 md:pb-16">
           <Suspense fallback={<div className="py-24 text-center text-sm font-semibold text-[#176B65]">Loading AbhiiKhula...</div>}>
             {children}
           </Suspense>

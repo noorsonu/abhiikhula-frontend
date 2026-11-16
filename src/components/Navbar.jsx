@@ -412,9 +412,14 @@ export default function Navbar() {
       let token = 'mock-customer-jwt-' + Date.now();
       let serverName = '';
 
-      // Resolve final name: user input > detected profile > Customer (last 4 digits)
-      let resolvedName = loginName.trim() || (existingUserDetected?.name) || '';
-      let resolvedAge = loginAge.trim() || (existingUserDetected?.age) || '';
+      // Resolve final name: Existing registered profile / Cloud DB name is GROUND TRUTH
+      let resolvedName = (existingUserDetected?.name) || '';
+      let resolvedAge = (existingUserDetected?.age) || '';
+
+      if (!resolvedName) {
+        resolvedName = loginName.trim();
+        resolvedAge = loginAge.trim();
+      }
 
       try {
         const res = await authApi.verifyOtp(cleanPhone, cleanOtp, resolvedName, resolvedAge);
@@ -431,12 +436,8 @@ export default function Navbar() {
         console.warn("Backend verify-otp fallback:", backendErr?.message);
       }
 
-      if (!resolvedName && serverName) {
-        resolvedName = serverName;
-      }
-      if (!resolvedName) {
-        resolvedName = `Customer (${cleanPhone.slice(-4)})`;
-      }
+      // Backend registered name is ground truth
+      resolvedName = serverName || resolvedName || `Customer (${cleanPhone.slice(-4)})`;
 
       // Save user session in localStorage as CUSTOMER
       if (typeof window !== 'undefined') {
@@ -853,18 +854,28 @@ export default function Navbar() {
                   {/* Summary Metric Counters */}
                   <div className="grid grid-cols-2 gap-2 text-center text-xs">
                     <Link
-                      href="/tokens"
-                      onClick={() => setProfileOpen(false)}
-                      className="p-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] transition-colors"
+                      href="/tokens?tab=active"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('ak_switch_tokens_tab', { detail: { tab: 'active' } }));
+                        }
+                      }}
+                      className="p-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] transition-colors cursor-pointer"
                     >
                       <span className="text-[10px] font-bold uppercase text-[#283B3D]/60 block">Active Line</span>
                       <span className="font-token font-bold text-base text-[#176B65]">{activeCount} Tokens</span>
                     </Link>
 
                     <Link
-                      href="/tokens"
-                      onClick={() => setProfileOpen(false)}
-                      className="p-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] transition-colors"
+                      href="/tokens?tab=history"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('ak_switch_tokens_tab', { detail: { tab: 'history' } }));
+                        }
+                      }}
+                      className="p-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] transition-colors cursor-pointer"
                     >
                       <span className="text-[10px] font-bold uppercase text-[#283B3D]/60 block">Past Visits</span>
                       <span className="font-token font-bold text-base text-[#283B3D]">{historyCount} Visits</span>
@@ -874,25 +885,13 @@ export default function Navbar() {
                   {/* Links in Profile */}
                   <div className="space-y-1.5 pt-1">
                     <Link
-                      href="/tokens"
+                      href="/tokens?tab=active"
                       onClick={() => setProfileOpen(false)}
                       className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-[#DCE9E3]/40 text-xs font-bold flex items-center justify-between text-[#283B3D] transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
                         <Ticket className="w-4 h-4 text-[#176B65]" />
                         <span>My Live Tokens</span>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                    </Link>
-
-                    <Link
-                      href="/tokens"
-                      onClick={() => setProfileOpen(false)}
-                      className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-[#DCE9E3]/40 text-xs font-bold flex items-center justify-between text-[#283B3D] transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <History className="w-4 h-4 text-[#176B65]" />
-                        <span>Past Visits & History</span>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                     </Link>
@@ -1005,26 +1004,16 @@ export default function Navbar() {
                     </div>
 
                     {existingUserDetected ? (
-                      <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                        <div className="flex items-center justify-between font-bold text-emerald-800">
-                          <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600" /> Account Recognized</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExistingUserDetected(null);
-                              setLoginName('');
-                              setLoginAge('');
-                            }}
-                            className="text-[10px] text-emerald-700 underline cursor-pointer"
-                          >
-                            Change Details
-                          </button>
+                      <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          <span>Registered Customer Account</span>
                         </div>
-                        <p className="font-bold text-xs text-[#283B3D]">
+                        <p className="font-black text-sm text-[#283B3D]">
                           {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
                         </p>
                         <span className="text-[11px] text-emerald-700 block">
-                          Aapka number pehle se registered hai! Dobara details bharne ki zaroorat nahi hai. Bas mobile number se verify karke sign-in karein.
+                          Yeh number registered hai. Bas mobile number se verify karke sign in karein.
                         </span>
                       </div>
                     ) : (
@@ -1171,45 +1160,7 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Floating Bottom Bar - Sleek Centered Pill Navigation (Only Customer Explorer Routes) */}
-      {!pathname.startsWith('/merchant/dashboard') && (
-        <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#F3F1E9]/95 backdrop-blur-2xl border border-[#DCE9E3] rounded-full py-1.5 px-2.5 shadow-[0_12px_40px_rgba(40,59,61,0.2)] flex items-center justify-center gap-1.5 max-w-[92vw]">
-          {userRole !== 'MERCHANT' && navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-2 py-2 px-3.5 rounded-full transition-all relative ${
-                  isActive ? 'text-[#176B65] font-black' : 'text-[#283B3D]/70 font-bold hover:text-[#283B3D]'
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobileNavUrbanGlow"
-                    className="absolute inset-0 bg-[#DCE9E3] rounded-full border border-[#176B65]/20 shadow-2xs"
-                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <Icon className="w-4 h-4 relative z-10 text-[#176B65]" />
-                <span className="text-xs tracking-tight relative z-10 whitespace-nowrap">{link.label}</span>
-              </Link>
-            );
-          })}
 
-          {/* Mobile State: SHOPKEEPER LOGGED IN -> Single Quick Console Link */}
-          {userRole === 'MERCHANT' && (
-            <Link
-              href="/merchant/dashboard"
-              className="flex items-center gap-2 py-2 px-4 rounded-full bg-[#176B65] text-white font-black text-xs shadow-md transition-all cursor-pointer"
-            >
-              <Store className="w-4 h-4 text-white" />
-              <span>Dukan Console</span>
-            </Link>
-          )}
-        </nav>
-      )}
 
       {/* Global Turn Arrival Counter Ring Floating Banner */}
       <AnimatePresence>

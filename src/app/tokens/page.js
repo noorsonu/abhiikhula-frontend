@@ -269,6 +269,37 @@ export default function MyTokensPage() {
     }
   }, []);
 
+  // URL Query Tab Parameter & Switch Event Listener
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const readUrlTab = () => {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab === 'history') {
+          setActiveTab('history');
+        } else if (tab === 'active') {
+          setActiveTab('active');
+        }
+      };
+
+      readUrlTab();
+
+      const onSwitchTab = (e) => {
+        if (e?.detail?.tab) {
+          setActiveTab(e.detail.tab);
+        }
+      };
+
+      window.addEventListener('ak_switch_tokens_tab', onSwitchTab);
+      window.addEventListener('popstate', readUrlTab);
+
+      return () => {
+        window.removeEventListener('ak_switch_tokens_tab', onSwitchTab);
+        window.removeEventListener('popstate', readUrlTab);
+      };
+    }
+  }, []);
+
   // Cancellation Modal State
   const [tokenToCancel, setTokenToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState(CANCEL_REASONS[0]);

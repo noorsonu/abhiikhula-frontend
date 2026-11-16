@@ -785,19 +785,23 @@ export default function ShopDetailClient() {
         const existing = existingStr ? JSON.parse(existingStr) : [];
         const updated = [finalToken, ...existing.filter(t => t.id !== finalToken.id)];
         localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
-        if (mainName && mainName !== 'Customer') {
-          localStorage.setItem('ak_customer_name', mainName);
-        }
-        if (customerAge) {
-          localStorage.setItem('ak_customer_age', customerAge);
-        }
         const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
         if (cleanPhone) {
           localStorage.setItem('ak_phone', cleanPhone);
           try {
             const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-            savedProfiles[cleanPhone] = { name: mainName, age: customerAge };
-            localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
+            const lockedName = savedProfiles[cleanPhone]?.name || (mainName && mainName !== 'Customer' ? mainName : '');
+            const lockedAge = savedProfiles[cleanPhone]?.age || customerAge;
+            if (lockedName) {
+              localStorage.setItem('ak_customer_name', lockedName);
+            }
+            if (lockedAge) {
+              localStorage.setItem('ak_customer_age', lockedAge);
+            }
+            if (lockedName) {
+              savedProfiles[cleanPhone] = { name: lockedName, age: lockedAge };
+              localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));
+            }
           } catch (e) {}
         }
         window.dispatchEvent(new Event('storage'));
@@ -1838,9 +1842,9 @@ export default function ShopDetailClient() {
                         if (typeof window !== 'undefined') {
                           try {
                             const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
-                            if (savedProfiles[val]) {
-                              if (savedProfiles[val].name && !customerName) setCustomerName(savedProfiles[val].name);
-                              if (savedProfiles[val].age && !customerAge) setCustomerAge(String(savedProfiles[val].age));
+                            if (savedProfiles[val]?.name) {
+                              setCustomerName(savedProfiles[val].name);
+                              if (savedProfiles[val].age) setCustomerAge(String(savedProfiles[val].age));
                               matched = true;
                             }
                           } catch (err) {}
@@ -1848,9 +1852,9 @@ export default function ShopDetailClient() {
                         if (!matched) {
                           try {
                             const res = await authApi.checkPhone(val);
-                            if (res?.data?.data?.registered) {
-                              if (res.data.data.name && !customerName) setCustomerName(res.data.data.name);
-                              if (res.data.data.age && !customerAge) setCustomerAge(String(res.data.data.age));
+                            if (res?.data?.data?.registered && res.data.data.name) {
+                              setCustomerName(res.data.data.name);
+                              if (res.data.data.age) setCustomerAge(String(res.data.data.age));
                             }
                           } catch (err) {}
                         }
