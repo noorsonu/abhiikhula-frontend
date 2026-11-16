@@ -2131,14 +2131,15 @@ export default function MerchantDashboardPage() {
     }
   };
 
-  const handleCallNextForStation = (stationId) => {
+  const handleCallNextForStation = (stationId, targetToken = null) => {
     const station = stationsList.find(s => s.id === stationId);
     if (!station) return;
     if (!station.active) {
       alert(`${station.name} is currently inactive or on leave.`);
       return;
     }
-    if (waitingQueue.length === 0) {
+    const tokenToCall = targetToken || waitingQueue[0];
+    if (!tokenToCall) {
       alert('No more customers currently waiting in the queue.');
       return;
     }
@@ -2181,8 +2182,8 @@ export default function MerchantDashboardPage() {
       });
     }
 
-    const nextToken = waitingQueue[0];
-    const remaining = waitingQueue.slice(1).map((item, idx) => ({
+    const nextToken = tokenToCall;
+    const remaining = waitingQueue.filter(item => !isTokenMatch(item, nextToken)).map((item, idx) => ({
       ...item,
       waitAhead: idx + 1,
       estWaitMin: (idx + 1) * (activeShop?.avgWaitMin || 12)
@@ -2212,10 +2213,8 @@ export default function MerchantDashboardPage() {
     });
     saveStationsList(updated);
 
-    if (!servingToken) {
-      setServingToken(tokenWithStation);
-      setCounterSeconds(0);
-    }
+    setServingToken(tokenWithStation);
+    setCounterSeconds(0);
 
     updateRecordInHistory(activeShop, {
       id: nextToken.id || `token-${nextToken.tokenNumber}`,
@@ -2810,12 +2809,13 @@ export default function MerchantDashboardPage() {
 
     playChime();
 
-    // Mark current serving as completed if one was active
+    // Mark current serving as completed ONLY IF it was not assigned to an active station
     const prevServing = servingToken;
     const todayDate = new Date().toISOString().slice(0, 10);
     const durationMins = Math.max(1, Math.floor(counterSeconds / 60));
+    const isServingAtStation = servingToken && stationsList.some(s => s.active && s.currentToken && isTokenMatch(s.currentToken, servingToken));
 
-    if (servingToken) {
+    if (servingToken && !isServingAtStation) {
       if (activeShop?.id && servingToken.id) {
         queueApi.completeToken(activeShop.id, servingToken.id).catch(() => {});
       }
@@ -4515,33 +4515,143 @@ export default function MerchantDashboardPage() {
                     Mark Absent / Skip Turn
                   </button>
                 </div>
+
+                {/* Quick Dispatch Next Customer while current is viewed */}
+                {waitingQueue.length > 0 && stationsList.filter(s => s.active).length > 0 && (
+                  <div className="pt-3 border-t border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300 flex-wrap gap-1">
+                      <span className="flex items-center gap-1.5 text-amber-300">
+                        <Sparkles className="w-4 h-4 text-[#F2A15A]" />
+                        <span>Dispatch Next: #{waitingQueue[0].tokenNumber} ({waitingQueue[0].customerName})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Tap counter below to send</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {stationsList.filter(s => s.active).map(st => {
+                        const isBusy = !!st.currentToken;
+                        return (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => handleCallNextForStation(st.id)}
+                            className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1 cursor-pointer active:scale-95 ${
+                              isBusy
+                                ? 'bg-white/5 border-white/10 opacity-60 text-slate-400'
+                                : 'bg-emerald-700/80 hover:bg-emerald-600 border-emerald-400 text-white font-bold shadow-xs'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold truncate block">{st.name}</span>
+                              <span className="text-[10px] text-slate-300 truncate block">{st.staffName?.split(' ')[0]}</span>
+                            </div>
+                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                              isBusy ? 'bg-black/30 text-slate-400' : 'bg-emerald-300 text-emerald-950 font-black'
+                            }`}>
+                              {isBusy ? 'Busy' : 'Send 🟢'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : waitingQueue.length > 0 ? (
+              <div className="space-y-4 pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
+                  <div>
+                    <span className="text-xs uppercase font-extrabold text-amber-300 tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
+                      <span>Next Customer Ready in Queue</span>
+                    </span>
+                    <div className="text-4xl sm:text-5xl font-token font-bold text-white tracking-tight mt-0.5">
+                      #{waitingQueue[0].tokenNumber}
+                    </div>
+                  </div>
+                  <div className="sm:text-right space-y-1">
+                    <span className="text-base sm:text-lg font-black text-[#DCE9E3] block">{waitingQueue[0].customerName}</span>
+                    <span className="text-xs text-slate-300 font-medium block">
+                      {waitingQueue[0].service} • Party of {waitingQueue[0].groupSize || 1}
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md inline-block">
+                      Est. wait: ~{waitingQueue[0].estWaitMin || 0}m
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1-Tap Counter Dispatch Buttons for Next Customer */}
+                {stationsList.filter(s => s.active).length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <ArrowRight className="w-4 h-4 text-emerald-400" />
+                        <span>Tap counter below to send #{waitingQueue[0].tokenNumber} ({waitingQueue[0].customerName}):</span>
+                      </span>
+                      <span className="text-[10px] text-amber-200/90 font-bold bg-white/10 px-2 py-0.5 rounded">
+                        1-Tap Voice Announcement
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {stationsList.filter(s => s.active).map(st => {
+                        const isBusy = !!st.currentToken;
+                        return (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => handleCallNextForStation(st.id)}
+                            className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1.5 cursor-pointer active:scale-95 shadow-sm ${
+                              isBusy
+                                ? 'bg-white/5 border-white/10 opacity-70 hover:opacity-100 hover:border-amber-400/50'
+                                : 'bg-gradient-to-br from-emerald-600/90 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400 text-white shadow-md hover:shadow-lg'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-black text-xs text-white">{st.name}</span>
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                isBusy ? 'bg-amber-400/20 text-amber-300' : 'bg-emerald-300 text-emerald-950 animate-pulse font-extrabold'
+                              }`}>
+                                {isBusy ? `In Use (#${st.currentToken.tokenNumber})` : 'Free • Send Here 🟢'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-200 truncate font-semibold">
+                              {st.staffName}
+                            </div>
+                            <div className="text-[10px] font-bold text-amber-200/90 pt-1 border-t border-white/10 flex items-center justify-between">
+                              <span>{isBusy ? `Busy (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
+                              <ArrowRight className="w-3 h-3 text-emerald-300" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCallNext}
+                    className="w-full py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Volume2 className="w-5 h-5 text-[#F2A15A]" />
+                    <span>Call Next Customer ({waitingQueue[0].tokenNumber})</span>
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="text-center py-8 space-y-4">
+              <div className="text-center py-8 space-y-3">
                 <Store className="w-10 h-10 text-slate-400 mx-auto" />
                 <div className="space-y-1">
                   <h3 className="text-lg sm:text-xl font-black text-white">
                     {stationsList.some(s => s.active && s.currentToken)
-                      ? `${stationsList.filter(s => s.active && s.currentToken).length} Customer(s) Serving in Chairs`
-                      : "Desk Counter is Ready"}
+                      ? `${stationsList.filter(s => s.active && s.currentToken).length} Customer(s) Serving in Counters`
+                      : "Queue is Empty"}
                   </h3>
                   <p className="text-xs text-slate-400">
                     {stationsList.some(s => s.active && s.currentToken)
-                      ? "Chairs are actively serving with live timers below. Ready to call next from queue."
-                      : "Ready to call the next customer in line."}
+                      ? "All waiting customers have been dispatched to counters. Chairs are actively serving."
+                      : "No customers currently waiting in line."}
                   </p>
                 </div>
-
-                {waitingQueue.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleCallNext}
-                    className="px-6 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 mx-auto cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Volume2 className="w-4 h-4 text-[#F2A15A]" />
-                    <span>Call Next Customer ({waitingQueue[0].tokenNumber})</span>
-                  </button>
-                )}
               </div>
             )}
 
@@ -4724,6 +4834,26 @@ export default function MerchantDashboardPage() {
                             <span className="hidden sm:inline">{sentTime ? 'Ping Again' : 'WA Ping'}</span>
                           </button>
                         </>
+                      )}
+
+                      {stationsList.filter(s => s.active).length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const targetId = e.target.value;
+                            if (!targetId) return;
+                            handleCallNextForStation(targetId, item);
+                          }}
+                          className="text-[10px] font-bold bg-[#176B65] hover:bg-[#125550] text-white py-1 px-2 rounded-xl cursor-pointer border border-emerald-400/50 shadow-2xs focus:outline-none shrink-0"
+                          title="1-Tap Send this customer to a specific counter / chair"
+                        >
+                          <option value="" disabled className="bg-white text-slate-800">Send to ▾</option>
+                          {stationsList.filter(s => s.active).map(st => (
+                            <option key={st.id} value={st.id} className="bg-white text-slate-800">
+                              {st.name} {st.currentToken ? `(Busy #${st.currentToken.tokenNumber})` : '• Free 🟢'}
+                            </option>
+                          ))}
+                        </select>
                       )}
 
                       <span className="text-[10px] font-bold text-[#176B65] bg-[#DCE9E3] px-2 py-1 rounded-lg">
