@@ -1073,19 +1073,25 @@ export default function MyTokensPage() {
         try {
           const mKey = `ak_merchant_reviews_${sSlug}`;
           const existingM = JSON.parse(localStorage.getItem(mKey) || '[]');
+          const existingMReview = existingM.find(r => String(r.tokenId) === String(tokenToReview.id));
           const newMReview = {
-            id: `rev-${Date.now()}`,
+            id: existingMReview?.id || `rev-${Date.now()}`,
             tokenId: tokenToReview.id,
             customerName: customerName.trim(),
             tokenNumber: tokenToReview.displayToken || `#${tokenToReview.tokenNumber || '1'}`,
             customerPhone: tokenToReview.customerPhone || cleanPhone,
             rating: ratingStars,
+            stars: ratingStars,
             comment: reviewText.trim() || 'Service completed smoothly.',
+            text: reviewText.trim() || 'Service completed smoothly.',
             tags: reviewTags.map(t => t === 'ON_TIME' ? '⏱️ On-Time Turn' : t === 'BEHAVIOUR' ? '🤝 Polite Staff' : '✨ Fair Queue Wait'),
             date: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             verifiedVisit: true,
-            merchantReply: null,
-            replyDate: null,
+            merchantReply: existingMReview?.merchantReply || null,
+            reply: existingMReview?.reply || existingMReview?.merchantReply || null,
+            replyAt: existingMReview?.replyAt || null,
+            replyDate: existingMReview?.replyDate || null,
+            replies: existingMReview?.replies || [],
             flagged: false
           };
           const updatedM = [newMReview, ...existingM.filter(r => String(r.tokenId) !== String(tokenToReview.id))];
@@ -1920,7 +1926,7 @@ export default function MyTokensPage() {
                               </span>
                             </div>
                             {item.reviewText && (
-                              <p className="text-xs text-[#283B3D]/80 italic line-clamp-2">
+                              <p className="text-xs text-[#283B3D]/80 italic">
                                 "{item.reviewText}"
                               </p>
                             )}
@@ -1933,6 +1939,41 @@ export default function MyTokensPage() {
                                 ))}
                               </div>
                             )}
+
+                            {/* Official Shopkeeper Reply Thread */}
+                            {(item.merchantReply || item.reply) && (
+                              <div className="mt-2.5 p-2.5 rounded-xl bg-[#176B65]/10 border-l-3 border-[#176B65] text-xs space-y-1">
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="font-bold text-[#176B65] flex items-center gap-1">
+                                    <Store className="w-3.5 h-3.5" />
+                                    <span>{item.shopName || 'Shopkeeper'} Official Reply:</span>
+                                  </span>
+                                  {(item.merchantReplyDate || item.replyAt) && (
+                                    <span className="text-[9px] text-[#283B3D]/60 font-medium">
+                                      {item.merchantReplyDate || new Date(item.replyAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-[#283B3D] font-medium italic">
+                                  "{item.merchantReply || item.reply}"
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Re-review / Add Follow-up Comment Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTokenToReview(item);
+                                setRatingStars(item.reviewStars || 5);
+                                setReviewTags(item.reviewTags || ['ON_TIME', 'BEHAVIOUR']);
+                                setReviewText(item.reviewText || '');
+                                setReviewError(null);
+                              }}
+                              className="w-full mt-2 py-1.5 px-3 rounded-xl bg-amber-100/70 hover:bg-amber-200/80 text-amber-950 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300/60"
+                            >
+                              <span>✏️ Edit Review / Add Follow-up Comment</span>
+                            </button>
                           </div>
                         ) : (
                           <button

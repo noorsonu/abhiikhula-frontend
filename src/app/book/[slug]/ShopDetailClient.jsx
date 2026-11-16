@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
   CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
-  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare
+  Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare, Send, Reply, Edit3, CornerDownRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS } from '@/lib/mockData';
@@ -116,6 +116,156 @@ export default function ShopDetailClient() {
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [shopBroadcast, setShopBroadcast] = useState(null);
+
+  // BRD FR-1103: Multi-reply and follow-up comment thread states
+  const [activeReplyReviewId, setActiveReplyReviewId] = useState(null);
+  const [replyInputText, setReplyInputText] = useState('');
+  const [replyAuthorName, setReplyAuthorName] = useState('');
+  const [replyAuthorRole, setReplyAuthorRole] = useState('CUSTOMER');
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  const [writeReviewModalOpen, setWriteReviewModalOpen] = useState(false);
+  const [newReviewStars, setNewReviewStars] = useState(5);
+  const [newReviewName, setNewReviewName] = useState('');
+  const [newReviewComment, setNewReviewComment] = useState('');
+  const [newReviewTags, setNewReviewTags] = useState(['ON_TIME', 'BEHAVIOUR']);
+  const [newReviewSubmitting, setNewReviewSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('ak_role');
+      const cName = localStorage.getItem('ak_customer_name');
+      if (role === 'MERCHANT') {
+        setReplyAuthorRole('MERCHANT');
+        setReplyAuthorName(shop?.name || 'Shopkeeper');
+      } else if (cName) {
+        setReplyAuthorRole('CUSTOMER');
+        setReplyAuthorName(cName);
+        setNewReviewName(cName);
+      } else {
+        setReplyAuthorRole('CUSTOMER');
+        setReplyAuthorName('Customer');
+        setNewReviewName('Customer');
+      }
+    }
+  }, [shop?.name]);
+
+  const handlePostReplyToReview = async (review) => {
+    if (!replyInputText.trim()) return;
+    setReplySubmitting(true);
+    const text = replyInputText.trim();
+    const isMerch = replyAuthorRole === 'MERCHANT';
+    const author = replyAuthorName.trim() || (isMerch ? (shop?.name || 'Shopkeeper') : 'Customer');
+    const nowIso = new Date().toISOString();
+    const replyDate = 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newReplyItem = {
+      id: 'rep-' + Date.now(),
+      authorName: author,
+      role: isMerch ? 'MERCHANT' : 'CUSTOMER',
+      text: text,
+      createdAt: nowIso,
+      date: replyDate
+    };
+
+    setRatingSummary(prev => {
+      if (!prev) return prev;
+      const reviews = (prev.reviews || []).map(r => {
+        if (r.id === review.id || (review.tokenId && r.tokenId === review.tokenId)) {
+          const oldReplies = Array.isArray(r.replies) ? r.replies : (r.reply || r.merchantReply ? [{
+            id: 'rep-old',
+            authorName: shop?.name || 'Shopkeeper',
+            role: 'MERCHANT',
+            text: r.reply || r.merchantReply,
+            createdAt: r.replyAt || nowIso,
+            date: r.merchantReplyDate || 'Recent'
+          }] : []);
+
+          return {
+            ...r,
+            replies: [...oldReplies, newReplyItem],
+            reply: isMerch ? text : (r.reply || r.merchantReply || text),
+            merchantReply: isMerch ? text : (r.merchantReply || r.reply || text),
+            replyAt: isMerch ? nowIso : r.replyAt,
+            merchantReplyDate: isMerch ? replyDate : r.merchantReplyDate
+          };
+        }
+        return r;
+      });
+
+      const curSlug = (shop?.slug || slug || '').toLowerCase();
+      if (curSlug && typeof window !== 'undefined') {
+        try {
+          const key = `ak_merchant_reviews_${curSlug}`;
+          localStorage.setItem(key, JSON.stringify(reviews));
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
+      }
+
+      return {
+        ...prev,
+        reviews
+      };
+    });
+
+    if (isMerch && shop?.id && review.id && String(review.id).length > 20) {
+      try {
+        await reviewApi.replyToReview(shop.id, review.id, text).catch(() => {});
+      } catch (e) {}
+    }
+
+    setReplyInputText('');
+    setActiveReplyReviewId(null);
+    setReplySubmitting(false);
+  };
+
+  const handleSubmitDirectReview = async (e) => {
+    if (e) e.preventDefault();
+    if (!newReviewComment.trim()) return;
+    setNewReviewSubmitting(true);
+    const author = newReviewName.trim() || 'Verified Customer';
+    const curSlug = (shop?.slug || slug || '').toLowerCase();
+    const nowIso = new Date().toISOString();
+    const newRev = {
+      id: 'rev-' + Date.now(),
+      shopSlug: curSlug,
+      customerName: author,
+      stars: newReviewStars,
+      text: newReviewComment.trim(),
+      comment: newReviewComment.trim(),
+      tags: newReviewTags.map(t => t === 'ON_TIME' ? '⏱️ On-Time Turn' : t === 'BEHAVIOUR' ? '🤝 Polite Staff' : '✨ Fair Wait'),
+      date: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: nowIso,
+      verifiedVisit: true,
+      replies: []
+    };
+
+    if (curSlug && typeof window !== 'undefined') {
+      try {
+        const key = `ak_merchant_reviews_${curSlug}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        const updated = [newRev, ...existing];
+        localStorage.setItem(key, JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+
+    setRatingSummary(prev => {
+      const existingReviews = prev?.reviews || [];
+      const updated = [newRev, ...existingReviews];
+      const totalStars = updated.reduce((s, r) => s + (Number(r.stars) || 5), 0);
+      const avg = Math.round((totalStars / updated.length) * 10) / 10;
+      return {
+        averageRating: avg,
+        reviewCount: updated.length,
+        etaAccuracyScore: prev?.etaAccuracyScore || '96% Accurate',
+        reviews: updated
+      };
+    });
+
+    setNewReviewComment('');
+    setWriteReviewModalOpen(false);
+    setNewReviewSubmitting(false);
+  };
 
   // BRD FR-708 / FR-405: Check for Emergency Flash Queue Broadcast Notice
   useEffect(() => {
@@ -927,76 +1077,194 @@ export default function ShopDetailClient() {
               </div>
             </div>
 
-            {/* Review Quotes & Shopkeeper Replies - Publicly Visible to Everyone / Guests */}
+            {/* Review Quotes & Interactive Multi-Reply Conversation Thread */}
             <div className="space-y-3 pt-3 border-t border-[#DCE9E3]">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#283B3D]/70 block flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-[#176B65]" />
-                  <span>Public Reviews & Counter Replies ({ratingSummary?.reviews?.length || 2}):</span>
+                  <span>Public Reviews & Thread ({ratingSummary?.reviews?.length || 2}):</span>
                 </span>
-                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  Publicly Visible
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Publicly Visible
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setWriteReviewModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-[#176B65] hover:bg-[#135954] text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <Edit3 className="w-3 h-3 text-[#F2A15A]" />
+                    <span>+ Write Review</span>
+                  </button>
+                </div>
               </div>
 
               {ratingSummary?.reviews && ratingSummary.reviews.length > 0 ? (
-                <div className="space-y-2.5">
-                  {(showAllReviews ? ratingSummary.reviews : ratingSummary.reviews.slice(0, 3)).map((rev, idx) => (
-                    <div key={rev.id || idx} className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 text-xs space-y-2 shadow-2xs">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[#283B3D]">{rev.customerName || 'Verified Customer'}</span>
-                          <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold border border-emerald-100">
-                            Visit Verified
+                <div className="space-y-3">
+                  {(showAllReviews ? ratingSummary.reviews : ratingSummary.reviews.slice(0, 3)).map((rev, idx) => {
+                    const revKey = rev.id || `rev-${idx}`;
+                    const threadReplies = Array.isArray(rev.replies) && rev.replies.length > 0
+                      ? rev.replies
+                      : (rev.reply || rev.merchantReply ? [{
+                          id: 'rep-init',
+                          authorName: shop?.name || 'Shopkeeper',
+                          role: 'MERCHANT',
+                          text: rev.reply || rev.merchantReply,
+                          createdAt: rev.replyAt,
+                          date: rev.merchantReplyDate || 'Recent'
+                        }] : []);
+
+                    return (
+                      <div key={revKey} className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 text-xs space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-[#283B3D]">{rev.customerName || 'Verified Customer'}</span>
+                            <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold border border-emerald-100">
+                              Visit Verified
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-500 font-bold">
+                            <span>{'★'.repeat(Math.min(5, Math.max(1, Math.round(Number(rev.stars) || 5))))}</span>
+                            <span className="text-[10px] text-slate-400">({rev.stars}★)</span>
+                          </div>
+                        </div>
+
+                        {/* Customer Review Tags / Chips */}
+                        {rev.tags && Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {rev.tags.map((tag, tIdx) => (
+                              <span key={tIdx} className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#DCE9E3]/40 text-[#176B65] border border-[#176B65]/15">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Customer Comment */}
+                        {(rev.text || rev.comment) && (
+                          <p className="text-[11px] text-[#283B3D]/85 leading-relaxed bg-white/70 p-2 rounded-xl border border-slate-100 font-normal">
+                            "{rev.text || rev.comment}"
+                          </p>
+                        )}
+
+                        {/* Conversation Thread / Replies List */}
+                        {threadReplies.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            {threadReplies.map((rep, rIdx) => {
+                              const isMerchantRep = rep.role === 'MERCHANT';
+                              return (
+                                <div
+                                  key={rep.id || rIdx}
+                                  className={`pl-3 py-2 px-3 rounded-xl text-xs space-y-0.5 ${
+                                    isMerchantRep
+                                      ? 'bg-[#176B65]/10 border-l-3 border-[#176B65]'
+                                      : 'bg-amber-50/80 border-l-3 border-amber-400'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <div className={`flex items-center gap-1 font-bold ${isMerchantRep ? 'text-[#176B65]' : 'text-amber-900'}`}>
+                                      {isMerchantRep ? <Store className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                                      <span>{rep.authorName || (isMerchantRep ? 'Shopkeeper' : 'Customer')} {isMerchantRep ? '(Official Reply)' : '(Follow-up)'}</span>
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 font-medium">
+                                      {rep.date || (rep.createdAt ? new Date(rep.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recent')}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-[#283B3D] font-medium leading-relaxed">
+                                    "{rep.text}"
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Bottom Bar: Action to Reply again or add follow-up comment */}
+                        <div className="pt-1.5 flex items-center justify-between border-t border-slate-200/50 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (activeReplyReviewId === revKey) {
+                                setActiveReplyReviewId(null);
+                              } else {
+                                setActiveReplyReviewId(revKey);
+                                setReplyInputText('');
+                              }
+                            }}
+                            className="text-[10px] font-bold text-[#176B65] hover:text-[#125550] flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Reply className="w-3 h-3" />
+                            <span>{activeReplyReviewId === revKey ? 'Cancel Reply' : 'Reply / Add Comment'}</span>
+                          </button>
+                          <span className="text-[9px] text-slate-400 font-medium">
+                            {threadReplies.length} {threadReplies.length === 1 ? 'Reply' : 'Replies'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-amber-500 font-bold">
-                          <span>{'★'.repeat(Math.min(5, Math.max(1, Math.round(Number(rev.stars) || 5))))}</span>
-                          <span className="text-[10px] text-slate-400">({rev.stars}★)</span>
-                        </div>
-                      </div>
 
-                      {/* Customer Review Tags / Chips */}
-                      {rev.tags && Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-0.5">
-                          {rev.tags.map((tag, tIdx) => (
-                            <span key={tIdx} className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#DCE9E3]/40 text-[#176B65] border border-[#176B65]/15">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Customer Comment */}
-                      {(rev.text || rev.comment) && (
-                        <p className="text-[11px] text-[#283B3D]/85 leading-relaxed bg-white/70 p-2 rounded-xl border border-slate-100 font-normal">
-                          "{rev.text || rev.comment}"
-                        </p>
-                      )}
-
-                      {/* Official Shopkeeper Reply (Visible to All Guests & Visitors) */}
-                      {(rev.reply || rev.merchantReply) && (
-                        <div className="mt-2 ml-1 pl-3 py-2 px-3 rounded-xl bg-[#176B65]/5 border-l-3 border-[#176B65] text-xs space-y-1">
-                          <div className="flex items-center justify-between text-[10px]">
-                            <div className="flex items-center gap-1.5 font-black text-[#176B65]">
-                              <Store className="w-3.5 h-3.5" />
-                              <span>{shop?.name || 'Shopkeeper'} (Official Reply)</span>
+                        {/* Inline Reply Form */}
+                        {activeReplyReviewId === revKey && (
+                          <div className="mt-2 p-3 bg-white rounded-xl border border-[#DCE9E3] space-y-2 shadow-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <input
+                                type="text"
+                                value={replyAuthorName}
+                                onChange={(e) => setReplyAuthorName(e.target.value)}
+                                placeholder="Your Name"
+                                className="w-1/2 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-[#283B3D]"
+                              />
+                              <div className="flex items-center gap-1 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => setReplyAuthorRole('CUSTOMER')}
+                                  className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-all ${
+                                    replyAuthorRole === 'CUSTOMER' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-slate-400'
+                                  }`}
+                                >
+                                  Customer
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setReplyAuthorRole('MERCHANT')}
+                                  className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-all ${
+                                    replyAuthorRole === 'MERCHANT' ? 'bg-[#176B65] text-white' : 'text-slate-400'
+                                  }`}
+                                >
+                                  Shopkeeper
+                                </button>
+                              </div>
                             </div>
-                            {(rev.replyAt || rev.merchantReplyDate) && (
-                              <span className="text-[9px] text-slate-500 font-medium">
-                                {typeof rev.replyAt === 'string' && rev.replyAt.includes('T')
-                                  ? new Date(rev.replyAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
-                                  : (rev.merchantReplyDate || 'Recent')}
-                              </span>
-                            )}
+
+                            <textarea
+                              value={replyInputText}
+                              onChange={(e) => setReplyInputText(e.target.value)}
+                              placeholder={replyAuthorRole === 'MERCHANT' ? "Dukan ki taraf se official reply likhein..." : "Apna comment ya jawab likhein..."}
+                              rows={2}
+                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                            />
+
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setActiveReplyReviewId(null)}
+                                className="px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePostReplyToReview(rev)}
+                                disabled={replySubmitting || !replyInputText.trim()}
+                                className="px-3.5 py-1.5 rounded-lg bg-[#176B65] hover:bg-[#135954] text-white font-bold text-[10px] flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>{replySubmitting ? 'Posting...' : 'Post Reply'}</span>
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-[#283B3D] font-medium leading-relaxed">
-                            "{rev.reply || rev.merchantReply}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {ratingSummary.reviews.length > 3 && (
                     <button
@@ -1544,6 +1812,129 @@ export default function ShopDetailClient() {
                     className="w-full py-2.5 rounded-2xl text-xs font-bold text-[#283B3D]/70 hover:text-[#283B3D] transition-colors"
                   >
                     Change Phone Number
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Interactive Write Review & Comment Modal (Direct Customer & Guest Feedback) */}
+      <AnimatePresence>
+        {writeReviewModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-[#DCE9E3] space-y-5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-bold">
+                    <Star className="w-5 h-5 fill-[#176B65]" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#283B3D]">Write Review / Comment</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">For {shop?.name || 'this shop'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWriteReviewModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitDirectReview} className="space-y-4">
+                {/* 1-5 Star Rating Picker */}
+                <div className="text-center space-y-1 py-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">Rate your Experience</span>
+                  <div className="flex items-center justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setNewReviewStars(star)}
+                        className="text-2xl text-amber-400 hover:scale-125 transition-transform cursor-pointer"
+                      >
+                        {star <= newReviewStars ? '★' : '☆'}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-[#176B65]">{newReviewStars} Out of 5 Stars</span>
+                </div>
+
+                {/* Name */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-[#283B3D] block">Your Name</label>
+                  <input
+                    type="text"
+                    value={newReviewName}
+                    onChange={(e) => setNewReviewName(e.target.value)}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE9E3] bg-slate-50 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-[#283B3D] block">Experience Highlights</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { key: 'ON_TIME', label: '⏱️ On-Time Turn' },
+                      { key: 'BEHAVIOUR', label: '🤝 Polite Staff' },
+                      { key: 'ACCURACY', label: '✨ Fair Wait' }
+                    ].map(tag => {
+                      const active = newReviewTags.includes(tag.key);
+                      return (
+                        <button
+                          key={tag.key}
+                          type="button"
+                          onClick={() => {
+                            setNewReviewTags(prev => active ? prev.filter(t => t !== tag.key) : [...prev, tag.key]);
+                          }}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                            active ? 'bg-[#176B65] text-white border-[#176B65]' : 'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {tag.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Comment Text */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-[#283B3D] block">Your Comment / Feedback</label>
+                  <textarea
+                    rows={3}
+                    value={newReviewComment}
+                    onChange={(e) => setNewReviewComment(e.target.value)}
+                    placeholder="Service kesi lagi? Timing kesa raha? Apna feedback share karein..."
+                    className="w-full p-3 rounded-xl border border-[#DCE9E3] bg-slate-50 text-xs font-medium text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setWriteReviewModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl border border-[#DCE9E3] text-[#283B3D] font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={newReviewSubmitting || !newReviewComment.trim()}
+                    className="flex-1 py-3 rounded-xl bg-[#176B65] hover:bg-[#135954] text-white font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{newReviewSubmitting ? 'Posting...' : 'Post Review'}</span>
                   </button>
                 </div>
               </form>

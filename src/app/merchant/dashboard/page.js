@@ -1553,11 +1553,30 @@ export default function MerchantDashboardPage() {
       }
 
       const nowIso = new Date().toISOString();
+      const newReplyItem = {
+        id: 'rep-' + Date.now(),
+        authorName: activeShop?.name || 'Shopkeeper',
+        role: 'MERCHANT',
+        text: replyMsg,
+        createdAt: nowIso,
+        date: replyDate
+      };
+
       setReviewsList(prev => {
         const updated = prev.map(r => {
           if (r.id === review.id || (review.tokenId && r.tokenId === review.tokenId)) {
+            const oldReplies = Array.isArray(r.replies) ? r.replies : (r.merchantReply || r.reply ? [{
+              id: 'rep-old',
+              authorName: activeShop?.name || 'Shopkeeper',
+              role: 'MERCHANT',
+              text: r.merchantReply || r.reply,
+              createdAt: r.replyAt || nowIso,
+              date: r.merchantReplyDate || 'Recent'
+            }] : []);
+
             return {
               ...r,
+              replies: [...oldReplies, newReplyItem],
               merchantReply: replyMsg,
               merchantReplyDate: replyDate,
               reply: replyMsg,
@@ -1595,17 +1614,31 @@ export default function MerchantDashboardPage() {
         return updated;
       });
 
-      setSelectedCustomerForReview(prev => prev ? ({
-        ...prev,
-        review: {
-          ...review,
-          merchantReply: replyMsg,
-          merchantReplyDate: replyDate,
-          reply: replyMsg,
-          replyAt: nowIso,
-          replyDate
-        }
-      }) : null);
+      setSelectedCustomerForReview(prev => {
+        if (!prev) return null;
+        const curReview = prev.review || review;
+        const oldReplies = Array.isArray(curReview.replies) ? curReview.replies : (curReview.merchantReply || curReview.reply ? [{
+          id: 'rep-old',
+          authorName: activeShop?.name || 'Shopkeeper',
+          role: 'MERCHANT',
+          text: curReview.merchantReply || curReview.reply,
+          createdAt: curReview.replyAt || nowIso,
+          date: curReview.merchantReplyDate || 'Recent'
+        }] : []);
+
+        return {
+          ...prev,
+          review: {
+            ...curReview,
+            replies: [...oldReplies, newReplyItem],
+            merchantReply: replyMsg,
+            merchantReplyDate: replyDate,
+            reply: replyMsg,
+            replyAt: nowIso,
+            replyDate
+          }
+        };
+      });
 
       setAnnouncementMsg(`💬 Reply posted to ${selectedCustomerForReview.customerName}'s review!`);
       playChime();
@@ -10122,7 +10155,37 @@ export default function MerchantDashboardPage() {
                           )}
                         </div>
 
-                        {review.merchantReply ? (
+                        {/* Thread Replies List */}
+                        {Array.isArray(review.replies) && review.replies.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {review.replies.map((rep, rIdx) => {
+                              const isMerch = rep.role === 'MERCHANT';
+                              return (
+                                <div
+                                  key={rep.id || rIdx}
+                                  className={`p-2.5 rounded-xl text-xs space-y-0.5 border ${
+                                    isMerch
+                                      ? 'bg-white border-[#DCE9E3] text-[#283B3D]'
+                                      : 'bg-amber-50/80 border-amber-200 text-amber-950'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-bold flex items-center gap-1">
+                                      {isMerch ? '🏪 ' + (rep.authorName || 'Shopkeeper') : '👤 ' + (rep.authorName || 'Customer')}
+                                      <span className="text-[9px] font-normal opacity-70">
+                                        ({isMerch ? 'Shopkeeper' : 'Customer'})
+                                      </span>
+                                    </span>
+                                    <span className="text-[9px] text-slate-400 font-medium">
+                                      {rep.date || (rep.createdAt ? new Date(rep.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '')}
+                                    </span>
+                                  </div>
+                                  <p className="font-semibold text-[11px] leading-relaxed">{rep.text}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : review.merchantReply ? (
                           <div className="p-3 bg-white rounded-xl border border-[#DCE9E3] text-xs text-[#283B3D] space-y-1">
                             <p className="font-semibold">{review.merchantReply}</p>
                             <span className="text-[10px] text-slate-400 block">{review.replyDate || review.merchantReplyDate || 'Posted'}</span>
