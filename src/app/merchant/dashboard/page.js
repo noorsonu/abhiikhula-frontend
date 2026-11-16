@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   Store, Users, Clock, CheckCircle2, AlertCircle, Play, Pause, 
   Power, ArrowRight, UserPlus, Phone, Volume2, VolumeX, QrCode, Printer, 
-  Sparkles, RefreshCw, ChevronRight, X, UserCheck, ShieldCheck, Ticket, MessageCircle, MapPin,
+  Sparkles, RefreshCw, ChevronRight, ChevronDown, X, UserCheck, ShieldCheck, Ticket, MessageCircle, MapPin,
   LogOut, PlusCircle, Lock, Megaphone, BarChart3, TrendingUp, Calendar, Download, Flame, Zap, Award, FileSpreadsheet,
   Search, Filter, IndianRupee, Receipt, CreditCard, Banknote, FileText, Check, Plus,
   Coffee, Utensils, Timer, Gauge, SlidersHorizontal, AlertTriangle, PlayCircle, PauseCircle,
@@ -48,6 +48,7 @@ export default function MerchantDashboardPage() {
 
   // BRD FR-605 / FR-302: Printable Counter QR Standee Generator State
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
   const [standeeQrUrl, setStandeeQrUrl] = useState('');
   const [standeeFormat, setStandeeFormat] = useState('TABLETOP'); // 'TABLETOP' (A5) | 'POSTER' (A4) | 'STICKER' (Square)
   const [standeeTheme, setStandeeTheme] = useState('EMERALD'); // 'EMERALD' | 'MIDNIGHT' | 'MINIMAL'
@@ -3245,52 +3246,54 @@ export default function MerchantDashboardPage() {
     <div className="min-h-screen pb-16 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 pt-3 sm:pt-4 w-full max-w-full overflow-x-hidden">
       
       {/* ========================================================= */}
-      {/* TOP BAR: SHOP DETAILS & STATUS SWITCH (MOBILE OPTIMIZED)  */}
+      {/* TOP BAR: SHOP DETAILS & STATUS SWITCH (PROPER RESPONSIVE) */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-[#DCE9E3] shadow-sm flex flex-col gap-3.5 sm:gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-[#DCE9E3] shadow-sm space-y-3.5 sm:space-y-4">
         
-        {/* Row 1: Shop Name, Category, Reviews & Quick Desk Tools */}
-        <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-bold text-lg shrink-0 border border-[#176B65]/20">
-              <Store className="w-5 h-5 sm:w-6 sm:h-6" />
+        {/* Row 1: Shop Brand Identity & Header Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-2 sm:pb-0">
+          
+          {/* Shop Icon + Name + Category + Rating + Location */}
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-bold text-lg shrink-0 border border-[#176B65]/20 mt-0.5 sm:mt-0">
+              <Store className="w-6 h-6" />
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h1 className="text-base sm:text-2xl font-black text-[#283B3D] truncate max-w-[200px] sm:max-w-none">
+                <h1 className="text-lg sm:text-2xl font-black text-[#283B3D] leading-tight">
                   {activeShop?.name || 'Apni Dukan Darj Karein'}
                 </h1>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#DCE9E3] text-[#176B65]">
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#DCE9E3] text-[#176B65] whitespace-nowrap shrink-0">
                   {activeShop?.categoryName || 'Dukan'}
                 </span>
                 <button
                   type="button"
                   onClick={() => setActiveTab('REVIEWS')}
-                  className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 sm:px-2.5 py-0.5 rounded-full border border-amber-300 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[11px] font-black text-amber-900 bg-amber-50 hover:bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="View customer star ratings & feedback (FR-1105)"
                 >
-                  <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-amber-400 text-amber-500" />
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                   <span>{avgRating} ({totalReviewsCount})</span>
                 </button>
               </div>
 
-              <p className="text-[11px] sm:text-xs text-[#283B3D]/70 font-medium flex items-center gap-1.5 mt-0.5">
-                <MapPin className="w-3 h-3 text-[#F2A15A]" />
-                <span className="truncate">{activeShop?.zone ? `${activeShop.zone}, Lucknow` : 'Location Not Set'}</span>
+              <p className="text-xs text-[#283B3D]/70 font-medium flex items-center gap-1.5 mt-1 flex-wrap">
+                <MapPin className="w-3.5 h-3.5 text-[#F2A15A] shrink-0" />
+                <span className="truncate max-w-[220px] sm:max-w-none">{activeShop?.zone ? `${activeShop.zone}, Lucknow` : 'Location Not Set'}</span>
                 <span>•</span>
                 <span className="text-slate-400 shrink-0">Prefix: {activeShop?.tokenPrefix || 'AK'}</span>
               </p>
             </div>
           </div>
 
-          {/* Quick Header Utilities */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 self-end sm:self-auto">
+          {/* Quick Header Utilities (Sound, Staff, + Branch, Logout) */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
             {/* Sound Toggle */}
             <button
               type="button"
               onClick={toggleSound}
-              className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-2xs active:scale-95 ${
+              className={`px-3 py-1.5 sm:py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-2xs active:scale-95 whitespace-nowrap ${
                 soundEnabled
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                   : 'bg-rose-50 border-rose-200 text-rose-700'
@@ -3314,7 +3317,7 @@ export default function MerchantDashboardPage() {
             <button
               type="button"
               onClick={() => handleTriggerStaffPinModal(activeOperator || staffList[0] || null, 'SWITCH')}
-              className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+              className="px-3 py-1.5 sm:py-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
               title="Staff Operator Login & PIN Desk"
             >
               <KeyRound className="w-3.5 h-3.5 text-[#176B65]" />
@@ -3325,7 +3328,7 @@ export default function MerchantDashboardPage() {
             {/* Register New Branch */}
             <Link
               href="/merchant/register?new=true"
-              className="p-1.5 sm:p-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors cursor-pointer"
+              className="p-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors cursor-pointer flex items-center justify-center"
               title="Register another shop branch"
             >
               <PlusCircle className="w-4 h-4 text-[#176B65]" />
@@ -3335,7 +3338,7 @@ export default function MerchantDashboardPage() {
             <button
               type="button"
               onClick={handleMerchantLogout}
-              className="p-1.5 sm:p-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-rose-50 hover:border-rose-200 text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+              className="p-2 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-rose-50 hover:border-rose-200 text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer flex items-center justify-center"
               title="Log out from shop"
             >
               <LogOut className="w-4 h-4" />
@@ -3343,160 +3346,305 @@ export default function MerchantDashboardPage() {
           </div>
         </div>
 
-        {/* Row 2: Large Responsive Shop Status Switch (Open / Break / Closed) */}
-        <div className="flex items-center w-full bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
-          <button
-            type="button"
-            onClick={() => {
-              if (breakRemainingSeconds > 0 || shopStatus === 'PAUSED') {
-                handleEndBreak();
-              } else {
-                setShopStatus('OPEN');
-              }
-            }}
-            className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
-              shopStatus === 'OPEN' ? 'bg-emerald-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
-            }`}
-          >
-            ● Open
-          </button>
-          <button
-            type="button"
-            onClick={() => setBreakModalOpen(true)}
-            className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              shopStatus === 'PAUSED' ? 'bg-amber-600 text-white shadow-xs animate-pulse' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
-            }`}
-          >
-            <Coffee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>
-              {breakRemainingSeconds > 0 
-                ? `Break: ${formatTimer(breakRemainingSeconds)}` 
-                : shopStatus === 'PAUSED' ? 'Paused' : 'Break / Pause'
-              }
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (waitingQueue.length > 0 || servingToken) {
-                setResetModalOpen(true);
-              } else {
-                if (breakRemainingSeconds > 0) handleEndBreak();
-                setShopStatus('CLOSED');
-              }
-            }}
-            className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
-              shopStatus === 'CLOSED' ? 'bg-rose-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
-            }`}
-          >
-            Closed
-          </button>
-        </div>
+        {/* Row 2: Status Switch & Tools Dropdown */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-0.5">
+          
+          {/* Shop Operational Status Switch (Open / Break / Closed) */}
+          <div className="flex items-center flex-1 bg-[#F3F1E9] p-1 rounded-2xl border border-[#DCE9E3]">
+            <button
+              type="button"
+              onClick={() => {
+                if (breakRemainingSeconds > 0 || shopStatus === 'PAUSED') {
+                  handleEndBreak();
+                } else {
+                  setShopStatus('OPEN');
+                }
+              }}
+              className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
+                shopStatus === 'OPEN' ? 'bg-emerald-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
+              }`}
+            >
+              ● Open
+            </button>
+            <button
+              type="button"
+              onClick={() => setBreakModalOpen(true)}
+              className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                shopStatus === 'PAUSED' ? 'bg-amber-600 text-white shadow-xs animate-pulse' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
+              }`}
+            >
+              <Coffee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>
+                {breakRemainingSeconds > 0 
+                  ? `Break: ${formatTimer(breakRemainingSeconds)}` 
+                  : shopStatus === 'PAUSED' ? 'Paused' : 'Break / Pause'
+                }
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (waitingQueue.length > 0 || servingToken) {
+                  setResetModalOpen(true);
+                } else {
+                  if (breakRemainingSeconds > 0) handleEndBreak();
+                  setShopStatus('CLOSED');
+                }
+              }}
+              className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
+                shopStatus === 'CLOSED' ? 'bg-rose-600 text-white shadow-xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
+              }`}
+            >
+              Closed
+            </button>
+          </div>
 
-        {/* Row 3: Action Buttons - 2-Column Grid on Mobile, Clean Flow on Desktop */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:flex-wrap items-center gap-2 w-full pt-0.5">
-          {/* Rate Card */}
-          <button
-            type="button"
-            onClick={() => setServicesModalOpen(true)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Manage Rate Card, Prices and Services"
-          >
-            <Receipt className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Rate Card</span>
-          </button>
+          {/* Tools & Dropdown Container */}
+          <div className="flex items-center gap-2 relative">
+            {/* Desktop Quick Shortcuts */}
+            <div className="hidden lg:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(true)}
+                className="px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                title="Print QR Standee"
+              >
+                <QrCode className="w-3.5 h-3.5 text-[#176B65]" />
+                <span>QR Standee</span>
+              </button>
 
-          {/* Shop Photos */}
-          <button
-            type="button"
-            onClick={() => setPhotosModalOpen(true)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Upload Shop & Work Showcase Photos"
-          >
-            <ImageIcon className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Photos ({shopPhotosList.length})</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setServicesModalOpen(true)}
+                className="px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                title="Manage Rate Card & Services"
+              >
+                <Receipt className="w-3.5 h-3.5 text-[#176B65]" />
+                <span>Rate Card</span>
+              </button>
 
-          {/* QR Standee */}
-          <button
-            type="button"
-            onClick={() => setQrModalOpen(true)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Generate & print branded counter tabletop QR standee"
-          >
-            <QrCode className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>QR Standee</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('KHATA')}
+                className="px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                title="Customer Khata Ledger"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-[#176B65]" />
+                <span>Khata</span>
+              </button>
+            </div>
 
-          {/* Counters & Chairs */}
-          <button
-            type="button"
-            onClick={() => setStationModalOpen(true)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Manage Multi-Chairs or Counter Desks"
-          >
-            <Users className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Chairs ({stationsList.filter(s => s.active).length})</span>
-          </button>
+            {/* Dukan Tools Dropdown Trigger */}
+            <div className="relative w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
+                className="w-full sm:w-auto px-4 py-2 sm:py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125853] text-white text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 whitespace-nowrap"
+                title="Dukan Tools & Actions Dropdown"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Dukan Tools</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-          {/* Khata Ledger */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('KHATA')}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Customer Khata, Udhaar & Pending Balances"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Khata (₹{khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')})</span>
-          </button>
+              {/* Dropdown Menu Modal / Sheet */}
+              <AnimatePresence>
+                {toolsDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]" 
+                      onClick={() => setToolsDropdownOpen(false)} 
+                    />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-[calc(100vw-32px)] sm:w-[380px] max-w-[380px] bg-white rounded-3xl border border-[#DCE9E3] shadow-2xl p-3.5 space-y-2 max-h-[75vh] overflow-y-auto"
+                    >
+                      <div className="px-2.5 py-1.5 border-b border-[#DCE9E3]/70 flex items-center justify-between">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#283B3D]">
+                          Dukan Tools & Settings
+                        </span>
+                        <button 
+                          type="button"
+                          onClick={() => setToolsDropdownOpen(false)}
+                          className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
 
-          {/* Settings */}
-          <button
-            type="button"
-            onClick={handleOpenProfileModal}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/40 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Edit Operating Hours, Service Pace, Contact"
-          >
-            <Settings className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Settings</span>
-          </button>
+                      <div className="grid grid-cols-1 gap-1">
+                        {/* Rate Card & Menu */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setServicesModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#176B65] border border-emerald-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Receipt className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D]">Rate Card & Menu</div>
+                            <div className="text-[10px] text-slate-500 truncate">Manage services, prices & durations</div>
+                          </div>
+                        </button>
 
-          {/* Flash Alert */}
-          <button
-            type="button"
-            onClick={() => setBroadcastModalOpen(true)}
-            className={`w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95 ${
-              activeBroadcast
-                ? 'bg-amber-600 hover:bg-amber-700 text-white ring-2 ring-amber-400 shadow-md'
-                : 'bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900'
-            }`}
-            title="Broadcast emergency delay alert to all waiting customer passes"
-          >
-            <Radio className={`w-3.5 h-3.5 ${activeBroadcast ? 'text-white animate-pulse' : 'text-amber-600'}`} />
-            <span>{activeBroadcast ? 'Alert Active' : 'Flash Alert'}</span>
-          </button>
+                        {/* Shop Photos */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setPhotosModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D] flex items-center gap-1.5">
+                              <span>Shop Photos</span>
+                              <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full font-bold">
+                                {shopPhotosList.length}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">Showcase photos for customers</div>
+                          </div>
+                        </button>
 
-          {/* Fresh Start (Clean) */}
-          <button
-            type="button"
-            onClick={handleClearAllDummyData}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Purge all old test tokens and local data for a clean real-time test"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-            <span>Fresh Clean</span>
-          </button>
+                        {/* QR Standee */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setQrModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <QrCode className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D]">Counter QR Standee</div>
+                            <div className="text-[10px] text-slate-500 truncate">Print branded counter tabletop standee</div>
+                          </div>
+                        </button>
 
-          {/* Day-End Close */}
-          <button
-            type="button"
-            onClick={() => setResetModalOpen(true)}
-            className="col-span-2 sm:col-span-1 w-full sm:w-auto px-3 py-2 rounded-xl bg-[#283B3D] hover:bg-[#1f2e30] text-white text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-            title="Review final hisaab, expire remaining queue, and reset to Token #1 for tomorrow"
-          >
-            <Moon className="w-3.5 h-3.5 text-[#F2A15A]" />
-            <span>Day-End Close</span>
-          </button>
+                        {/* Counters & Chairs */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setStationModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D] flex items-center gap-1.5">
+                              <span>Counters & Chairs</span>
+                              <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded-full font-bold">
+                                {stationsList.filter(s => s.active).length} Active
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">Multi-chair stations & operators</div>
+                          </div>
+                        </button>
+
+                        {/* Khata Ledger */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setActiveTab('KHATA'); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <BookOpen className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D] flex items-center gap-1.5">
+                              <span>Khata Ledger</span>
+                              <span className="text-[10px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded-full font-bold">
+                                ₹{khataList.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">Customer udhaar & pending payments</div>
+                          </div>
+                        </button>
+
+                        {/* Settings */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); handleOpenProfileModal(); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#DCE9E3]/30 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Settings className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D]">Shop Profile & Timings</div>
+                            <div className="text-[10px] text-slate-500 truncate">Opening hours, contact, pace</div>
+                          </div>
+                        </button>
+
+                        {/* Flash Alert */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setBroadcastModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-amber-50/60 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border ${
+                            activeBroadcast ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            <Radio className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                              <span>Flash Delay Alert</span>
+                              {activeBroadcast && (
+                                <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.2 rounded-full font-black animate-pulse">
+                                  LIVE
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-amber-700/80 truncate">Broadcast delay message to waiting customers</div>
+                          </div>
+                        </button>
+
+                        <div className="my-1 border-t border-[#DCE9E3]/70" />
+
+                        {/* Fresh Clean */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); handleClearAllDummyData(); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-rose-50 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Trash2 className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-rose-700">Fresh Clean (Reset Demo)</div>
+                            <div className="text-[10px] text-rose-600/70 truncate">Purge old demo queue tokens</div>
+                          </div>
+                        </button>
+
+                        {/* Day-End Close */}
+                        <button
+                          type="button"
+                          onClick={() => { setToolsDropdownOpen(false); setResetModalOpen(true); }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-slate-100 transition-colors text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-[#283B3D] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Moon className="w-4 h-4 text-[#F2A15A]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#283B3D]">Day-End Close</div>
+                            <div className="text-[10px] text-slate-500 truncate">Close register & finalize today's hisaab</div>
+                          </div>
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
         </div>
 
       </div>
