@@ -6786,17 +6786,18 @@ export default function MerchantDashboardPage() {
             {/* STAFF ROSTER CARDS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {staffList.map((staff) => {
-                const initials = staff.name ? staff.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST';
+                const cleanWords = (staff.name || '').replace(/[()]/g, '').trim().split(/\s+/);
+                const initials = cleanWords.slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'ST';
 
                 return (
                   <div
                     key={staff.id}
-                    className="urban-card rounded-3xl p-5 space-y-4 transition-all relative hover:border-[#176B65]/40"
+                    className="urban-card rounded-3xl p-4 sm:p-5 space-y-3.5 transition-all relative hover:border-[#176B65]/40"
                   >
-                    {/* Header: Photo / Initials, Name, Status Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm relative ${
+                    {/* Header: Photo / Initials, Name, Status Badge (Responsive) */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 relative ${
                           staff.status === 'ON_DUTY'
                             ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-400'
                             : staff.status === 'ON_BREAK'
@@ -6813,15 +6814,15 @@ export default function MerchantDashboardPage() {
                           }`} />
                         </div>
 
-                        <div>
-                          <h4 className="font-black text-sm text-[#283B3D]">{staff.name}</h4>
-                          <span className="text-xs font-semibold text-[#176B65] bg-[#DCE9E3]/70 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-black text-sm text-[#283B3D] truncate" title={staff.name}>{staff.name}</h4>
+                          <span className="text-[11px] font-semibold text-[#176B65] bg-[#DCE9E3]/70 px-2 py-0.5 rounded-md inline-block mt-0.5 truncate max-w-full">
                             {staff.role}
                           </span>
                         </div>
                       </div>
 
-                      <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-full ${
+                      <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap self-start ${
                         staff.status === 'ON_DUTY'
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                           : staff.status === 'ON_BREAK'
@@ -7809,34 +7810,35 @@ export default function MerchantDashboardPage() {
       {/* ========================================================= */}
       <AnimatePresence>
         {breakModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-6 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-[#DCE9E3] relative max-h-[88vh] overflow-y-auto"
             >
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-800">
-                    <Coffee className="w-6 h-6" />
+              {/* Header: Responsive Title & Close */}
+              <div className="flex items-start justify-between gap-2.5 pb-2 border-b border-[#DCE9E3]/70">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
+                    <Coffee className="w-5 h-5" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black text-[#283B3D]">Counter Break / Pause Timer</h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                        FR-707
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black text-[#283B3D] truncate">Counter Break & Pause</h3>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">
+                        Live Pause
                       </span>
                     </div>
-                    <p className="text-xs text-[#283B3D]/70 font-semibold">
-                      Notify waiting customers on their mobile screen with an estimated return time.
+                    <p className="text-[11px] text-[#283B3D]/70 font-semibold line-clamp-1 mt-0.5">
+                      Notify waiting customers with live return timer.
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setBreakModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -7844,7 +7846,7 @@ export default function MerchantDashboardPage() {
 
               {/* If currently on break */}
               {shopStatus === 'PAUSED' && (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-amber-900">Current Break Status</span>
                     {breakRemainingSeconds > 0 && (
@@ -7871,61 +7873,61 @@ export default function MerchantDashboardPage() {
                 </div>
               )}
 
-              {/* Quick Preset Buttons */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-[#283B3D] uppercase tracking-wider">
+              {/* Quick Preset Buttons (3-Column Responsive Grid) */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-[#283B3D] uppercase tracking-wider">
                   Quick Break Presets
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => handleStartBreak('TEA', 15, 'Tea / Refreshment Break')}
-                    className="p-3.5 rounded-2xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 hover:border-amber-400 text-left transition-all cursor-pointer group active:scale-98"
+                    className="p-2.5 sm:p-3 rounded-2xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 hover:border-amber-400 text-left transition-all cursor-pointer group active:scale-98"
                   >
-                    <div className="flex items-center gap-2 text-amber-800 font-black text-sm">
-                      <Coffee className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center gap-1 text-amber-800 font-black text-xs sm:text-sm">
+                      <Coffee className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
                       <span>15 Min</span>
                     </div>
-                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Tea Break</span>
-                    <span className="text-[10px] text-[#283B3D]/60 block">Quick refreshment</span>
+                    <span className="text-[11px] font-bold text-[#283B3D] block mt-0.5 truncate">Tea Break</span>
+                    <span className="text-[9px] text-[#283B3D]/60 block truncate">Refreshment</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleStartBreak('LUNCH', 30, 'Lunch / Meal Break')}
-                    className="p-3.5 rounded-2xl border-2 border-orange-200 bg-orange-50/50 hover:bg-orange-100/70 hover:border-orange-400 text-left transition-all cursor-pointer group active:scale-98"
+                    className="p-2.5 sm:p-3 rounded-2xl border-2 border-orange-200 bg-orange-50/50 hover:bg-orange-100/70 hover:border-orange-400 text-left transition-all cursor-pointer group active:scale-98"
                   >
-                    <div className="flex items-center gap-2 text-orange-800 font-black text-sm">
-                      <Utensils className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center gap-1 text-orange-800 font-black text-xs sm:text-sm">
+                      <Utensils className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
                       <span>30 Min</span>
                     </div>
-                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Lunch Break</span>
-                    <span className="text-[10px] text-[#283B3D]/60 block">Afternoon / Dinner</span>
+                    <span className="text-[11px] font-bold text-[#283B3D] block mt-0.5 truncate">Lunch</span>
+                    <span className="text-[9px] text-[#283B3D]/60 block truncate">Meal time</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleStartBreak('EXTENDED', 45, 'Extended Rest / Errand')}
-                    className="p-3.5 rounded-2xl border-2 border-teal-200 bg-teal-50/50 hover:bg-teal-100/70 hover:border-teal-400 text-left transition-all cursor-pointer group active:scale-98"
+                    className="p-2.5 sm:p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/50 hover:bg-teal-100/70 hover:border-teal-400 text-left transition-all cursor-pointer group active:scale-98"
                   >
-                    <div className="flex items-center gap-2 text-[#176B65] font-black text-sm">
-                      <Timer className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center gap-1 text-[#176B65] font-black text-xs sm:text-sm">
+                      <Timer className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
                       <span>45 Min</span>
                     </div>
-                    <span className="text-xs font-bold text-[#283B3D] block mt-1">Rest / Restock</span>
-                    <span className="text-[10px] text-[#283B3D]/60 block">Stock & supplies run</span>
+                    <span className="text-[11px] font-bold text-[#283B3D] block mt-0.5 truncate">Rest</span>
+                    <span className="text-[9px] text-[#283B3D]/60 block truncate">Stock run</span>
                   </button>
                 </div>
               </div>
 
-              {/* Custom Minutes & Reason Section */}
-              <div className="p-4 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-3">
-                <label className="block text-xs font-bold text-[#283B3D]">
+              {/* Custom Minutes & Reason Section (Responsive Stacked Inputs) */}
+              <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-2.5">
+                <label className="block text-[11px] font-bold text-[#283B3D] uppercase tracking-wider">
                   Custom Break Duration & Note
                 </label>
 
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-white rounded-xl border border-[#DCE9E3] p-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex items-center justify-between sm:justify-start bg-white rounded-xl border border-[#DCE9E3] p-1 shrink-0">
                     <button
                       type="button"
                       onClick={() => setCustomBreakMinutes(Math.max(5, customBreakMinutes - 5))}
@@ -7933,7 +7935,7 @@ export default function MerchantDashboardPage() {
                     >
                       -
                     </button>
-                    <span className="w-16 text-center text-sm font-black text-[#176B65]">
+                    <span className="w-14 text-center text-sm font-black text-[#176B65]">
                       {customBreakMinutes}m
                     </span>
                     <button
@@ -7950,7 +7952,7 @@ export default function MerchantDashboardPage() {
                     placeholder="Break reason (e.g. Lunch, Prayers, Restock)"
                     value={breakReason}
                     onChange={(e) => setBreakReason(e.target.value)}
-                    className="flex-1 bg-white border border-[#DCE9E3] rounded-xl px-3.5 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    className="w-full bg-white border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
                 </div>
 
@@ -7964,21 +7966,21 @@ export default function MerchantDashboardPage() {
                 </button>
               </div>
 
-              {/* Indefinite Pause Option */}
-              <div className="pt-1 border-t border-[#DCE9E3] flex items-center justify-between gap-3">
+              {/* Indefinite Pause & Cancel (Responsive Wrap) */}
+              <div className="pt-2 border-t border-[#DCE9E3] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => handleStartBreak('INDEFINITE', 0, breakReason || 'Counter paused indefinitely')}
-                  className="px-4 py-2.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <PauseCircle className="w-4 h-4 text-amber-700" />
+                  <PauseCircle className="w-4 h-4 text-amber-700 shrink-0" />
                   <span>Pause Indefinitely (No Timer)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setBreakModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#283B3D]/70 hover:text-[#283B3D] cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#283B3D]/70 hover:text-[#283B3D] cursor-pointer text-center"
                 >
                   Cancel
                 </button>
