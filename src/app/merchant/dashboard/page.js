@@ -8307,7 +8307,7 @@ export default function MerchantDashboardPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-[#DCE9E3] relative max-h-[88vh] overflow-y-auto"
+              className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-[#DCE9E3] relative max-h-[88vh] overflow-y-auto no-scrollbar"
             >
               {/* Header: Responsive Title & Close */}
               <div className="flex items-start justify-between gap-2.5 pb-2 border-b border-[#DCE9E3]/70">
@@ -8330,9 +8330,11 @@ export default function MerchantDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setBreakModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#283B3D] flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                  title="Close"
+                  aria-label="Close"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 stroke-[2.5]" />
                 </button>
               </div>
 
@@ -8635,31 +8637,31 @@ export default function MerchantDashboardPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[90vh] overflow-y-auto no-scrollbar"
             >
               {/* Header */}
-              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3 gap-3">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center shrink-0">
                     <Settings className="w-5 h-5" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black text-[#283B3D]">Edit Shop Profile & Timings</h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        FR-602
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm sm:text-base font-black text-[#283B3D] truncate">
+                      Edit Shop Profile & Timings
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-[#283B3D]/70 font-semibold line-clamp-1 mt-0.5">
                       Update operating schedule, weekly off, and customer wait pace.
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setProfileModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#283B3D] flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                  title="Close"
+                  aria-label="Close"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 stroke-[2.5]" />
                 </button>
               </div>
 
@@ -8872,31 +8874,31 @@ export default function MerchantDashboardPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[92vh] overflow-y-auto"
+              className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 space-y-5 shadow-2xl border border-[#DCE9E3] relative max-h-[92vh] overflow-y-auto no-scrollbar"
             >
               {/* Header */}
-              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-[#283B3D] text-[#F2A15A] flex items-center justify-center shadow-xs">
-                    <Moon className="w-6 h-6" />
+              <div className="flex items-start justify-between border-b border-[#DCE9E3] pb-3 gap-3">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#283B3D] text-[#F2A15A] flex items-center justify-center shadow-xs shrink-0">
+                    <Moon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black text-[#283B3D]">Day-End Close & Queue Reset</h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-[#F2A15A]">
-                        FR-708
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#283B3D]/70 font-semibold">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm sm:text-base font-black text-[#283B3D] truncate">
+                      Day-End Close & Queue Reset
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-[#283B3D]/70 font-semibold line-clamp-1 mt-0.5">
                       Review today&apos;s summary, conclude unserved passes & prepare for tomorrow.
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setResetModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[#F3F1E9] text-[#283B3D]/70 hover:text-[#283B3D] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#283B3D] flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                  title="Close"
+                  aria-label="Close"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 stroke-[2.5]" />
                 </button>
               </div>
 
