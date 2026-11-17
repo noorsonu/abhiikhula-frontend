@@ -214,34 +214,34 @@ export default function MerchantDashboardPage() {
   // Industry Archetypes for Multi-Counter Stations (BRD FR-709)
   const CATEGORY_DEFAULT_STATIONS = {
     SALON: [
-      { id: 'st-1', name: 'Chair #1', staffName: 'Ramesh (Senior Stylist)', role: 'Hair & Styling', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Chair #2', staffName: 'Sonu (Grooming Expert)', role: 'Beard & Shave', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-3', name: 'Chair #3', staffName: 'Wasim (Spa Specialist)', role: 'Facial & Spa', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Chair #1', staffName: '', role: 'Hair & Styling', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Chair #2', staffName: '', role: 'Beard & Shave', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-3', name: 'Chair #3', staffName: '', role: 'Facial & Spa', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     CLINIC: [
-      { id: 'st-1', name: 'Chamber #1', staffName: 'Dr. Verma (OPD)', role: 'General Consultation', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Procedure Room', staffName: 'Nurse Sunita', role: 'Dressing & Injection', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-3', name: 'Dental Chair', staffName: 'Dr. Neha (Dentist)', role: 'Dental Scaling & Care', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Chamber #1', staffName: '', role: 'General Consultation', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Procedure Room', staffName: '', role: 'Dressing & Injection', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-3', name: 'Dental Chair', staffName: '', role: 'Dental Scaling & Care', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     PHARMACY: [
-      { id: 'st-1', name: 'Counter #1', staffName: 'Pharmacist Imran', role: 'Prescription Medicines', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Counter #2', staffName: 'Cashier Alok', role: 'Express OTC & Billing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Counter #1', staffName: '', role: 'Prescription Medicines', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Counter #2', staffName: '', role: 'Express OTC & Billing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     DIAGNOSTIC: [
-      { id: 'st-1', name: 'Phlebotomy Chair #1', staffName: 'Technician Rajesh', role: 'Blood Sample Draw', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Collection Room #2', staffName: 'Sister Preeti', role: 'Urine & Report Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Phlebotomy Chair #1', staffName: '', role: 'Blood Sample Draw', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Collection Room #2', staffName: '', role: 'Urine & Report Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     FOOD: [
-      { id: 'st-1', name: 'Dine-in Floor', staffName: 'Captain Manoj', role: 'Table Seating & Order', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Takeaway Counter', staffName: 'Packaging Staff', role: 'Parcel Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Counter #1', staffName: '', role: 'Table Seating & Order', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Counter #2', staffName: '', role: 'Takeaway Delivery', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     AUTO: [
-      { id: 'st-1', name: 'Bay #1', staffName: 'Ustad Aslam', role: 'Engine & Oil Servicing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Bay #2', staffName: 'Mechanic Deepu', role: 'Brakes, Chain & Wash', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Bay #1', staffName: '', role: 'Engine & Oil Servicing', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Bay #2', staffName: '', role: 'Brakes, Chain & Wash', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ],
     RETAIL: [
-      { id: 'st-1', name: 'Billing Desk #1', staffName: 'Operator Vikas', role: 'Main Checkout', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
-      { id: 'st-2', name: 'Express Desk #2', staffName: 'Operator Priya', role: 'Quick Items (<5 items)', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
+      { id: 'st-1', name: 'Billing Desk #1', staffName: '', role: 'Main Checkout', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 },
+      { id: 'st-2', name: 'Express Desk #2', staffName: '', role: 'Quick Items (<5 items)', active: true, currentToken: null, timerSeconds: 0, totalServedToday: 0 }
     ]
   };
 
@@ -254,7 +254,30 @@ export default function MerchantDashboardPage() {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Clean any leftover demo staff names from previous mock seeds
+          const sanitized = parsed.map(s => {
+            const isDemoStaff = s.staffName && (
+              s.staffName.includes('Ramesh') ||
+              s.staffName.includes('Sonu') ||
+              s.staffName.includes('Wasim') ||
+              s.staffName.includes('Verma') ||
+              s.staffName.includes('Sunita') ||
+              s.staffName.includes('Neha') ||
+              s.staffName.includes('Imran') ||
+              s.staffName.includes('Alok') ||
+              s.staffName.includes('Rajesh') ||
+              s.staffName.includes('Preeti') ||
+              s.staffName.includes('Manoj') ||
+              s.staffName.includes('Aslam') ||
+              s.staffName.includes('Deepu') ||
+              s.staffName.includes('Vikas') ||
+              s.staffName.includes('Priya')
+            );
+            return isDemoStaff ? { ...s, staffName: '' } : s;
+          });
+          return sanitized;
+        }
       }
     } catch (e) {}
 
@@ -287,38 +310,15 @@ export default function MerchantDashboardPage() {
     return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  // BRD FR-711: Staff Attendance & Multi-Operator Storage Keys & Default Archetypes
+  // BRD FR-711: Staff Attendance & Multi-Operator Storage Keys
   const CATEGORY_DEFAULT_STAFF = {
-    SALON: [
-      { id: 'stf-1', name: 'Ramesh (Senior Stylist)', role: 'Stylist & Cuts', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Sonu (Grooming Expert)', role: 'Beard & Shave', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-3', name: 'Wasim (Spa Specialist)', role: 'Facial & Head Spa', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    CLINIC: [
-      { id: 'stf-1', name: 'Dr. Verma (OPD)', role: 'Chief Consultant', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Nurse Sunita', role: 'Nursing & Procedures', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-3', name: 'Dr. Neha (Dentist)', role: 'Dental Care', phone: '9833003300', pin: '3333', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    PHARMACY: [
-      { id: 'stf-1', name: 'Pharmacist Imran', role: 'Chief Dispenser', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Cashier Alok', role: 'Express OTC & Billing', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    DIAGNOSTIC: [
-      { id: 'stf-1', name: 'Rajesh Technician', role: 'Senior Phlebotomist', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Sister Preeti', role: 'Lab Assistant & Reports', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    FOOD: [
-      { id: 'stf-1', name: 'Captain Manoj', role: 'Floor Manager', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Chef Suresh', role: 'Kitchen Master', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    AUTO: [
-      { id: 'stf-1', name: 'Ustad Aslam', role: 'Master Technician', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Mechanic Deepu', role: 'Brakes & Wash Specialist', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ],
-    RETAIL: [
-      { id: 'stf-1', name: 'Vikas Operator', role: 'Head Cashier', phone: '9811001100', pin: '1111', status: 'ON_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 },
-      { id: 'stf-2', name: 'Priya Billing', role: 'Express Checkout', phone: '9822002200', pin: '2222', status: 'OFF_DUTY', clockInTime: null, clockOutTime: null, breakTime: null, servedCountToday: 0, revenueGeneratedToday: 0 }
-    ]
+    SALON: [],
+    CLINIC: [],
+    PHARMACY: [],
+    DIAGNOSTIC: [],
+    FOOD: [],
+    AUTO: [],
+    RETAIL: []
   };
 
   const getStaffStorageKey = (shop) => `ak_shop_staff_${(shop?.slug || 'shop').toLowerCase()}`;
@@ -327,41 +327,37 @@ export default function MerchantDashboardPage() {
   const loadShopStaff = (shop) => {
     if (!shop || typeof window === 'undefined') return [];
     const key = getStaffStorageKey(shop);
-    const nowLiveTime = getNowTimeStr();
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Replace any obsolete static demo times with real live login times
-          const sanitized = parsed.map((s, idx) => {
-            const hasStaticOldTime = s.clockInTime === '09:00 AM' || s.clockInTime === '09:30 AM' || s.clockInTime === '08:30 AM' || s.clockInTime === '08:45 AM' || s.clockInTime === '10:00 AM' || s.clockInTime === '09:15 AM';
-            if (hasStaticOldTime) {
-              if (idx === 0) {
-                return { ...s, clockInTime: nowLiveTime, status: 'ON_DUTY', breakTime: null };
-              } else {
-                return { ...s, clockInTime: null, status: 'OFF_DUTY', breakTime: null, clockOutTime: null };
-              }
-            }
-            return s;
+        if (Array.isArray(parsed)) {
+          // Purge demo mock staff names from previous test sessions
+          const sanitized = parsed.filter(s => {
+            const isDemoStaff = s.name && (
+              s.name.includes('Ramesh') ||
+              s.name.includes('Sonu') ||
+              s.name.includes('Wasim') ||
+              s.name.includes('Verma') ||
+              s.name.includes('Sunita') ||
+              s.name.includes('Neha') ||
+              s.name.includes('Imran') ||
+              s.name.includes('Alok') ||
+              s.name.includes('Rajesh') ||
+              s.name.includes('Preeti') ||
+              s.name.includes('Manoj') ||
+              s.name.includes('Aslam') ||
+              s.name.includes('Deepu') ||
+              s.name.includes('Vikas') ||
+              s.name.includes('Priya')
+            );
+            return !isDemoStaff;
           });
           return sanitized;
         }
       }
     } catch (e) {}
-
-    const catKey = detectCategoryKey(shop);
-    const defaults = (CATEGORY_DEFAULT_STAFF[catKey] || CATEGORY_DEFAULT_STAFF.SALON).map((s, idx) => {
-      if (idx === 0) {
-        return { ...s, clockInTime: nowLiveTime, status: 'ON_DUTY' };
-      }
-      return { ...s, clockInTime: null, status: 'OFF_DUTY', breakTime: null, clockOutTime: null };
-    });
-
-    try {
-      localStorage.setItem(key, JSON.stringify(defaults));
-    } catch (e) {}
-    return defaults;
+    return [];
   };
 
   const loadOwnerPin = (shop) => {
@@ -1013,17 +1009,23 @@ export default function MerchantDashboardPage() {
 
       setWaitingQueue(waitingOnly);
 
-      // 2. Currently Serving Token
+      // 2. Currently Serving Token: only if there is an unassigned serving customer not seated at a station
       const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !completedListRef.current.some(c => isTokenMatch(c, t)));
-      if (servingItem) {
+      const isServingAtStation = servingItem && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, servingItem));
+
+      if (servingItem && !isServingAtStation) {
         setServingToken({
           id: servingItem.id,
           tokenNumber: servingItem.displayToken || servingItem.tokenNumber,
           customerName: servingItem.customerName || 'Customer',
           customerPhone: servingItem.customerPhone || 'Online',
           groupSize: servingItem.groupSize || 1,
-          service: servingItem.customerPurpose || servingItem.service || 'General Service'
+          service: servingItem.customerPurpose || servingItem.service || 'General Service',
+          assignedStation: servingItem.assignedStation || null
         });
+      } else if (!servingItem || isServingAtStation || waitingOnly.length === 0) {
+        // Clear serving token when queue is done or customer is already placed at a station
+        setServingToken(null);
       }
 
       // 3. Completed Tokens
@@ -2209,11 +2211,20 @@ export default function MerchantDashboardPage() {
           totalServedToday: prevStationToken ? (s.totalServedToday || 0) + 1 : (s.totalServedToday || 0)
         };
       }
+      // Remove from any other station so token never duplicates
+      if (s.currentToken && isTokenMatch(s.currentToken, tokenWithStation)) {
+        return {
+          ...s,
+          currentToken: null,
+          timerSeconds: 0
+        };
+      }
       return s;
     });
     saveStationsList(updated);
 
-    setServingToken(tokenWithStation);
+    // Clear main desk servingToken so it does not stay stuck when customer is at chair
+    setServingToken(null);
     setCounterSeconds(0);
 
     updateRecordInHistory(activeShop, {
@@ -2241,7 +2252,22 @@ export default function MerchantDashboardPage() {
 
     syncWithCustomerStorage(tokenWithStation, prevStationToken);
 
-    setAnnouncementMsg(`🪑 Calling ${custFullName} to ${station.name} (${station.staffName})`);
+    // Instant cross-tab & device ring alert broadcast
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ak_last_called_token', JSON.stringify({
+          id: nextToken.id,
+          tokenNumber: nextToken.tokenNumber,
+          customerName: custFullName,
+          customerPhone: nextToken.customerPhone,
+          stationName: station.name,
+          timestamp: Date.now()
+        }));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+    }
+
+    setAnnouncementMsg(`🪑 Calling ${custFullName} to ${station.name}`);
     setTimeout(() => setAnnouncementMsg(''), 4500);
   };
 
@@ -2800,10 +2826,25 @@ export default function MerchantDashboardPage() {
     }
   };
 
-  // Action: Call Next Token
+  // Action: Call Next Token (Auto-inspects free counter/chair and dispatches)
   const handleCallNext = () => {
     if (waitingQueue.length === 0) {
       alert('No more customers currently waiting in the queue.');
+      return;
+    }
+
+    // Auto-Assign: Check which counter / chair is free (active and currentToken is null)
+    const freeStation = stationsList.find(s => s.active && !s.currentToken);
+    if (freeStation) {
+      // Auto-dispatch next waiting customer directly to the free counter!
+      handleCallNextForStation(freeStation.id, waitingQueue[0]);
+      return;
+    }
+
+    // If multi-counter stations are active and all are currently busy:
+    const activeStations = stationsList.filter(s => s.active);
+    if (activeStations.length > 0 && activeStations.every(s => !!s.currentToken)) {
+      alert('Sabhi counters / chairs abhi busy hain! Kripya kisi counter ka kaam pura (Done & Bill) karein ya us chair per Call Next dabayein.');
       return;
     }
 
@@ -4317,7 +4358,9 @@ export default function MerchantDashboardPage() {
                       >
                         <div className="min-w-0">
                           <div className="text-xs font-black truncate text-white">{st.name}</div>
-                          <div className="text-[10px] text-slate-300 truncate">{st.staffName?.split(' ')[0]}</div>
+                          <div className="text-[10px] text-slate-300 truncate">
+                            {st.currentToken ? (st.currentToken.customerName || 'Customer') : 'Free 🟢'}
+                          </div>
                         </div>
                         {isServing ? (
                           <div className="text-right shrink-0">
@@ -4430,15 +4473,15 @@ export default function MerchantDashboardPage() {
                           const statusTag = isAssigned
                             ? "✓ Currently Assigned"
                             : station.currentToken
-                            ? `In Use by #${station.currentToken.tokenNumber}`
-                            : "Free / Ready";
+                            ? `🔴 Busy: ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber})`
+                            : "🟢 Free / Ready";
                           return (
                             <option
                               key={station.id}
                               value={station.id}
                               className="bg-[#283B3D] text-white py-2"
                             >
-                              {station.name} • {station.staffName} ({station.role}) — [{statusTag}]
+                              {station.name} {station.role ? `(${station.role})` : ''} — [{statusTag}]
                             </option>
                           );
                         })}
@@ -4542,7 +4585,9 @@ export default function MerchantDashboardPage() {
                           >
                             <div className="min-w-0">
                               <span className="text-xs font-bold truncate block">{st.name}</span>
-                              <span className="text-[10px] text-slate-300 truncate block">{st.staffName?.split(' ')[0]}</span>
+                              <span className="text-[10px] text-slate-300 truncate block">
+                                {st.currentToken ? (st.currentToken.customerName || 'Busy') : (st.role || 'Available')}
+                              </span>
                             </div>
                             <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
                               isBusy ? 'bg-black/30 text-slate-400' : 'bg-emerald-300 text-emerald-950 font-black'
@@ -4615,7 +4660,7 @@ export default function MerchantDashboardPage() {
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-200 truncate font-semibold">
-                              {st.staffName}
+                              {st.currentToken ? `👤 ${st.currentToken.customerName || 'Customer'}` : (st.role || 'Service Station')}
                             </div>
                             <div className="text-[10px] font-bold text-amber-200/90 pt-1 border-t border-white/10 flex items-center justify-between">
                               <span>{isBusy ? `Busy (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
@@ -4949,7 +4994,10 @@ export default function MerchantDashboardPage() {
                         <span className={`w-2 h-2 rounded-full ${station.active ? (isStationServing ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500') : 'bg-slate-400'}`}></span>
                       </div>
                       <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
-                        {station.staffName} {station.role ? `• ${station.role}` : ''}
+                        {isStationServing
+                          ? `👤 Serving: ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber})`
+                          : `🟢 Ready • ${station.role || 'Service Counter'}`
+                        }
                       </span>
                     </div>
                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${

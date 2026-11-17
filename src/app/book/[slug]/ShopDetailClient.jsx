@@ -780,10 +780,45 @@ export default function ShopDetailClient() {
       }
 
       // Save to customer's active token list in localStorage
+      // If groupSize > 1, create distinct companion token passes so each member can be independently rung & called!
+      const tokensToSave = [finalToken];
+      const primaryNum = Number(String(finalToken.tokenNumber || '').replace(/\D/g, '')) || Math.floor(10 + Math.random() * 80);
+      const cleanPhoneForTokens = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (effectiveGroupSize > 1 && Array.isArray(companionDetails)) {
+        for (let i = 0; i < companionDetails.length; i++) {
+          const comp = companionDetails[i];
+          const compNum = primaryNum + (i + 1);
+          const cName = comp?.name?.trim() || `Companion #${i + 2}`;
+          const cPurp = comp?.purpose?.trim() || customerPurpose || 'General Service';
+          const companionToken = {
+            id: `${finalToken.id || Date.now()}-comp-${i + 1}`,
+            displayToken: `#${compNum}`,
+            tokenNumber: compNum,
+            customerName: cName,
+            customerPhone: cleanPhoneForTokens,
+            groupSize: effectiveGroupSize,
+            groupMemberIndex: i + 2,
+            service: cPurp,
+            customerPurpose: cPurp,
+            status: 'WAITING',
+            shopName: shop.name,
+            shopSlug: shop.slug,
+            address: shop.address,
+            imageUrl: shop.imageUrl,
+            joinedAt: new Date().toISOString(),
+            isCompanion: true,
+            primaryTokenId: finalToken.id
+          };
+          tokensToSave.push(companionToken);
+        }
+      }
+
       if (typeof window !== 'undefined') {
         const existingStr = localStorage.getItem('ak_customer_tokens');
         const existing = existingStr ? JSON.parse(existingStr) : [];
-        const updated = [finalToken, ...existing.filter(t => t.id !== finalToken.id)];
+        const savedIds = new Set(tokensToSave.map(t => String(t.id)));
+        const updated = [...tokensToSave, ...existing.filter(t => !savedIds.has(String(t.id)))];
         localStorage.setItem('ak_customer_tokens', JSON.stringify(updated));
         const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
         if (cleanPhone) {

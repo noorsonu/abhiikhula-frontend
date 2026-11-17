@@ -168,11 +168,43 @@ export default function Navbar() {
         }) : [];
         setActiveCount(userActive.length);
 
+        // Instant broadcast audio ring catch from merchant call
+        if (typeof window !== 'undefined') {
+          try {
+            const lastCalledStr = localStorage.getItem('ak_last_called_token');
+            if (lastCalledStr) {
+              const calledObj = JSON.parse(lastCalledStr);
+              if (calledObj?.tokenNumber) {
+                const cleanCalledNum = String(calledObj.tokenNumber).replace(/\D/g, '');
+                const alertedKey = `ak_turn_alerted_${cleanCalledNum}`;
+                if (!sessionStorage.getItem(alertedKey)) {
+                  const matchingToken = userActive.find(t => {
+                    const tNum = String(t.tokenNumber || t.displayToken || '').replace(/\D/g, '');
+                    return tNum === cleanCalledNum;
+                  });
+                  if (matchingToken) {
+                    sessionStorage.setItem(alertedKey, 'true');
+                    playCounterRing({
+                      tokenNumber: matchingToken.displayToken || matchingToken.tokenNumber,
+                      customerName: matchingToken.customerName || name || 'Customer',
+                      shopName: matchingToken.shopName || calledObj.stationName || ''
+                    });
+                    setTurnRingAlert({
+                      tokenNumber: matchingToken.displayToken || matchingToken.tokenNumber,
+                      shopName: matchingToken.shopName || calledObj.stationName || ''
+                    });
+                  }
+                }
+              }
+            }
+          } catch (err) {}
+        }
+
         // Check if any active token is explicitly called / serving right now by merchant!
         // NEVER ring on token generation or while status is WAITING (even if peopleAhead is 0)
         for (const t of userActive) {
-          const tokenIdentifier = t.id || t.displayToken || t.tokenNumber;
-          const sessionKey = `ak_turn_alerted_${tokenIdentifier}`;
+          const cleanTokenNum = String(t.tokenNumber || t.displayToken || t.id || '').replace(/\D/g, '') || String(t.id || '');
+          const sessionKey = `ak_turn_alerted_${cleanTokenNum}`;
           if (t.status === 'WAITING') {
             if (typeof window !== 'undefined') {
               sessionStorage.removeItem(sessionKey);

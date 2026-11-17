@@ -477,8 +477,14 @@ export default function MyTokensPage() {
         if (!mergedMap.has(String(t.id))) {
           mergedMap.set(String(t.id), t);
         } else {
-          // Preserve local delay state if present
+          // If local state has been marked SERVING or CALLED by merchant, preserve real-time status & desk
           const existing = mergedMap.get(String(t.id));
+          if (t.status === 'SERVING' || t.status === 'CALLED') {
+            existing.status = t.status;
+            existing.peopleAhead = 0;
+            existing.estimatedWaitMin = 0;
+            existing.assignedStation = t.assignedStation || existing.assignedStation;
+          }
           if (t.delayMinutes && !existing.delayMinutes) {
             mergedMap.set(String(t.id), { ...existing, ...t });
           }
@@ -490,9 +496,10 @@ export default function MyTokensPage() {
       setTokens(activeList);
 
       // Check if any active token is called / serving right now by merchant!
-      // NEVER ring on token generation or while status is WAITING
+      // Ring independently for each distinct token number (supporting multiple tokens / party members under one phone)
       activeList.forEach(tk => {
-        const alertedKey = `ak_turn_alerted_${tk.id || tk.displayToken}`;
+        const tokenIdentifier = String(tk.tokenNumber || tk.displayToken || tk.id || '').replace(/\D/g, '') || String(tk.id || '');
+        const alertedKey = `ak_turn_alerted_${tokenIdentifier}`;
         if (tk.status === 'WAITING') {
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem(alertedKey);
@@ -579,8 +586,44 @@ export default function MyTokensPage() {
       loadTokens();
     }, 3000);
 
-    // Listen to login/logout/switch account storage events
+    // Listen to login/logout/switch account storage events & merchant call broadcasts
     const handleStorageChange = () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const lastCalledStr = localStorage.getItem('ak_last_called_token');
+          if (lastCalledStr) {
+            const calledObj = JSON.parse(lastCalledStr);
+            if (calledObj?.tokenNumber) {
+              const cleanCalledNum = String(calledObj.tokenNumber).replace(/\D/g, '');
+              const alertedKey = `ak_turn_alerted_${cleanCalledNum}`;
+              if (!sessionStorage.getItem(alertedKey)) {
+                const currentPhoneRaw = localStorage.getItem('ak_phone');
+                const cleanPhone = normalizePhone(currentPhoneRaw);
+                const localStr = localStorage.getItem('ak_customer_tokens');
+                const localList = localStr ? JSON.parse(localStr) : [];
+                const matchingToken = localList.find(t => {
+                  const tNum = String(t.tokenNumber || t.displayToken || '').replace(/\D/g, '');
+                  const phoneMatches = !cleanPhone || normalizePhone(t.customerPhone) === cleanPhone;
+                  return phoneMatches && tNum === cleanCalledNum;
+                });
+                if (matchingToken) {
+                  sessionStorage.setItem(alertedKey, 'true');
+                  playCounterRing({
+                    tokenNumber: matchingToken.displayToken || matchingToken.tokenNumber,
+                    customerName: matchingToken.customerName,
+                    shopName: matchingToken.shopName || calledObj.stationName || ''
+                  });
+                  notifyTurnArrival(matchingToken.shopName, matchingToken.displayToken);
+                  setCalledTokenAlert({
+                    tokenNumber: matchingToken.displayToken || matchingToken.tokenNumber,
+                    shopName: matchingToken.shopName || calledObj.stationName || ''
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {}
+      }
       loadTokens();
     };
     window.addEventListener('storage', handleStorageChange);
