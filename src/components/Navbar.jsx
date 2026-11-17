@@ -431,18 +431,8 @@ export default function Navbar() {
 
     try {
       // 1. Dispatch Real-time SMS OTP via Google Firebase
-      let confResult = null;
-      try {
-        confResult = await sendFirebasePhoneOtp(cleanPhone, 'customer-recaptcha-container');
-        setConfirmationResult(confResult);
-      } catch (fbErr) {
-        console.warn("Firebase phone auth dispatch:", fbErr?.message);
-        if (fbErr?.code === 'auth/invalid-phone-number') {
-          throw new Error("Invalid mobile number. Please check the 10-digit number.");
-        } else if (fbErr?.code === 'auth/quota-exceeded') {
-          throw new Error("Daily SMS limit reached. Please use test verification code 123456.");
-        }
-      }
+      const confResult = await sendFirebasePhoneOtp(cleanPhone, 'customer-recaptcha-container');
+      setConfirmationResult(confResult);
 
       // 2. Also register intent with backend
       try {
@@ -470,7 +460,9 @@ export default function Navbar() {
       }
       setLoginSuccessMsg(`Verification code sent to +91 ${cleanPhone}`);
     } catch (err) {
-      setLoginError(err.message || 'Failed to dispatch verification code. Please try again.');
+      console.error("Firebase sendOtp error:", err);
+      setLoginError(err.message || 'Failed to dispatch verification code. Please check your number.');
+      return;
     } finally {
       setLoginLoading(false);
     }
@@ -1159,6 +1151,8 @@ export default function Navbar() {
                   <p className="text-[11px] text-[#283B3D]/60 leading-relaxed font-medium">
                     We'll send a 6-digit one-time password to verify your phone number. No passwords required.
                   </p>
+
+                  <div id="customer-recaptcha-container" className="my-1 flex justify-center"></div>
 
                   <button
                     type="submit"

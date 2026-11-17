@@ -179,15 +179,16 @@ export default function MerchantRegisterPage() {
     try {
       const conf = await sendFirebasePhoneOtp(clean, 'merchant-reg-recaptcha');
       setRegConfirmationResult(conf);
+      setOtpSent(true);
+      if (clean === '7052806684') {
+        setOtpInput('123456');
+      } else {
+        setOtpInput('');
+      }
     } catch (fbErr) {
-      console.warn("Firebase phone auth dispatch:", fbErr?.message);
-    }
-
-    setOtpSent(true);
-    if (clean === '7052806684') {
-      setOtpInput('123456');
-    } else {
-      setOtpInput('');
+      console.error("Firebase phone auth dispatch error:", fbErr);
+      setAuthError(fbErr.message || 'Failed to dispatch SMS OTP. Please check your phone number or domain.');
+      return;
     }
   };
 
@@ -239,15 +240,16 @@ export default function MerchantRegisterPage() {
     try {
       const conf = await sendFirebasePhoneOtp(clean, 'merchant-login-recaptcha');
       setLoginConfirmationResult(conf);
+      setLoginOtpSent(true);
+      if (clean === '7052806684') {
+        setLoginOtpInput('123456');
+      } else {
+        setLoginOtpInput('');
+      }
     } catch (fbErr) {
-      console.warn("Firebase login dispatch:", fbErr?.message);
-    }
-
-    setLoginOtpSent(true);
-    if (clean === '7052806684') {
-      setLoginOtpInput('123456');
-    } else {
-      setLoginOtpInput('');
+      console.error("Firebase login dispatch error:", fbErr);
+      setLoginError(fbErr.message || 'Failed to dispatch SMS OTP. Please check your phone number or domain.');
+      return;
     }
   };
 
@@ -685,6 +687,8 @@ export default function MerchantRegisterPage() {
                 </div>
               </div>
 
+              <div id="merchant-login-recaptcha" className="my-1 flex justify-center"></div>
+
               {!loginOtpSent ? (
                 <button
                   type="button"
@@ -782,6 +786,8 @@ export default function MerchantRegisterPage() {
                   />
                 </div>
               </div>
+
+              <div id="merchant-reg-recaptcha" className="my-1 flex justify-center"></div>
 
               {!otpSent ? (
                 <button

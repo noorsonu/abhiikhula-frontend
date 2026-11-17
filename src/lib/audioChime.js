@@ -17,10 +17,10 @@ export function initAudioUnlocker() {
           activeAudioContext = new AudioContextClass();
         }
         if (activeAudioContext.state === 'suspended') {
-          activeAudioContext.resume().catch(() => {});
+          activeAudioContext.resume().catch(() => { });
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evt => {
       window.removeEventListener(evt, unlock);
     });
@@ -44,7 +44,7 @@ export function playChime(type = 'turn') {
     activeAudioContext = ctx;
 
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+      ctx.resume().catch(() => { });
     }
 
     const now = ctx.currentTime;
@@ -120,7 +120,7 @@ export function playCounterRing({ tokenNumber = '', customerName = '', shopName 
       activeAudioContext = ctx;
 
       if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+        ctx.resume().catch(() => { });
       }
 
       const now = ctx.currentTime;
@@ -165,7 +165,7 @@ export function playCounterRing({ tokenNumber = '', customerName = '', shopName 
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
       navigator.vibrate([400, 200, 400, 200, 600]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // 3. Clear Voice Announcement
@@ -175,19 +175,19 @@ export function playCounterRing({ tokenNumber = '', customerName = '', shopName 
       const tokenDisplay = tokenNumber ? `Token ${tokenNumber}` : 'Your token';
       const shopDisplay = shopName ? ` at ${shopName}` : '';
       const announcement = `${tokenDisplay}, your turn has arrived! Please proceed to the service counter.`;
-      
+
       const utterance = new SpeechSynthesisUtterance(announcement);
       utterance.rate = 0.95;
       utterance.pitch = 1.05;
       utterance.volume = 1.0;
-      
+
       // Delay speech slightly so initial bell chime is clearly heard first
       setTimeout(() => {
         try {
           window.speechSynthesis.speak(utterance);
-        } catch (err) {}
+        } catch (err) { }
       }, 700);
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -199,12 +199,12 @@ export function stopCounterRing() {
     if ('speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
-      } catch (e) {}
+      } catch (e) { }
     }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try {
         navigator.vibrate(0);
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 }
