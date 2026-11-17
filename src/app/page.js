@@ -50,6 +50,21 @@ export default function HomePage() {
   const loadRegisteredLocalShops = () => {
     if (typeof window === 'undefined') return [];
     try {
+      const resetKey = 'ak_reset_v25_full_db_purge';
+      if (!localStorage.getItem(resetKey)) {
+        localStorage.removeItem('ak_active_merchant_shop');
+        localStorage.removeItem('ak_merchant_shops');
+        localStorage.removeItem('ak_customer_tokens');
+        localStorage.removeItem('ak_customer_history');
+        localStorage.removeItem('ak_token');
+        localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_customer_name');
+        localStorage.removeItem('ak_customer_age');
+        localStorage.removeItem('ak_customer_profiles');
+        localStorage.setItem(resetKey, 'true');
+        return [];
+      }
       const activeStr = localStorage.getItem('ak_active_merchant_shop');
       const allStr = localStorage.getItem('ak_merchant_shops');
       const all = allStr ? JSON.parse(allStr) : [];

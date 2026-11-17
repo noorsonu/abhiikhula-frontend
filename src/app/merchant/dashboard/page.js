@@ -1078,6 +1078,24 @@ export default function MerchantDashboardPage() {
   // Initial Load & Strict Role Authorization Check
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const resetKey = 'ak_reset_v25_full_db_purge';
+      if (!localStorage.getItem(resetKey)) {
+        localStorage.removeItem('ak_active_merchant_shop');
+        localStorage.removeItem('ak_merchant_shops');
+        localStorage.removeItem('ak_tokens');
+        localStorage.removeItem('ak_customer_tokens');
+        localStorage.removeItem('ak_customer_history');
+        localStorage.removeItem('ak_token');
+        localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_customer_name');
+        localStorage.removeItem('ak_customer_age');
+        localStorage.removeItem('ak_customer_profiles');
+        localStorage.setItem(resetKey, 'true');
+        setIsAuthorized(false);
+        return;
+      }
+
       const role = localStorage.getItem('ak_role');
       const savedShopStr = localStorage.getItem('ak_active_merchant_shop');
       const savedSound = localStorage.getItem('ak_merchant_sound_enabled');
