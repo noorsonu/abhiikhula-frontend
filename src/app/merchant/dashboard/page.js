@@ -6656,13 +6656,13 @@ export default function MerchantDashboardPage() {
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                      {[5, 8, 10, 12, 15, 20, 30].map((preset) => (
+                    <div className="flex flex-wrap items-center gap-2 flex-1">
+                      {[10, 15, 30].map((preset) => (
                         <button
                           key={preset}
                           type="button"
                           onClick={() => setEditAvgWaitMin(preset)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                             editAvgWaitMin === preset
                               ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
                               : 'bg-[#F3F1E9]/70 hover:bg-[#DCE9E3] text-[#283B3D] border-[#DCE9E3]'
@@ -8805,30 +8805,30 @@ export default function MerchantDashboardPage() {
                       <button
                         type="button"
                         onClick={() => setEditAvgWaitMin(Math.max(1, editAvgWaitMin - 1))}
-                        className="w-7 h-7 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
+                        className="w-8 h-8 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
                       >
                         -
                       </button>
-                      <span className="w-11 text-center font-bold text-xs text-[#176B65]">{editAvgWaitMin}m</span>
+                      <span className="w-12 text-center font-bold text-xs text-[#176B65]">{editAvgWaitMin}m</span>
                       <button
                         type="button"
                         onClick={() => setEditAvgWaitMin(Math.min(300, editAvgWaitMin + 1))}
-                        className="w-7 h-7 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
+                        className="w-8 h-8 rounded-lg hover:bg-slate-100 text-sm font-black text-[#283B3D] flex items-center justify-center cursor-pointer active:scale-95"
                       >
                         +
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-6 gap-1 flex-1">
-                      {[5, 8, 10, 12, 15, 20].map((num) => (
+                    <div className="grid grid-cols-3 gap-2 flex-1">
+                      {[10, 15, 30].map((num) => (
                         <button
                           key={num}
                           type="button"
                           onClick={() => setEditAvgWaitMin(num)}
-                          className={`py-1 rounded-lg text-xs font-bold border transition-colors ${
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                             editAvgWaitMin === num
-                              ? 'bg-[#176B65] text-white border-[#176B65]'
-                              : 'bg-white hover:bg-slate-100 text-[#283B3D] border-[#DCE9E3]'
+                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                              : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
                           }`}
                         >
                           {num}m
