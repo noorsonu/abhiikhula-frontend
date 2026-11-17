@@ -172,9 +172,9 @@ export function playCounterRing({ tokenNumber = '', customerName = '', shopName 
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
-      const tokenDisplay = tokenNumber ? `Token ${tokenNumber}` : 'Aapka token';
-      const shopDisplay = shopName ? ` ${shopName} par` : '';
-      const announcement = `${tokenDisplay}, aapka number aa gaya hai! Kripya service counter par aa jayein.`;
+      const tokenDisplay = tokenNumber ? `Token ${tokenNumber}` : 'Your token';
+      const shopDisplay = shopName ? ` at ${shopName}` : '';
+      const announcement = `${tokenDisplay}, your turn has arrived! Please proceed to the service counter.`;
       
       const utterance = new SpeechSynthesisUtterance(announcement);
       utterance.rate = 0.95;

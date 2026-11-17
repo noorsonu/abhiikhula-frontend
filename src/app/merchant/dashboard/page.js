@@ -1925,15 +1925,15 @@ export default function MerchantDashboardPage() {
 
     switch (preset) {
       case 'CALLING_SOON':
-        return `Namaste ${name} ji! 🙏\n\n*${shopName}* se aapka *Token #${token}* aane wala hai (Aapke aage sirf ${peopleAhead} vyakti hain, ~${waitMin} min).\n\nKripya service counter par aa jayein taaki turn skip na ho.\n\nLive Pass Dekhein: https://abhiikhula.in/tokens\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! 🙏\n\nYour *Token #${token}* at *${shopName}* is coming up soon (Only ${peopleAhead} ahead of you, ~${waitMin} min).\n\nPlease proceed towards the counter.\n\nView Live Pass: https://abhiikhula.in/tokens\n- Powered by AbhiiKhula`;
       case 'SERVING_NOW':
-        return `Namaste ${name} ji! 🔔\n\n*${shopName}* par aapka *Token #${token}* counter par serve ho raha hai! Kripya turant service counter par step-up karein.\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! 🔔\n\nYour *Token #${token}* at *${shopName}* is being served now! Please step up to the counter.\n- Powered by AbhiiKhula`;
       case 'ABSENT_RECALL':
-        return `Namaste ${name} ji! ⚠️\n\n*${shopName}* par aapka *Token #${token}* call kiya gaya tha lekin aap uplabdh nahi the. Aapka token 10-minute grace hold par hai. Kripya turant counter par sampark karein!\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! ⚠️\n\nYour *Token #${token}* was called at *${shopName}*, but you were not present. Your token is on a 10-minute grace hold. Please contact the counter immediately!\n- Powered by AbhiiKhula`;
       case 'DELAY_NOTICE':
-        return `Namaste ${name} ji! ⏳\n\n*${shopName}* par counter par thoda atirikt samay lag raha hai. Aapka *Token #${token}* lagbhag ~${waitMin + 10} minute me call hoga. Asuvidha ke liye khed hai.\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! ⏳\n\nServices at *${shopName}* are experiencing a slight delay. Your *Token #${token}* is estimated in ~${waitMin + 10} minutes. Thank you for your patience.\n- Powered by AbhiiKhula`;
       default:
-        return whatsappCustomText || `Namaste ${name} ji! *${shopName}* se aapke Token #${token} ke baare me counter update.`;
+        return whatsappCustomText || `Hello ${name}! Counter update from *${shopName}* regarding Token #${token}.`;
     }
   };
 
@@ -2527,11 +2527,11 @@ export default function MerchantDashboardPage() {
       return;
     }
 
-    const shopName = activeShop?.name || 'Hamari Dukan';
+    const shopName = activeShop?.name || 'Our Store';
     const custName = customer.customerName || 'Customer';
     const pendingAmt = customer.totalPending || 0;
 
-    const message = `Namaste ${custName} ji! 🙏\n\n${shopName} se aapka kul baqaya hisaab ₹${pendingAmt.toLocaleString('en-IN')} pending hai.\n\nKripya suvidha-anusar samay par UPI ya cash se clear kar dein. Kisi bhi sawaal ke liye sampark karein.\n\nDhanyawad! ✨\n— ${shopName}`;
+    const message = `Hello ${custName}! 🙏\n\nThis is a friendly reminder from *${shopName}*. Your outstanding ledger balance is ₹${pendingAmt.toLocaleString('en-IN')}.\n\nPlease clear it at your earliest convenience via UPI or cash. Feel free to contact us for any queries.\n\nThank you! ✨\n— ${shopName}`;
 
     const encoded = encodeURIComponent(message);
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encoded}`;
@@ -2856,7 +2856,7 @@ export default function MerchantDashboardPage() {
     // If multi-counter stations are active and all are currently busy:
     const activeStations = stationsList.filter(s => s.active);
     if (activeStations.length > 0 && activeStations.every(s => !!s.currentToken)) {
-      alert('Sabhi counters / chairs abhi busy hain! Kripya kisi counter ka kaam pura (Done & Bill) karein ya us chair per Call Next dabayein.');
+      alert('All service counters and stations are currently busy. Please mark an active station completed (Done & Bill) or assign directly.');
       return;
     }
 
@@ -3397,10 +3397,10 @@ export default function MerchantDashboardPage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <h1 className="text-lg sm:text-2xl font-black text-[#283B3D] leading-tight">
-                  {activeShop?.name || 'Apni Dukan Darj Karein'}
+                  {activeShop?.name || 'Register Your Shop'}
                 </h1>
                 <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#DCE9E3] text-[#176B65] whitespace-nowrap shrink-0">
-                  {activeShop?.categoryName || 'Dukan'}
+                  {activeShop?.categoryName || 'Store'}
                 </span>
                 <button
                   type="button"
@@ -3776,7 +3776,7 @@ export default function MerchantDashboardPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-bold text-[#283B3D]">Day-End Close</div>
-                            <div className="text-[10px] text-slate-500 truncate">Close register & finalize today's hisaab</div>
+                            <div className="text-[10px] text-slate-500 truncate">Close register & finalize today's ledger</div>
                           </div>
                         </button>
                       </div>
@@ -4170,7 +4170,7 @@ export default function MerchantDashboardPage() {
             <div className="urban-card rounded-2xl p-3.5 sm:p-4 space-y-1 bg-gradient-to-br from-white to-emerald-50/50 border-emerald-200 col-span-2 sm:col-span-1">
               <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider flex items-center gap-1">
                 <IndianRupee className="w-3 h-3 text-emerald-700" />
-                <span>Today's Hisaab</span>
+                <span>Today's Ledger</span>
               </span>
               <div className="text-2xl sm:text-3xl font-token font-bold text-emerald-700">
                 ₹{(
@@ -5332,10 +5332,10 @@ export default function MerchantDashboardPage() {
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-black tracking-widest text-[#F2A15A] block">
-                      {analyticsDateRange === 'TODAY' && 'Live Day-End Accounting • Aaj Ka Hisaab'}
-                      {analyticsDateRange === 'YESTERDAY' && 'Day Close Revenue • Kal Ka Pura Hisaab'}
-                      {analyticsDateRange === 'WEEK' && 'Rolling 7-Day Revenue • Hafte Ka Hisaab'}
-                      {analyticsDateRange === 'MONTH' && '30-Day Monthly Earnings • Pure Mahine Ka Hisaab'}
+                      {analyticsDateRange === 'TODAY' && "Live Day-End Accounting • Today's Ledger"}
+                      {analyticsDateRange === 'YESTERDAY' && "Day Close Revenue • Yesterday's Ledger"}
+                      {analyticsDateRange === 'WEEK' && "Rolling 7-Day Revenue • Weekly Ledger"}
+                      {analyticsDateRange === 'MONTH' && "30-Day Monthly Earnings • Monthly Ledger"}
                     </span>
                     <h3 className="text-xl font-black text-white mt-0.5">
                       {analyticsDateRange === 'TODAY' && "Today's Total Billing & Earning"}
@@ -5403,7 +5403,7 @@ export default function MerchantDashboardPage() {
               </div>
 
               <div className="urban-card rounded-2xl p-4 space-y-1 bg-emerald-50/50 border-emerald-200">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">Total Hisaab</span>
+                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">Total Revenue</span>
                 <div className="text-2xl sm:text-3xl font-token font-bold text-emerald-700">
                   ₹{totalRevenue.toLocaleString('en-IN')}
                 </div>
@@ -6004,7 +6004,7 @@ export default function MerchantDashboardPage() {
                               <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full inline-block mt-0.5 ${
                                 isDue ? 'bg-rose-100 text-rose-800 border border-rose-200/60' : 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
                               }`}>
-                                {isDue ? 'Baqaya Due' : 'Cleared ✓'}
+                                {isDue ? 'Outstanding Due' : 'Cleared ✓'}
                               </span>
                             </div>
                           </div>
@@ -6155,7 +6155,7 @@ export default function MerchantDashboardPage() {
                                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${
                                     isDue ? 'bg-rose-100 text-rose-800 border border-rose-200/60' : 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
                                   }`}>
-                                    {isDue ? 'Baqaya Due' : 'Cleared ✓'}
+                                    {isDue ? 'Outstanding Due' : 'Cleared ✓'}
                                   </span>
                                 </div>
                               </td>
@@ -8015,7 +8015,7 @@ export default function MerchantDashboardPage() {
                     </div>
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        Service Complete • Hisaab & Khata
+                        Service Complete • Billing & Ledger
                       </span>
                       <h3 className="font-black text-base text-[#283B3D] mt-0.5">
                         Record Service Billing (Optional)
@@ -8231,7 +8231,7 @@ export default function MerchantDashboardPage() {
                           </div>
                           <div>
                             <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                              Pending Baqaya (Khata Due)
+                              Pending Balance (Khata Due)
                             </label>
                             <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-xs font-black text-rose-700 flex items-center justify-between">
                               <span>₹{Math.max(0, (Number(billAmount) || 0) - (Number(billPaidAmount) || 0)).toLocaleString('en-IN')}</span>
@@ -8256,7 +8256,7 @@ export default function MerchantDashboardPage() {
                   {/* 4. Optional Remark / Bill Note */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-[#283B3D]">
-                      Customer / Hisaab Note (Optional)
+                      Customer / Billing Note (Optional)
                     </label>
                     <input
                       type="text"
@@ -8276,7 +8276,7 @@ export default function MerchantDashboardPage() {
                       <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                       <span>
                         {billAmount && Number(billAmount) > 0 
-                          ? `Save Hisaab (₹${Number(billAmount).toLocaleString('en-IN')}) & Mark Complete`
+                          ? `Save Billing (₹${Number(billAmount).toLocaleString('en-IN')}) & Mark Complete`
                           : "Save & Mark Complete"
                         }
                       </span>
@@ -8926,7 +8926,7 @@ export default function MerchantDashboardPage() {
                         shopRecords.filter(r => (r.date === new Date().toISOString().slice(0, 10)) && r.status === 'COMPLETED').reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
                       ).toLocaleString('en-IN')}
                     </span>
-                    <span className="text-[9px] text-slate-400 block font-medium">today&apos;s hisaab</span>
+                    <span className="text-[9px] text-slate-400 block font-medium">today&apos;s ledger</span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-[#DCE9E3]">
@@ -9042,7 +9042,7 @@ export default function MerchantDashboardPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>Today&apos;s Hisaab Saved To:</span>
+                  <span>Today&apos;s Ledger Saved To:</span>
                   <span className="font-semibold text-slate-700">Historical Analytics</span>
                 </div>
               </div>
@@ -9055,7 +9055,7 @@ export default function MerchantDashboardPage() {
                   className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
                 >
                   <Download className="w-4 h-4 text-[#176B65]" />
-                  <span>Download Today&apos;s Final Hisaab (Excel / CSV)</span>
+                  <span>Download Today&apos;s Final Ledger (Excel / CSV)</span>
                 </button>
 
                 <button
@@ -10309,7 +10309,7 @@ export default function MerchantDashboardPage() {
 
               {/* Current Outstanding Banner */}
               <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] flex items-center justify-between">
-                <span className="text-xs font-bold text-[#283B3D]/70">Current Pending Baqaya:</span>
+                <span className="text-xs font-bold text-[#283B3D]/70">Current Outstanding Balance:</span>
                 <span className="font-token font-bold text-base text-rose-700">
                   ₹{(selectedKhataCustomer.totalPending || 0).toLocaleString('en-IN')}
                 </span>
@@ -10326,7 +10326,7 @@ export default function MerchantDashboardPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  🟢 Jama (Payment Received)
+                  🟢 Payment Received
                 </button>
                 <button
                   type="button"
@@ -10337,7 +10337,7 @@ export default function MerchantDashboardPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  🔴 Udhaar (Add Balance)
+                  🔴 Credit / Due Added
                 </button>
               </div>
 
@@ -10346,7 +10346,7 @@ export default function MerchantDashboardPage() {
                 {/* Amount Input */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-[#283B3D]">
-                    {khataEntryType === 'PAYMENT' ? 'Kitna Paisa Jama Hua? (Amount Received) *' : 'Kitna Udhaar Jodna Hai? (Credit Amount) *'}
+                    {khataEntryType === 'PAYMENT' ? 'Amount Received *' : 'Credit / Outstanding Amount *'}
                   </label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
@@ -10373,7 +10373,7 @@ export default function MerchantDashboardPage() {
                         onClick={() => setKhataEntryAmount(String(selectedKhataCustomer.totalPending))}
                         className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-bold cursor-pointer"
                       >
-                        Poora Hisaab (₹{selectedKhataCustomer.totalPending})
+                        Full Clearance (₹{selectedKhataCustomer.totalPending})
                       </button>
                       {[50, 100, 200, 500].map(amt => (
                         amt < (selectedKhataCustomer.totalPending || 0) && (
@@ -10580,11 +10580,11 @@ export default function MerchantDashboardPage() {
                     type="button"
                     onClick={() => {
                       const cleanPhone = statementCustomer.customerPhone.replace(/\D/g, '').slice(-10);
-                      const shopName = activeShop?.name || 'Hamari Dukan';
+                      const shopName = activeShop?.name || 'Our Store';
                       const txLines = (statementCustomer.transactions || []).slice(0, 5).map(tx => 
-                        `• ${tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : 'Recent'}: ${tx.type === 'PAYMENT' ? '🟢 Jama' : '🔴 Udhaar'} ₹${tx.amount} (${tx.serviceOrReason || ''})`
+                        `• ${tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : 'Recent'}: ${tx.type === 'PAYMENT' ? '🟢 Paid' : '🔴 Due'} ₹${tx.amount} (${tx.serviceOrReason || ''})`
                       ).join('\n');
-                      const msg = `Namaste ${statementCustomer.customerName} ji! 🙏\n\n${shopName} Khata Passbook Hisaab:\n\n${txLines}\n\n👉 Kul Baqaya Balance Due: ₹${(statementCustomer.totalPending || 0).toLocaleString('en-IN')}\n\nDhanyawad! ✨\n— ${shopName}`;
+                      const msg = `Hello ${statementCustomer.customerName}! 🙏\n\n${shopName} Customer Passbook Ledger:\n\n${txLines}\n\n👉 Total Outstanding Due: ₹${(statementCustomer.totalPending || 0).toLocaleString('en-IN')}\n\nThank you! ✨\n— ${shopName}`;
                       window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
                     }}
                     className="flex-1 py-3 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
@@ -10706,7 +10706,7 @@ export default function MerchantDashboardPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Purana hisaab baaki hai"
+                    placeholder="e.g. Previous balance outstanding"
                     value={newKhataNotes}
                     onChange={(e) => setNewKhataNotes(e.target.value)}
                     className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
@@ -11369,7 +11369,7 @@ export default function MerchantDashboardPage() {
                           <textarea
                             value={customerReviewReplyText}
                             onChange={(e) => setCustomerReviewReplyText(e.target.value)}
-                            placeholder={review.merchantReply ? "Reply update karein..." : "Customer ke review par official reply likhein (e.g. Dhanyawad ji, fir aaiyega!)..."}
+                            placeholder={review.merchantReply ? "Update your reply..." : "Write an official response to the customer's review (e.g. Thank you for visiting us!)..."}
                             rows={2}
                             className="w-full p-2.5 bg-white border border-[#DCE9E3] rounded-xl text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                           />
@@ -11402,7 +11402,7 @@ export default function MerchantDashboardPage() {
                       {selectedCustomerForReview.customerPhone && selectedCustomerForReview.customerPhone !== 'Offline' && (
                         <a
                           href={`https://wa.me/91${selectedCustomerForReview.customerPhone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(
-                            `Namaste ${selectedCustomerForReview.customerName} ji! ${activeShop?.name || 'Hamari Dukan'} me padharne ke liye dhanyawad. Kripya 1 minute nikaal kar hamari service ka review aur rating dein: ${typeof window !== 'undefined' ? window.location.origin : ''}/tokens`
+                            `Hello ${selectedCustomerForReview.customerName}! Thank you for visiting ${activeShop?.name || 'our store'}. Please take 1 minute to share your review and rating: ${typeof window !== 'undefined' ? window.location.origin : ''}/tokens`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"

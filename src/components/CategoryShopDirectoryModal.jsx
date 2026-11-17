@@ -628,12 +628,12 @@ export default function CategoryShopDirectoryModal({
                     </div>
                     <h4 className="font-bold text-[#283B3D] text-base">
                       {isFavorites 
-                        ? "Aapne abhi tak koi shop save nahi ki hai" 
+                        ? "You have not saved any shops yet" 
                         : "No shops found in this category"}
                     </h4>
                     <p className="text-xs text-[#283B3D]/70 max-w-sm mx-auto font-medium">
                       {isFavorites 
-                        ? "Kisi bhi dukaan ke samne bane ❤️ (dil) icon par click karke usko yahan save karein." 
+                        ? "Click the ❤️ heart icon on any shop to save it here for quick access." 
                         : "Try selecting another category or clear search keywords."}
                     </p>
                     {isFavorites && (

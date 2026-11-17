@@ -542,7 +542,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                 if (rateCardExpanded && listToDisplay.length === 0) {
                   return (
                     <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs font-semibold">
-                      Koi service match nahi hui "{rateCardSearchQuery}" se.
+                      No service matches "{rateCardSearchQuery}".
                     </div>
                   );
                 }
@@ -760,7 +760,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                             rows={2}
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Apna reply ya comment likhein..."
+                            placeholder="Write your reply or response..."
                             className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                           />
 
