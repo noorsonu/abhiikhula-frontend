@@ -299,7 +299,19 @@ export default function MerchantDashboardPage() {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          // Clean any customerName that had entire services concatenated in parentheses
+          return parsed.map(c => {
+            let cName = c.customerName || '';
+            if (cName.includes('(')) {
+              const m = cName.match(/^(.*?)\s*\(.*\)$/);
+              if (m && m[1].trim()) {
+                return { ...c, customerName: m[1].trim() };
+              }
+            }
+            return c;
+          });
+        }
       }
     } catch (e) {}
     return [];
@@ -2975,8 +2987,14 @@ export default function MerchantDashboardPage() {
     }
 
     if (pendingUdhaar > 0) {
+      let cleanCustName = tokenToFinalize.customerName || 'Customer';
+      if (cleanCustName.includes('(')) {
+        const m = cleanCustName.match(/^(.*?)\s*\(.*\)$/);
+        if (m && m[1].trim()) cleanCustName = m[1].trim();
+      }
+
       recordKhataEntry({
-        customerName: tokenToFinalize.customerName || 'Customer',
+        customerName: cleanCustName,
         customerPhone: tokenToFinalize.customerPhone || '',
         amount: pendingUdhaar,
         type: 'CREDIT',
@@ -5899,7 +5917,7 @@ export default function MerchantDashboardPage() {
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                <div className="flex items-center gap-1.5 shrink-0 flex-nowrap sm:flex-wrap overflow-x-auto pb-1 sm:pb-0 no-scrollbar max-w-full">
                   <span className="text-[11px] font-bold text-slate-500 mr-1 hidden sm:inline">Filter:</span>
                   {[
                     { id: 'ALL', label: `All (${khataList.length})` },
@@ -5911,7 +5929,7 @@ export default function MerchantDashboardPage() {
                       key={flt.id}
                       type="button"
                       onClick={() => setKhataFilter(flt.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                         khataFilter === flt.id
                           ? 'bg-[#176B65] text-white shadow-xs'
                           : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
@@ -5923,139 +5941,299 @@ export default function MerchantDashboardPage() {
                 </div>
               </div>
 
-              {/* Khata Customers Table */}
+              {/* Khata Customers List / Table */}
               {filteredKhata.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-[#DCE9E3] text-[10px] uppercase font-black text-slate-400 tracking-wider">
-                        <th className="py-3 px-3">Customer</th>
-                        <th className="py-3 px-3">Contact</th>
-                        <th className="py-3 px-3">Pending Udhaar</th>
-                        <th className="py-3 px-3">Last Activity</th>
-                        <th className="py-3 px-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#DCE9E3]/70 text-xs">
-                      {filteredKhata.map((customer) => {
-                        const isDue = (customer.totalPending || 0) > 0;
-                        const lastTx = customer.transactions && customer.transactions[0];
-                        return (
-                          <tr key={customer.id} className="hover:bg-[#F3F1E9]/40 transition-colors">
-                            {/* Customer Name */}
-                            <td className="py-3.5 px-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                                  isDue ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                }`}>
-                                  {customer.customerName?.charAt(0) || 'C'}
+                <>
+                  {/* MOBILE VIEW (< md): Touch-Friendly Responsive Customer Cards */}
+                  <div className="block md:hidden space-y-3">
+                    {filteredKhata.map((customer) => {
+                      const isDue = (customer.totalPending || 0) > 0;
+                      const lastTx = customer.transactions && customer.transactions[0];
+
+                      // Parse clean name and services/notes
+                      let cleanName = (customer.customerName || 'Customer').trim();
+                      let serviceNote = (lastTx?.serviceOrReason || '').trim();
+                      if (cleanName.includes('(')) {
+                        const match = cleanName.match(/^(.*?)\s*\((.*)\)$/);
+                        if (match) {
+                          cleanName = match[1].trim();
+                          if (!serviceNote) serviceNote = match[2].trim();
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={customer.id}
+                          className={`p-4 rounded-2xl border transition-all shadow-xs ${
+                            isDue ? 'bg-gradient-to-br from-rose-50/40 via-white to-white border-rose-200' : 'bg-white border-[#DCE9E3]'
+                          }`}
+                        >
+                          {/* Card Header: Avatar + Name + Contact + Due Badge */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                                isDue ? 'bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs' : 'bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs'
+                              }`}>
+                                {cleanName.charAt(0) || 'C'}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-black text-sm text-[#283B3D] truncate block">
+                                  {cleanName}
+                                </span>
+                                {customer.customerPhone && customer.customerPhone !== 'Offline' ? (
+                                  <a
+                                    href={`tel:${customer.customerPhone}`}
+                                    className="text-[11px] text-[#176B65] font-bold hover:underline inline-flex items-center gap-1 mt-0.5"
+                                  >
+                                    <PhoneCall className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>+91 {customer.customerPhone}</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                                    Walk-in / No Phone
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Pending Balance Badge */}
+                            <div className="text-right shrink-0">
+                              <div className={`font-token font-bold text-base leading-tight ${isDue ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                ₹{(customer.totalPending || 0).toLocaleString('en-IN')}
+                              </div>
+                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                isDue ? 'bg-rose-100 text-rose-800 border border-rose-200/60' : 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                              }`}>
+                                {isDue ? 'Baqaya Due' : 'Cleared ✓'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Middle Strip: Service / Reason + Tx count */}
+                          <div className="mt-3 pt-2.5 border-t border-[#DCE9E3]/70 flex items-center justify-between text-[11px] gap-2">
+                            <span className="text-slate-600 font-medium truncate flex-1">
+                              <strong className="text-[#283B3D]">Last: </strong>
+                              {serviceNote || 'Service on credit'}
+                            </span>
+                            <span className="text-slate-400 font-semibold text-[10px] shrink-0">
+                              {customer.lastUpdated ? new Date(customer.lastUpdated).toLocaleDateString('en-IN') : 'Recent'} • {customer.transactions?.length || 1} entries
+                            </span>
+                          </div>
+
+                          {/* Mobile Action Buttons (2x2 Grid) */}
+                          <div className="grid grid-cols-2 gap-2 pt-3">
+                            {isDue ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenKhataEntryModal(customer, 'PAYMENT')}
+                                className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Jama (Pay)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                className="py-2.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed"
+                              >
+                                <span>No Balance ✓</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenKhataEntryModal(customer, 'CREDIT')}
+                              className="py-2.5 px-3 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-[#176B65]" />
+                              <span>+ Udhaar</span>
+                            </button>
+
+                            {isDue && customer.customerPhone && customer.customerPhone !== 'Offline' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSendWhatsAppKhataReminder(customer)}
+                                className="py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs transition-all cursor-pointer active:scale-95 shadow-xs flex items-center justify-center gap-1.5"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                <span>Remind WA</span>
+                              </button>
+                            ) : (
+                              <a
+                                href={customer.customerPhone && customer.customerPhone !== 'Offline' ? `tel:${customer.customerPhone}` : '#'}
+                                className={`py-2.5 px-3 rounded-xl border border-[#DCE9E3] font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                                  customer.customerPhone && customer.customerPhone !== 'Offline'
+                                    ? 'bg-white hover:bg-slate-50 text-[#283B3D] cursor-pointer'
+                                    : 'bg-slate-50 text-slate-400 cursor-not-allowed'
+                                }`}
+                              >
+                                <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Call Customer</span>
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatementCustomer(customer);
+                                setStatementModalOpen(true);
+                              }}
+                              className="py-2.5 px-3 rounded-xl bg-white hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95"
+                            >
+                              <History className="w-3.5 h-3.5 text-[#176B65]" />
+                              <span>Passbook</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* DESKTOP VIEW (>= md): Full Wide Table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#DCE9E3] text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                          <th className="py-3 px-3">Customer</th>
+                          <th className="py-3 px-3">Contact</th>
+                          <th className="py-3 px-3">Pending Udhaar</th>
+                          <th className="py-3 px-3">Last Activity</th>
+                          <th className="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#DCE9E3]/70 text-xs">
+                        {filteredKhata.map((customer) => {
+                          const isDue = (customer.totalPending || 0) > 0;
+                          const lastTx = customer.transactions && customer.transactions[0];
+
+                          let cleanName = (customer.customerName || 'Customer').trim();
+                          let serviceNote = (lastTx?.serviceOrReason || '').trim();
+                          if (cleanName.includes('(')) {
+                            const match = cleanName.match(/^(.*?)\s*\((.*)\)$/);
+                            if (match) {
+                              cleanName = match[1].trim();
+                              if (!serviceNote) serviceNote = match[2].trim();
+                            }
+                          }
+
+                          return (
+                            <tr key={customer.id} className="hover:bg-[#F3F1E9]/40 transition-colors">
+                              {/* Customer Name */}
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                                    isDue ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  }`}>
+                                    {cleanName.charAt(0) || 'C'}
+                                  </div>
+                                  <div>
+                                    <span className="font-black text-[#283B3D] block">{cleanName}</span>
+                                    <span className="text-[10px] text-slate-400 font-semibold">
+                                      {customer.transactions?.length || 1} transactions
+                                    </span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <span className="font-black text-[#283B3D] block">{customer.customerName}</span>
-                                  <span className="text-[10px] text-slate-400 font-semibold">
-                                    {customer.transactions?.length || 1} transactions
+                              </td>
+
+                              {/* Contact */}
+                              <td className="py-3.5 px-3">
+                                <span className="font-semibold text-slate-600 block">
+                                  {customer.customerPhone && customer.customerPhone !== 'Offline' 
+                                    ? `+91 ${customer.customerPhone}` 
+                                    : 'Walk-in / No Phone'
+                                  }
+                                </span>
+                              </td>
+
+                              {/* Pending Udhaar */}
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-token font-bold text-sm ${isDue ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                    ₹{(customer.totalPending || 0).toLocaleString('en-IN')}
+                                  </span>
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${
+                                    isDue ? 'bg-rose-100 text-rose-800 border border-rose-200/60' : 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                                  }`}>
+                                    {isDue ? 'Baqaya Due' : 'Cleared ✓'}
                                   </span>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            {/* Contact */}
-                            <td className="py-3.5 px-3">
-                              <span className="font-semibold text-slate-600 block">
-                                {customer.customerPhone && customer.customerPhone !== 'Offline' 
-                                  ? `+91 ${customer.customerPhone}` 
-                                  : 'Walk-in / No Phone'
-                                }
-                              </span>
-                            </td>
+                              {/* Last Activity */}
+                              <td className="py-3.5 px-3">
+                                <div className="space-y-0.5 max-w-[220px]">
+                                  <span className="text-[11px] font-bold text-[#283B3D] block line-clamp-1">
+                                    {serviceNote || 'Account opened'}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-semibold block">
+                                    {customer.lastUpdated ? new Date(customer.lastUpdated).toLocaleDateString('en-IN') : 'Recent'}
+                                  </span>
+                                </div>
+                              </td>
 
-                            {/* Pending Udhaar */}
-                            <td className="py-3.5 px-3">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`font-token font-bold text-sm ${isDue ? 'text-rose-700' : 'text-emerald-700'}`}>
-                                  ₹{(customer.totalPending || 0).toLocaleString('en-IN')}
-                                </span>
-                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md ${
-                                  isDue ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                                }`}>
-                                  {isDue ? 'Baqaya Due' : 'Cleared'}
-                                </span>
-                              </div>
-                            </td>
+                              {/* Actions */}
+                              <td className="py-3.5 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                  {/* Jama (Receive Payment) */}
+                                  {isDue && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenKhataEntryModal(customer, 'PAYMENT')}
+                                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                                      title="Receive payment from customer (Jama)"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Jama</span>
+                                    </button>
+                                  )}
 
-                            {/* Last Activity */}
-                            <td className="py-3.5 px-3">
-                              <div className="space-y-0.5">
-                                <span className="text-[11px] font-bold text-[#283B3D] block line-clamp-1">
-                                  {lastTx?.serviceOrReason || 'Account opened'}
-                                </span>
-                                <span className="text-[10px] text-slate-400 font-semibold block">
-                                  {customer.lastUpdated ? new Date(customer.lastUpdated).toLocaleDateString('en-IN') : 'Recent'}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-3.5 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {/* Jama (Receive Payment) */}
-                                {isDue && (
+                                  {/* Add Udhaar */}
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenKhataEntryModal(customer, 'PAYMENT')}
-                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                                    title="Receive payment from customer (Jama)"
+                                    onClick={() => handleOpenKhataEntryModal(customer, 'CREDIT')}
+                                    className="px-2.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                                    title="Add manual credit / udhaar entry"
                                   >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Jama</span>
+                                    <Plus className="w-3.5 h-3.5 text-[#176B65]" />
+                                    <span>+ Udhaar</span>
                                   </button>
-                                )}
 
-                                {/* Add Udhaar */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenKhataEntryModal(customer, 'CREDIT')}
-                                  className="px-2.5 py-1.5 rounded-xl bg-[#F3F1E9] hover:bg-[#DCE9E3] border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-                                  title="Add manual credit / udhaar entry"
-                                >
-                                  <Plus className="w-3.5 h-3.5 text-[#176B65]" />
-                                  <span>+ Udhaar</span>
-                                </button>
+                                  {/* WhatsApp Reminder */}
+                                  {isDue && customer.customerPhone && customer.customerPhone !== 'Offline' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSendWhatsAppKhataReminder(customer)}
+                                      className="px-2.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-[11px] transition-all cursor-pointer active:scale-95 shadow-2xs flex items-center gap-1"
+                                      title="Send polite WhatsApp payment reminder"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                      <span>Remind</span>
+                                    </button>
+                                  )}
 
-                                {/* WhatsApp Reminder */}
-                                {isDue && customer.customerPhone && customer.customerPhone !== 'Offline' && (
+                                  {/* Statement / Passbook */}
                                   <button
                                     type="button"
-                                    onClick={() => handleSendWhatsAppKhataReminder(customer)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-[11px] transition-all cursor-pointer active:scale-95 shadow-2xs flex items-center gap-1"
-                                    title="Send polite WhatsApp payment reminder"
+                                    onClick={() => {
+                                      setStatementCustomer(customer);
+                                      setStatementModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                                    title="View complete Khata statement passbook"
                                   >
-                                    <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                                    <span>Remind</span>
+                                    <History className="w-3.5 h-3.5 text-[#176B65]" />
+                                    <span>Passbook</span>
                                   </button>
-                                )}
-
-                                {/* Statement / Passbook */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setStatementCustomer(customer);
-                                    setStatementModalOpen(true);
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#DCE9E3]/50 border border-[#DCE9E3] text-[#283B3D] font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
-                                  title="View complete Khata statement passbook"
-                                >
-                                  <History className="w-3.5 h-3.5 text-[#176B65]" />
-                                  <span>Passbook</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="py-12 text-center space-y-3">
                   <BookOpen className="w-10 h-10 text-slate-400 mx-auto" />
